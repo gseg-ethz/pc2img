@@ -2,25 +2,29 @@ from joblib import Parallel, delayed
 import json
 from pathlib import Path
 from timeit import default_timer as timer
+from typing import Optional, Iterable, Tuple, List, Any
 
 import cv2
 import cupy as cp
 import numpy as np
 from cuml.neighbors import NearestNeighbors
+from numpy import ndarray, dtype
 from scipy.spatial import Delaunay
 from scipy.interpolate import griddata as sp_griddata
 import imageio.v3 as iio
 import tifffile
 
 import pchandler as pch
-from pc2img.core import FoV
+from pchandler.fov import FoV
+
+# from pc2img.core import FoV
 
 
 EPS32 = np.finfo(np.float32).eps
 
 
 # def barycentric_interpolation(xi, v0, v1, v2, return_within_check: bool = False):
-def barycentric_interpolation(points: np.ndarray| tuple[np.ndarray, np.ndarray],
+def barycentric_interpolation(points: np.ndarray | tuple[np.ndarray, np.ndarray],
                               values: np.ndarray | tuple[np.ndarray, ...],
                               xi: np.ndarray | tuple[np.ndarray, np.ndarray],
                               filter_distance: float = 0.0, fill_value: float = np.nan) -> tuple[np.ndarray]:
@@ -128,11 +132,12 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
         values = tuple(values)
 
     if isinstance(xi, tuple):
-        #TODO: How to deal with image_resolution
+        # TODO: How to deal with image_resolution
         image_resolution = xi[0].shape
         xi = np.vstack((np.ndarray.flatten(xi[0]), np.ndarray.flatten(xi[1]))).T
 
-    points, values, xi = cp.array(points, dtype=cp.float32), cp.array(values, dtype=cp.float32), cp.array(xi, dtype=cp.float32)
+    points, values, xi = (cp.array(points, dtype=cp.float32), cp.array(values, dtype=cp.float32),
+                          cp.array(xi,dtype=cp.float32))
 
     if method == 'barycentric':
         knn = NearestNeighbors(n_neighbors=3)
@@ -176,7 +181,8 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
     return tuple(results)
 
 
-def normalization(values):
+def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray | tuple[
+    np.ndarray, tuple[float, float]]:
     values_flat = np.ndarray.flatten(values)
     lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], [1, 99])
     normalized_values = (values - lower) / (upper - lower + EPS32)
@@ -186,6 +192,9 @@ def normalization(values):
     np.nan_to_num(normalized_values, copy=False, nan=1.0)
     np.clip(normalized_values, 0, 1, out=normalized_values)
 
+    if return_bounds:
+        return normalized_values, (lower, upper)
+
     return normalized_values
 
 
@@ -193,7 +202,7 @@ class ImageGenerator:
 
     def __init__(self, image_resolution: tuple[int, int], minimum_nb_points: int, image_folder: Path):
 
-        self.image_resolution = image_resolution # Height x Width [px]
+        self.image_resolution = image_resolution  # Height x Width [px]
         self.minimum_nb_points = minimum_nb_points
         self.image_folder = image_folder
 
@@ -201,8 +210,79 @@ class ImageGenerator:
     def aspect_ratio(self):
         return self.image_resolution[1] / self.image_resolution[0]
 
+    def map_spherical_coordinates_to_pixels(self, fov, pcd) \
+            -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+        row_index = np.arange(start=0, stop=self.image_resolution[0], dtype=np.float32)
+        column_index = np.arange(start=0, stop=self.image_resolution[1], dtype=np.float32)
+
+        ii, jj = np.meshgrid(row_index, column_index, indexing="ij")
+
+        elevation_pixel = (
+                (self.image_resolution[0] - 1) * (pcd.spherical_coordinates[:, 1] - fov.elevation_min)
+                / fov.height("rad")).astype(np.float32)
+        horizontal_pixel = (
+                (self.image_resolution[1] - 1) * (pcd.spherical_coordinates[:, 2] - fov.horizontal_min)
+                / fov.width("rad")).astype(np.float32)
+
+        return (ii, jj), (elevation_pixel, horizontal_pixel)
+
     def generate_images(self, pcds_with_fov: list[tuple[str, FoV, pch.geometry.PointCloudData]], n_jobs: int = -1):
         Parallel(n_jobs=n_jobs, prefer="processes", verbose=20)(delayed(self.fov2images)(*pcd) for pcd in pcds_with_fov)
+
+    def project_and_rasterize_2d(self, fov: FoV, pcd: pch.geometry.PointCloudData,
+                                 downsample_pcd: Optional[bool | float | int] = None,
+                                 field_labels: str | Iterable[str] = ("scalar_Intensity", "range"),
+                                 rasterization_method: str = "delaunay") \
+            -> tuple[list[tuple[np.ndarray, tuple[np.ndarray, tuple[float, float]]], ...], FoV]:
+
+        # Clean up different parameter types
+        if isinstance(field_labels, str):
+            field_labels = (field_labels,)
+
+        if isinstance(downsample_pcd, bool) and downsample_pcd is True:
+            pcd.random_subsample(np.prod(self.image_resolution, dtype=int) * 4)
+        elif isinstance(downsample_pcd, (float, int)) and not isinstance(downsample_pcd, bool):
+            pcd.random_subsample(downsample_pcd)
+
+        # Match the fov ratio to the image ratio
+        fov_extended = fov.extend_to_ratio(self.aspect_ratio)
+
+        pixel_raster, mapped_coordinates = self.map_spherical_coordinates_to_pixels(fov_extended, pcd)
+        # Create image-pixel-space and Map spherical coordinates to this space
+
+        # Gather fields to rasterize
+        values = list()
+        for fl in field_labels:
+            if fl.lower() == "range":
+                values.append(pcd.spherical_coordinates[:, 0])
+            elif fl in pcd.scalar_fields.keys():
+                values.append(pcd.scalar_fields[fl])
+            else:
+                pass  # TODO: Implement warning or similar
+
+        values = tuple(values)
+
+        match rasterization_method:
+            case "delaunay":
+                rasterized_data = barycentric_interpolation(
+                    points=np.stack(mapped_coordinates, axis=-1),
+                    values=values, xi=pixel_raster, filter_distance=5.0)
+            case "raw":
+                elevation_pixel_int = np.floor(mapped_coordinates[0]).astype(int)
+                horizontal_pixel_int = np.floor(mapped_coordinates[1]).astype(int)
+                rasterized_blank = np.full(self.image_resolution, np.nan)
+
+                rasterized_data = list()
+                for v in values:
+                    rasterized_values = rasterized_blank.copy()
+                    rasterized_values[elevation_pixel_int, horizontal_pixel_int] = v
+                    rasterized_data.append(rasterized_values)
+            case _:
+                raise ValueError(f"Unknown rasterization method: {rasterization_method}")
+
+        extended_data = [(rd, normalization(rd, return_bounds=True)) for rd in rasterized_data]
+
+        return extended_data, fov_extended
 
     def fov2images(self, identifier: str, fov: FoV, pcd: pch.geometry.PointCloudData, downsample_pcd: bool = False):
         # TODO: Rework: different options such as normalization etc; File name handling
@@ -232,10 +312,12 @@ class ImageGenerator:
 
         ii, jj = np.meshgrid(row_index, column_index, indexing="ij")
 
-        elevation_pixel = ((self.image_resolution[0] - 1) * (pcd.spherical_coordinates[:, 1] - extended_fov.elevation_min)
-                           / extended_fov.height("rad")).astype(np.float32)
-        horizontal_pixel = ((self.image_resolution[1] - 1) * (pcd.spherical_coordinates[:, 2] - extended_fov.horizontal_min)
-                            / extended_fov.width("rad")).astype(np.float32)
+        elevation_pixel = (
+                    (self.image_resolution[0] - 1) * (pcd.spherical_coordinates[:, 1] - extended_fov.elevation_min)
+                    / extended_fov.height("rad")).astype(np.float32)
+        horizontal_pixel = (
+                    (self.image_resolution[1] - 1) * (pcd.spherical_coordinates[:, 2] - extended_fov.horizontal_min)
+                    / extended_fov.width("rad")).astype(np.float32)
 
         # horizontal_bin_edges = np.linspace(extended_fov.horizontal_min,
         #                                    extended_fov.horizontal_max,
@@ -281,9 +363,7 @@ class ImageGenerator:
             # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_scipy"),
             #             ((2 ** 8 - 1) * sp_data).astype(np.uint8))
 
-
-
-             # Generate and save `raw` image
+            # Generate and save `raw` image
 
             elevation_pixel_int = np.floor(elevation_pixel - EPS32).astype(int)
             horizontal_pixel_int = np.floor(horizontal_pixel - EPS32).astype(int)
@@ -316,12 +396,10 @@ class ImageGenerator:
             iio.imwrite(range_file.with_stem(range_file.stem + "_delaunay_plasma").with_suffix(".png"),
                         delaunay_range_plasma.transpose(1, 0, 2)[:, :, ::-1])
 
-
             # im_color = cv2.applyColorMap(((2 ** 8 - 1) * delaunay_intensity.T).astype(np.uint8), cv2.COLORMAP_VIRIDIS)
 
             # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_knn"),
             #             ((2 ** 8 - 1) * intensity_data_non).astype(np.uint8))
-
 
             # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_delaunay_viridis"),
             #             im_color.transpose(1, 0, 2)[:, :, ::-1])
@@ -330,8 +408,6 @@ class ImageGenerator:
 
             # delaunay_intensity_normalized, delaunay_range = [normalization(d) for d in delaunay_data]
 
-
-
             # iio.imwrite(scaled_file.with_stem(scaled_file.stem + "_knn"),
             #             ((2 ** 8 - 1) * delaunay_intensity_normalized).astype(np.uint8))
 
@@ -339,10 +415,6 @@ class ImageGenerator:
             #             ((2 ** 8 - 1) * intensity_data).astype(np.uint8))
 
             #
-
-
-
-
 
             # tifffile.imwrite(range_file.with_stem(range_file.stem + "_knn"),
             #                  ((2 ** 32 - 1) * range_data).astype(np.uint32), photometric='minisblack')
