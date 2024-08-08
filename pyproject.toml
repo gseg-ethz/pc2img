@@ -26,6 +26,7 @@ dependencies = [
 	"typing-extensions ~= 4.9",
 	"tifffile[all] ~= 2024.1",
 	"opencv-python ~= 4.9",
+
 #	"PyYAML ~= 6.0",
 #	"omegaconf ~= 2.2",
 #	"hydra-core ~= 1.3",
@@ -47,12 +48,12 @@ documentation = "https://google.com"
 doc = ["sphinx ~= 5.1"]
 dev = ["black ~= 22.10"]
 cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
-#	"cudf-cu12 ~= 23.12",
-#	"cuml-cu12 ~= 23.12",
+	"cudf-cu12 ~= 23.12",
+	"cuml-cu12 ~= 23.12",
 	"cupy-cuda12x ~= 13.0",
 ]
 cuda11 = [ # Check version numbers
-#	"cudf-cu11 ~= 23.12",
-#	"cuml-cu11 ~= 23.12",
+	"cudf-cu11 ~= 23.12",
+	"cuml-cu11 ~= 23.12",
 	"cupy-cuda11x ~= 13.0",
 ]

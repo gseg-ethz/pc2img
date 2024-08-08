@@ -1,6 +1,7 @@
 from joblib import Parallel, delayed
 import json
 from pathlib import Path
+import re
 from timeit import default_timer as timer
 from typing import Optional, Iterable, Tuple, List, Any
 
@@ -27,7 +28,7 @@ EPS32 = np.finfo(np.float32).eps
 def barycentric_interpolation(points: np.ndarray | tuple[np.ndarray, np.ndarray],
                               values: np.ndarray | tuple[np.ndarray, ...],
                               xi: np.ndarray | tuple[np.ndarray, np.ndarray],
-                              filter_distance: float = 0.0, fill_value: float = np.nan) -> tuple[np.ndarray]:
+                              filter_distance: float = 0.0, fill_value: float = np.nan) -> list[np.ndarray]:
     """
         Interpolate unstructured 2D data using barycentric interpolation.
 
@@ -104,7 +105,7 @@ def barycentric_interpolation(points: np.ndarray | tuple[np.ndarray, np.ndarray]
             interpolation_values = np.reshape(interpolation_values, newshape=original_shape)
 
         interpolation_results.append(interpolation_values)
-    return tuple(interpolation_results)
+    return list(interpolation_results)
 
 
 def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_value=cp.nan):
@@ -181,13 +182,10 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
     return tuple(results)
 
 
-def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray | tuple[
-    np.ndarray, tuple[float, float]]:
+def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray | tuple[np.ndarray, tuple[float, float]]:
     values_flat = np.ndarray.flatten(values)
     lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], [1, 99])
     normalized_values = (values - lower) / (upper - lower + EPS32)
-    # normalized_values[normalized_values > 1.0] = 1.0
-    # normalized_values[normalized_values < 0.0] = 0.0
 
     np.nan_to_num(normalized_values, copy=False, nan=1.0)
     np.clip(normalized_values, 0, 1, out=normalized_values)
@@ -233,7 +231,7 @@ class ImageGenerator:
                                  downsample_pcd: Optional[bool | float | int] = None,
                                  field_labels: str | Iterable[str] = ("scalar_Intensity", "range"),
                                  rasterization_method: str = "delaunay") \
-            -> tuple[list[tuple[np.ndarray, tuple[np.ndarray, tuple[float, float]]], ...], FoV]:
+            -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
 
         # Clean up different parameter types
         if isinstance(field_labels, str):
@@ -252,11 +250,18 @@ class ImageGenerator:
 
         # Gather fields to rasterize
         values = list()
+        available_fields = list()
         for fl in field_labels:
             if fl.lower() == "range":
                 values.append(pcd.spherical_coordinates[:, 0])
+                available_fields.append(fl)
+            elif "hillshade" in fl.lower():
+                if "range" not in field_labels and "range" not in available_fields:
+                    values.append(pcd.spherical_coordinates[:, 0])
+                    available_fields.append("range")
             elif fl in pcd.scalar_fields.keys():
                 values.append(pcd.scalar_fields[fl])
+                available_fields.append(fl)
             else:
                 pass  # TODO: Implement warning or similar
 
@@ -280,9 +285,28 @@ class ImageGenerator:
             case _:
                 raise ValueError(f"Unknown rasterization method: {rasterization_method}")
 
-        extended_data = [(rd, normalization(rd, return_bounds=True)) for rd in rasterized_data]
+        rasterization_results = dict(zip(available_fields, rasterized_data))
 
-        return extended_data, fov_extended
+        results = dict()
+        for fl in field_labels:
+            if fl in rasterization_results:
+                rd = rasterization_results[fl]
+            elif "hillshade" in fl.lower():
+                # extract (optional) hillshade parameters
+                pattern = re.compile(r"hillshade(?:_(?P<azimuth>\d*)_(?P<altitude>\d*)_(?P<z_factor>\d+(?:\.\d+)?)?)?")
+                match = pattern.match(fl)
+                hillshade_parameters = match.groupdict()
+                hillshade_parameters = {k: float(v) for k, v in hillshade_parameters.items() if v is not None}
+
+                rd = self._calculate_hillshade(rasterization_results["range"], **hillshade_parameters)
+
+            results[fl] = {"original_values": rd, "normalized_values": normalization(rd, return_bounds=True)}
+        #
+        #
+        #
+        # extended_data = [(rd, normalization(rd, return_bounds=True)) for rd in rasterized_data]
+
+        return results, fov_extended
 
     def fov2images(self, identifier: str, fov: FoV, pcd: pch.geometry.PointCloudData, downsample_pcd: bool = False):
         # TODO: Rework: different options such as normalization etc; File name handling
@@ -469,3 +493,20 @@ class ImageGenerator:
             raise
         else:
             pass
+
+
+
+    @staticmethod
+    def _calculate_hillshade(values: np.ndarray, azimuth: float = 315,
+                             altitude: float = 45,
+                             z_factor: float = 1.0) -> np.ndarray:
+
+        x, y = np.gradient(values * z_factor)
+        slope = np.pi / 2.0 - np.arctan(np.sqrt(x * x + y * y))
+        aspect = np.arctan2(-x, y)
+        azimuth_rad = azimuth * np.pi / 180.0
+        altitude_rad = altitude * np.pi / 180.0
+
+        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(azimuth_rad - aspect)
+
+        return shaded
