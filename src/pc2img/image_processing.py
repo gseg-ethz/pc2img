@@ -1,9 +1,17 @@
+import sys
+import warnings
+
+from enum import Enum
 from joblib import Parallel, delayed
 import json
 from pathlib import Path
 import re
 from timeit import default_timer as timer
 from typing import Optional, Iterable, Tuple, List, Any
+if sys.version[0] == 3 and sys.version_info[1] >= 11:
+    from typing import Self
+else:
+    from typing_extensions import Self
 
 import cv2
 import cupy as cp
@@ -108,7 +116,7 @@ def barycentric_interpolation(points: np.ndarray | tuple[np.ndarray, np.ndarray]
     return list(interpolation_results)
 
 
-def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_value=cp.nan):
+def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_value=cp.nan) -> list[np.ndarray]:
     """
     Interpolate values on a grid using CuPy and cuML's k-nearest neighbor implementation.
 
@@ -138,7 +146,7 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
         xi = np.vstack((np.ndarray.flatten(xi[0]), np.ndarray.flatten(xi[1]))).T
 
     points, values, xi = (cp.array(points, dtype=cp.float32), cp.array(values, dtype=cp.float32),
-                          cp.array(xi,dtype=cp.float32))
+                          cp.array(xi, dtype=cp.float32))
 
     if method == 'barycentric':
         knn = NearestNeighbors(n_neighbors=3)
@@ -179,7 +187,7 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
             #     result[not ((0 <= alpha <= 1) and (0 <= beta <= 1) and (0 <= gamma <= 1))] = fill_value
         results.append(cp.reshape(result, image_resolution).get())
 
-    return tuple(results)
+    return list(results)
 
 
 def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray | tuple[np.ndarray, tuple[float, float]]:
@@ -196,17 +204,51 @@ def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray
     return normalized_values
 
 
+def calculate_hillshade(values: np.ndarray, azimuth: float = 315,
+                         altitude: float = 45,
+                         z_factor: float = 1.0) -> np.ndarray:
+
+    x, y = np.gradient(values * z_factor)
+    slope = np.pi / 2.0 - np.arctan(np.sqrt(x * x + y * y))
+    aspect = np.arctan2(-x, y)
+    azimuth_rad = azimuth * np.pi / 180.0
+    altitude_rad = altitude * np.pi / 180.0
+
+    shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(azimuth_rad - aspect)
+
+    return shaded
+
+
 class ImageGenerator:
 
-    def __init__(self, image_resolution: tuple[int, int], minimum_nb_points: int, image_folder: Path):
+    REGEX_GRADIENT_PATTERN = re.compile(r"gradient_(?P<axis>[x|y])_(?P<feature>.+)")
+    REGEX_HILLSHADE_PATTERN = re.compile(r"hillshade(?:_(?P<azimuth>\d*)_(?P<altitude>\d*)_"
+                                         r"(?P<z_factor>\d+(?:\.\d+)?)?)?")
 
-        self.image_resolution = image_resolution  # Height x Width [px]
-        self.minimum_nb_points = minimum_nb_points
-        self.image_folder = image_folder
+    class NormalizationFlag(Enum):
+        ORIGINAL = 0
+        NORMALIZATION = 1
+        BOTH = 2
 
     @property
     def aspect_ratio(self):
         return self.image_resolution[1] / self.image_resolution[0]
+
+    def __init__(self, image_resolution: tuple[int, int], minimum_nb_points: int, rasterization_method: str,
+                 results_folder: Path
+                 ):
+        # TODO: Add value checks
+        if any(res < 1 for res in image_resolution):
+            raise ValueError(f"The image resolution components need to all be above zero!")
+        if rasterization_method not in ["raw", "delaunay"]:
+            raise ValueError(f"Unknown rasterization method: {rasterization_method}!")
+        if minimum_nb_points < 0:
+            raise ValueError(f"Minimum number of points must be positive or zero!")
+
+        self.image_resolution = image_resolution  # Height x Width [px]
+        self.minimum_nb_points = minimum_nb_points
+        self.rasterization_method = rasterization_method
+        self.results_folder = results_folder
 
     def map_spherical_coordinates_to_pixels(self, fov, pcd) \
             -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
@@ -224,13 +266,9 @@ class ImageGenerator:
 
         return (ii, jj), (elevation_pixel, horizontal_pixel)
 
-    def generate_images(self, pcds_with_fov: list[tuple[str, FoV, pch.geometry.PointCloudData]], n_jobs: int = -1):
-        Parallel(n_jobs=n_jobs, prefer="processes", verbose=20)(delayed(self.fov2images)(*pcd) for pcd in pcds_with_fov)
-
     def project_and_rasterize_2d(self, fov: FoV, pcd: pch.geometry.PointCloudData,
                                  downsample_pcd: Optional[bool | float | int] = None,
-                                 field_labels: str | Iterable[str] = ("scalar_Intensity", "range"),
-                                 rasterization_method: str = "delaunay") \
+                                 field_labels: str | Iterable[str] = ("scalar_Intensity", "range")) \
             -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
 
         # Clean up different parameter types
@@ -255,6 +293,20 @@ class ImageGenerator:
             if fl.lower() == "range":
                 values.append(pcd.spherical_coordinates[:, 0])
                 available_fields.append(fl)
+            elif "gradient" in fl.lower():
+                # pattern = re.compile(r"gradient_(?P<axis>[x|y])_(?P<feature>.+)")
+                match = ImageGenerator.REGEX_GRADIENT_PATTERN.match(fl)
+                if not match:
+                    warnings.warn(f"!{fl} does not match the gradient feature definitions")
+                    continue
+                feature = match.groupdict()["feature"]
+                if "range" in feature.lower() and "range" not in field_labels and "range" not in available_fields:
+                    values.append(pcd.spherical_coordinates[:, 0])
+                    available_fields.append("range")
+                elif feature in pcd.scalar_fields.keys() and feature not in field_labels and feature not in available_fields:
+                    values.append(pcd.scalar_fields[fl])
+                    available_fields.append(fl)
+
             elif "hillshade" in fl.lower():
                 if "range" not in field_labels and "range" not in available_fields:
                     values.append(pcd.spherical_coordinates[:, 0])
@@ -263,11 +315,12 @@ class ImageGenerator:
                 values.append(pcd.scalar_fields[fl])
                 available_fields.append(fl)
             else:
-                pass  # TODO: Implement warning or similar
+                warnings.warn(f"!{fl} does not match a scalar field")
+                continue
 
         values = tuple(values)
 
-        match rasterization_method:
+        match self.rasterization_method:
             case "delaunay":
                 rasterized_data = barycentric_interpolation(
                     points=np.stack(mapped_coordinates, axis=-1),
@@ -282,8 +335,6 @@ class ImageGenerator:
                     rasterized_values = rasterized_blank.copy()
                     rasterized_values[elevation_pixel_int, horizontal_pixel_int] = v
                     rasterized_data.append(rasterized_values)
-            case _:
-                raise ValueError(f"Unknown rasterization method: {rasterization_method}")
 
         rasterization_results = dict(zip(available_fields, rasterized_data))
 
@@ -291,222 +342,245 @@ class ImageGenerator:
         for fl in field_labels:
             if fl in rasterization_results:
                 rd = rasterization_results[fl]
+            elif "gradient" in fl.lower():
+                match = ImageGenerator.REGEX_GRADIENT_PATTERN.match(fl)
+                if not match:
+                    continue
+                axis, feature = match.groups()
+
+                x, y = np.gradient(rasterization_results[feature])
+                rd = x if axis.lower() == "x" else y
+
             elif "hillshade" in fl.lower():
                 # extract (optional) hillshade parameters
-                pattern = re.compile(r"hillshade(?:_(?P<azimuth>\d*)_(?P<altitude>\d*)_(?P<z_factor>\d+(?:\.\d+)?)?)?")
-                match = pattern.match(fl)
+                match = ImageGenerator.REGEX_HILLSHADE_PATTERN.match(fl)
                 hillshade_parameters = match.groupdict()
                 hillshade_parameters = {k: float(v) for k, v in hillshade_parameters.items() if v is not None}
 
-                rd = self._calculate_hillshade(rasterization_results["range"], **hillshade_parameters)
+                rd = calculate_hillshade(rasterization_results["range"], **hillshade_parameters)
 
             results[fl] = {"original_values": rd, "normalized_values": normalization(rd, return_bounds=True)}
-        #
-        #
-        #
-        # extended_data = [(rd, normalization(rd, return_bounds=True)) for rd in rasterized_data]
 
         return results, fov_extended
 
-    def fov2images(self, identifier: str, fov: FoV, pcd: pch.geometry.PointCloudData, downsample_pcd: bool = False):
-        # TODO: Rework: different options such as normalization etc; File name handling
+    def generate_and_save_image(self, fov: FoV, pcd: pch.geometry.PointCloudData, identifier: str,
+                                features: Iterable[tuple[str, 'ImageGenerator.NormalizationFlag']],
+                                downsample_pcd: Optional[bool | float | int] = None) \
+            -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
 
-        if pcd.nbPoints < self.minimum_nb_points:
-            return
+        field_labels = [f[0] for f in features]
 
-        if downsample_pcd and pcd.nbPoints / (self.image_resolution[0] * self.image_resolution[1]) > 10:
-            pcd.random_subsample(np.prod(self.image_resolution, dtype=int) * 4)
+        pcd2d = self.project_and_rasterize_2d(fov, pcd, downsample_pcd, field_labels)
 
-        raw_file = (self.image_folder / "00_raw" / identifier).with_suffix(".png")
-        intensity_file = (self.image_folder / "01_intensity" / identifier).with_suffix(".png")
-        scaled_file = (self.image_folder / "02_intensity_scaled" / identifier).with_suffix(".png")
-        range_file = (self.image_folder / "03_range" / identifier).with_suffix(".tif")
-        meta_file = (self.image_folder / "99_meta" / identifier).with_suffix(".json")
+        for feature in features:
+            match feature[1]:
+                case ImageGenerator.NormalizationFlag.ORIGINAL:
+                    iio.imwrite(self.results_folder / f"{identifier}_{feature[0]}.png",
+                                (np.nan_to_num(pcd2d[0][feature[0]]["original_values"],
+                                               copy=True, nan=1.0) * 255).astype(np.uint8))
 
-        raw_file.parent.mkdir(parents=True, exist_ok=True)
-        intensity_file.parent.mkdir(parents=True, exist_ok=True)
-        scaled_file.parent.mkdir(parents=True, exist_ok=True)
-        range_file.parent.mkdir(parents=True, exist_ok=True)
-        meta_file.parent.mkdir(parents=True, exist_ok=True)
+                case ImageGenerator.NormalizationFlag.NORMALIZATION:
+                    iio.imwrite(self.results_folder / f"{identifier}_{feature[0]}_normalized.png",
+                                (pcd2d[0][feature[0]]["normalized_values"][0] * 255).astype(np.uint8))
 
-        extended_fov = fov.extend_to_ratio(self.aspect_ratio)
+                case ImageGenerator.NormalizationFlag.BOTH:
+                    iio.imwrite(self.results_folder / f"{identifier}_{feature[0]}.png",
+                                (np.nan_to_num(pcd2d[0][feature[0]]["original_values"],
+                                               copy=True, nan=1.0) * 255).astype(np.uint8))
+                    iio.imwrite(self.results_folder / f"{identifier}_{feature[0]}_normalized.png",
+                                (pcd2d[0][feature[0]]["normalized_values"][0] * 255).astype(np.uint8))
 
-        row_index = np.arange(start=0, stop=self.image_resolution[0], dtype=np.float32)
-        column_index = np.arange(start=0, stop=self.image_resolution[1], dtype=np.float32)
-
-        ii, jj = np.meshgrid(row_index, column_index, indexing="ij")
-
-        elevation_pixel = (
-                    (self.image_resolution[0] - 1) * (pcd.spherical_coordinates[:, 1] - extended_fov.elevation_min)
-                    / extended_fov.height("rad")).astype(np.float32)
-        horizontal_pixel = (
-                    (self.image_resolution[1] - 1) * (pcd.spherical_coordinates[:, 2] - extended_fov.horizontal_min)
-                    / extended_fov.width("rad")).astype(np.float32)
-
-        # horizontal_bin_edges = np.linspace(extended_fov.horizontal_min,
-        #                                    extended_fov.horizontal_max,
-        #                                    num=self.image_resolution[0],
-        #                                    endpoint=True)
-        #
-        # elevation_bin_edges = np.linspace(extended_fov.elevation_min,
-        #                                   extended_fov.elevation_max,
-        #                                   num=self.image_resolution[1],
-        #                                   endpoint=True)
-        #
-        # horizontal_grid, elevation_grid = np.meshgrid(horizontal_bin_edges, elevation_bin_edges)
-
-        try:
-            time_start = timer()
-            # knn_data = knn_griddata(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
-            #                         values=(pcd.scalar_fields["scalar_Intensity"], pcd.spherical_coordinates[:, 0]),
-            #                         xi=(ii, jj), method='barycentric',
-            #                         filter_distance=5.0)
-            # time_mid = timer()
-            # scipy_intensity = scipy_gd(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
-            #                            values=pcd.scalar_fields["scalar_Intensity"],
-            #                            xi=(ii, jj), method='linear', fill_value=1.0)
-            delaunay_data = barycentric_interpolation(points=np.stack((elevation_pixel, horizontal_pixel), axis=-1),
-                                                      values=(pcd.scalar_fields["scalar_Intensity"],
-                                                              pcd.spherical_coordinates[:, 0]),
-                                                      xi=(ii, jj), filter_distance=5.0)
-            time_end = timer()
-
-            # print(f"Timings: {time_mid - time_start:.2f} for knn; {time_end - time_mid:.2f} for delaunay")
-            print(f"Timings: {time_end - time_start:.2f} for delaunay")
-
-            # Save numpy arrays
-            np.save(intensity_file.with_name(intensity_file.stem + "_delaunay.npy"), delaunay_data[0])
-            np.save(range_file.with_name(range_file.stem + "_delaunay.npy"), delaunay_data[1])
-
-            # np.save(range_file.with_stem(range_file.stem + "_delaunay").with_suffix(".npy"), delaunay_data[1])
-
-            # sp_data = sp_griddata(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
-            #                       values=pcd.scalar_fields["scalar_Intensity"],
-            #                       xi=(ii, jj), method='linear', fill_value=1.0)
-            #
-            # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_scipy"),
-            #             ((2 ** 8 - 1) * sp_data).astype(np.uint8))
-
-            # Generate and save `raw` image
-
-            elevation_pixel_int = np.floor(elevation_pixel - EPS32).astype(int)
-            horizontal_pixel_int = np.floor(horizontal_pixel - EPS32).astype(int)
-
-            raw_image = np.ones(self.image_resolution)
-
-            elevation_pixel_int[elevation_pixel_int == raw_image.shape[0]] = raw_image.shape[0] - 1
-            horizontal_pixel_int[horizontal_pixel_int == raw_image.shape[1]] = raw_image.shape[1] - 1
-
-            raw_image[elevation_pixel_int, horizontal_pixel_int] = np.clip(pcd.scalar_fields["scalar_Intensity"], 0, 1)
-
-            iio.imwrite(raw_file, ((2 ** 8 - 1) * raw_image).astype(np.uint8))
-
-            # intensity_data_non = knn_data[0]
-            # intensity_data_non[np.isnan(intensity_data_non)] = 1.0
-
-            # Generate intensity image
-            delaunay_intensity = delaunay_data[0]
-            delaunay_intensity[np.isnan(delaunay_data[0])] = 1.0
-            iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_delaunay"),
-                        ((2 ** 8 - 1) * delaunay_intensity).astype(np.uint8))
-
-            # Generate range image
-            delaunay_range = normalization(delaunay_data[1])
-            tifffile.imwrite(range_file.with_stem(range_file.stem + "_delaunay"),
-                             ((2 ** 32 - 1) * delaunay_range).astype(np.uint32), photometric='minisblack')
-
-            delaunay_range_plasma = cv2.applyColorMap(((2 ** 8 - 1) * delaunay_range.T).astype(np.uint8),
-                                                      cv2.COLORMAP_PLASMA)
-            iio.imwrite(range_file.with_stem(range_file.stem + "_delaunay_plasma").with_suffix(".png"),
-                        delaunay_range_plasma.transpose(1, 0, 2)[:, :, ::-1])
-
-            # im_color = cv2.applyColorMap(((2 ** 8 - 1) * delaunay_intensity.T).astype(np.uint8), cv2.COLORMAP_VIRIDIS)
-
-            # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_knn"),
-            #             ((2 ** 8 - 1) * intensity_data_non).astype(np.uint8))
-
-            # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_delaunay_viridis"),
-            #             im_color.transpose(1, 0, 2)[:, :, ::-1])
-
-            # intensity_data, range_data = [normalization(d) for d in knn_data]
-
-            # delaunay_intensity_normalized, delaunay_range = [normalization(d) for d in delaunay_data]
-
-            # iio.imwrite(scaled_file.with_stem(scaled_file.stem + "_knn"),
-            #             ((2 ** 8 - 1) * delaunay_intensity_normalized).astype(np.uint8))
-
-            # iio.imwrite(scaled_file.with_stem(scaled_file.stem + "_delaunay"),
-            #             ((2 ** 8 - 1) * intensity_data).astype(np.uint8))
-
-            #
-
-            # tifffile.imwrite(range_file.with_stem(range_file.stem + "_knn"),
-            #                  ((2 ** 32 - 1) * range_data).astype(np.uint32), photometric='minisblack')
-
-            # np.save(range_file.with_stem(range_file.stem + "_knn").with_suffix(".npy"), knn_data[1])
-
-            # iio.imwrite(intensity_file, ((2 ** 8 - 1) * intensity_data).astype(np.uint8))
-            #
-            # iio.imwrite(scaled_file, ((2 ** 32 - 1) * intensity_data).astype(np.uint32),
-            #             photometric='minisblack')
-            #
-            # iio.imwrite(range_file, ((2 ** 32 - 1) * range_data).astype(np.uint32),
-            #             photometric='minisblack')
-
-            # iio.imwrite(intensity_file, (255.0 * intensity_data).astype(np.uint8))
-            # iio.imwrite(scaled_file, (255.0 * intensity_data_scaled).astype(np.uint8))
-            # iio.imwrite(range_file, (255.0 * range_data_scaled).astype(np.uint8))
-
-            '''
-                GENERATE DERIVATIVES -- Delete after testing
-            '''
-
-            intensity_data_y = np.gradient(delaunay_intensity, axis=0)
-            intensity_data_x = np.gradient(delaunay_intensity, axis=1)
-            range_data_y = np.gradient(delaunay_range, axis=0)
-            range_data_x = np.gradient(delaunay_range, axis=1)
-
-            iio.imwrite(intensity_file.with_stem(intensity_file.stem + "deriv_y_delaunay"),
-                        ((2 ** 8 - 1) * normalization(intensity_data_y)).astype(np.uint8))
-            iio.imwrite(intensity_file.with_stem(intensity_file.stem + "deriv_x_delaunay"),
-                        ((2 ** 8 - 1) * normalization(intensity_data_x)).astype(np.uint8))
-            iio.imwrite(range_file.with_name(range_file.stem + "deriv_y_delaunay.png"),
-                        ((2 ** 8 - 1) * normalization(range_data_y)).astype(np.uint8))
-            iio.imwrite(range_file.with_name(range_file.stem + "deriv_x_delaunay.png"),
-                        ((2 ** 8 - 1) * normalization(range_data_x)).astype(np.uint8))
-
-            # TODO: Add additional Info on spherical origin etc
-            image_info = {
-                'fov_data': fov.extent(unit='gon'),
-                'image_resolution': self.image_resolution,
-                'image_fov': extended_fov.as_dict('gon'),
-                # 'filter_mask_size': filter_ds_ratio,
-                'range_info': {'min': pcd.spherical_coordinates[:, 0].min(),
-                               'max': pcd.spherical_coordinates[:, 0].max()},
-            }
-
-            with open(meta_file, 'w') as f:
-                json.dump(image_info, f, indent=2)
-
-        except:
-            print(pcd.nbPoints)
-            raise
-        else:
-            pass
+        return pcd2d
 
 
 
-    @staticmethod
-    def _calculate_hillshade(values: np.ndarray, azimuth: float = 315,
-                             altitude: float = 45,
-                             z_factor: float = 1.0) -> np.ndarray:
 
-        x, y = np.gradient(values * z_factor)
-        slope = np.pi / 2.0 - np.arctan(np.sqrt(x * x + y * y))
-        aspect = np.arctan2(-x, y)
-        azimuth_rad = azimuth * np.pi / 180.0
-        altitude_rad = altitude * np.pi / 180.0
+    # def generate_images(self, pcds_with_fov: list[tuple[str, FoV, pch.geometry.PointCloudData]], n_jobs: int = -1):
+    #     Parallel(n_jobs=n_jobs, prefer="processes", verbose=20)(delayed(self.fov2images)(*pcd) for pcd in pcds_with_fov)
 
-        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(azimuth_rad - aspect)
+    # def fov2images(self, identifier: str, fov: FoV, pcd: pch.geometry.PointCloudData, downsample_pcd: bool = False):
+    #     # TODO: Rework: different options such as normalization etc; File name handling
+    #
+    #     if pcd.nbPoints < self.minimum_nb_points:
+    #         return
+    #
+    #     if downsample_pcd and pcd.nbPoints / (self.image_resolution[0] * self.image_resolution[1]) > 10:
+    #         pcd.random_subsample(np.prod(self.image_resolution, dtype=int) * 4)
+    #
+    #     raw_file = (self.image_folder / "00_raw" / identifier).with_suffix(".png")
+    #     intensity_file = (self.image_folder / "01_intensity" / identifier).with_suffix(".png")
+    #     scaled_file = (self.image_folder / "02_intensity_scaled" / identifier).with_suffix(".png")
+    #     range_file = (self.image_folder / "03_range" / identifier).with_suffix(".tif")
+    #     meta_file = (self.image_folder / "99_meta" / identifier).with_suffix(".json")
+    #
+    #     raw_file.parent.mkdir(parents=True, exist_ok=True)
+    #     intensity_file.parent.mkdir(parents=True, exist_ok=True)
+    #     scaled_file.parent.mkdir(parents=True, exist_ok=True)
+    #     range_file.parent.mkdir(parents=True, exist_ok=True)
+    #     meta_file.parent.mkdir(parents=True, exist_ok=True)
+    #
+    #     extended_fov = fov.extend_to_ratio(self.aspect_ratio)
+    #
+    #     row_index = np.arange(start=0, stop=self.image_resolution[0], dtype=np.float32)
+    #     column_index = np.arange(start=0, stop=self.image_resolution[1], dtype=np.float32)
+    #
+    #     ii, jj = np.meshgrid(row_index, column_index, indexing="ij")
+    #
+    #     elevation_pixel = (
+    #                 (self.image_resolution[0] - 1) * (pcd.spherical_coordinates[:, 1] - extended_fov.elevation_min)
+    #                 / extended_fov.height("rad")).astype(np.float32)
+    #     horizontal_pixel = (
+    #                 (self.image_resolution[1] - 1) * (pcd.spherical_coordinates[:, 2] - extended_fov.horizontal_min)
+    #                 / extended_fov.width("rad")).astype(np.float32)
+    #
+    #     # horizontal_bin_edges = np.linspace(extended_fov.horizontal_min,
+    #     #                                    extended_fov.horizontal_max,
+    #     #                                    num=self.image_resolution[0],
+    #     #                                    endpoint=True)
+    #     #
+    #     # elevation_bin_edges = np.linspace(extended_fov.elevation_min,
+    #     #                                   extended_fov.elevation_max,
+    #     #                                   num=self.image_resolution[1],
+    #     #                                   endpoint=True)
+    #     #
+    #     # horizontal_grid, elevation_grid = np.meshgrid(horizontal_bin_edges, elevation_bin_edges)
+    #
+    #     try:
+    #         time_start = timer()
+    #         # knn_data = knn_griddata(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
+    #         #                         values=(pcd.scalar_fields["scalar_Intensity"], pcd.spherical_coordinates[:, 0]),
+    #         #                         xi=(ii, jj), method='barycentric',
+    #         #                         filter_distance=5.0)
+    #         # time_mid = timer()
+    #         # scipy_intensity = scipy_gd(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
+    #         #                            values=pcd.scalar_fields["scalar_Intensity"],
+    #         #                            xi=(ii, jj), method='linear', fill_value=1.0)
+    #         delaunay_data = barycentric_interpolation(points=np.stack((elevation_pixel, horizontal_pixel), axis=-1),
+    #                                                   values=(pcd.scalar_fields["scalar_Intensity"],
+    #                                                           pcd.spherical_coordinates[:, 0]),
+    #                                                   xi=(ii, jj), filter_distance=5.0)
+    #         time_end = timer()
+    #
+    #         # print(f"Timings: {time_mid - time_start:.2f} for knn; {time_end - time_mid:.2f} for delaunay")
+    #         print(f"Timings: {time_end - time_start:.2f} for delaunay")
+    #
+    #         # Save numpy arrays
+    #         np.save(intensity_file.with_name(intensity_file.stem + "_delaunay.npy"), delaunay_data[0])
+    #         np.save(range_file.with_name(range_file.stem + "_delaunay.npy"), delaunay_data[1])
+    #
+    #         # np.save(range_file.with_stem(range_file.stem + "_delaunay").with_suffix(".npy"), delaunay_data[1])
+    #
+    #         # sp_data = sp_griddata(points=np.stack((elevation_pixel, horizontal_pixel), axis=1),
+    #         #                       values=pcd.scalar_fields["scalar_Intensity"],
+    #         #                       xi=(ii, jj), method='linear', fill_value=1.0)
+    #         #
+    #         # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_scipy"),
+    #         #             ((2 ** 8 - 1) * sp_data).astype(np.uint8))
+    #
+    #         # Generate and save `raw` image
+    #
+    #         elevation_pixel_int = np.floor(elevation_pixel - EPS32).astype(int)
+    #         horizontal_pixel_int = np.floor(horizontal_pixel - EPS32).astype(int)
+    #
+    #         raw_image = np.ones(self.image_resolution)
+    #
+    #         elevation_pixel_int[elevation_pixel_int == raw_image.shape[0]] = raw_image.shape[0] - 1
+    #         horizontal_pixel_int[horizontal_pixel_int == raw_image.shape[1]] = raw_image.shape[1] - 1
+    #
+    #         raw_image[elevation_pixel_int, horizontal_pixel_int] = np.clip(pcd.scalar_fields["scalar_Intensity"], 0, 1)
+    #
+    #         iio.imwrite(raw_file, ((2 ** 8 - 1) * raw_image).astype(np.uint8))
+    #
+    #         # intensity_data_non = knn_data[0]
+    #         # intensity_data_non[np.isnan(intensity_data_non)] = 1.0
+    #
+    #         # Generate intensity image
+    #         delaunay_intensity = delaunay_data[0]
+    #         delaunay_intensity[np.isnan(delaunay_data[0])] = 1.0
+    #         iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_delaunay"),
+    #                     ((2 ** 8 - 1) * delaunay_intensity).astype(np.uint8))
+    #
+    #         # Generate range image
+    #         delaunay_range = normalization(delaunay_data[1])
+    #         tifffile.imwrite(range_file.with_stem(range_file.stem + "_delaunay"),
+    #                          ((2 ** 32 - 1) * delaunay_range).astype(np.uint32), photometric='minisblack')
+    #
+    #         delaunay_range_plasma = cv2.applyColorMap(((2 ** 8 - 1) * delaunay_range.T).astype(np.uint8),
+    #                                                   cv2.COLORMAP_PLASMA)
+    #         iio.imwrite(range_file.with_stem(range_file.stem + "_delaunay_plasma").with_suffix(".png"),
+    #                     delaunay_range_plasma.transpose(1, 0, 2)[:, :, ::-1])
+    #
+    #         # im_color = cv2.applyColorMap(((2 ** 8 - 1) * delaunay_intensity.T).astype(np.uint8), cv2.COLORMAP_VIRIDIS)
+    #
+    #         # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_knn"),
+    #         #             ((2 ** 8 - 1) * intensity_data_non).astype(np.uint8))
+    #
+    #         # iio.imwrite(intensity_file.with_stem(intensity_file.stem + "_delaunay_viridis"),
+    #         #             im_color.transpose(1, 0, 2)[:, :, ::-1])
+    #
+    #         # intensity_data, range_data = [normalization(d) for d in knn_data]
+    #
+    #         # delaunay_intensity_normalized, delaunay_range = [normalization(d) for d in delaunay_data]
+    #
+    #         # iio.imwrite(scaled_file.with_stem(scaled_file.stem + "_knn"),
+    #         #             ((2 ** 8 - 1) * delaunay_intensity_normalized).astype(np.uint8))
+    #
+    #         # iio.imwrite(scaled_file.with_stem(scaled_file.stem + "_delaunay"),
+    #         #             ((2 ** 8 - 1) * intensity_data).astype(np.uint8))
+    #
+    #         #
+    #
+    #         # tifffile.imwrite(range_file.with_stem(range_file.stem + "_knn"),
+    #         #                  ((2 ** 32 - 1) * range_data).astype(np.uint32), photometric='minisblack')
+    #
+    #         # np.save(range_file.with_stem(range_file.stem + "_knn").with_suffix(".npy"), knn_data[1])
+    #
+    #         # iio.imwrite(intensity_file, ((2 ** 8 - 1) * intensity_data).astype(np.uint8))
+    #         #
+    #         # iio.imwrite(scaled_file, ((2 ** 32 - 1) * intensity_data).astype(np.uint32),
+    #         #             photometric='minisblack')
+    #         #
+    #         # iio.imwrite(range_file, ((2 ** 32 - 1) * range_data).astype(np.uint32),
+    #         #             photometric='minisblack')
+    #
+    #         # iio.imwrite(intensity_file, (255.0 * intensity_data).astype(np.uint8))
+    #         # iio.imwrite(scaled_file, (255.0 * intensity_data_scaled).astype(np.uint8))
+    #         # iio.imwrite(range_file, (255.0 * range_data_scaled).astype(np.uint8))
+    #
+    #         '''
+    #             GENERATE DERIVATIVES -- Delete after testing
+    #         '''
+    #
+    #         intensity_data_y = np.gradient(delaunay_intensity, axis=0)
+    #         intensity_data_x = np.gradient(delaunay_intensity, axis=1)
+    #         range_data_y = np.gradient(delaunay_range, axis=0)
+    #         range_data_x = np.gradient(delaunay_range, axis=1)
+    #
+    #         iio.imwrite(intensity_file.with_stem(intensity_file.stem + "deriv_y_delaunay"),
+    #                     ((2 ** 8 - 1) * normalization(intensity_data_y)).astype(np.uint8))
+    #         iio.imwrite(intensity_file.with_stem(intensity_file.stem + "deriv_x_delaunay"),
+    #                     ((2 ** 8 - 1) * normalization(intensity_data_x)).astype(np.uint8))
+    #         iio.imwrite(range_file.with_name(range_file.stem + "deriv_y_delaunay.png"),
+    #                     ((2 ** 8 - 1) * normalization(range_data_y)).astype(np.uint8))
+    #         iio.imwrite(range_file.with_name(range_file.stem + "deriv_x_delaunay.png"),
+    #                     ((2 ** 8 - 1) * normalization(range_data_x)).astype(np.uint8))
+    #
+    #         # TODO: Add additional Info on spherical origin etc
+    #         image_info = {
+    #             'fov_data': fov.extent(unit='gon'),
+    #             'image_resolution': self.image_resolution,
+    #             'image_fov': extended_fov.as_dict('gon'),
+    #             # 'filter_mask_size': filter_ds_ratio,
+    #             'range_info': {'min': pcd.spherical_coordinates[:, 0].min(),
+    #                            'max': pcd.spherical_coordinates[:, 0].max()},
+    #         }
+    #
+    #         with open(meta_file, 'w') as f:
+    #             json.dump(image_info, f, indent=2)
+    #
+    #     except:
+    #         print(pcd.nbPoints)
+    #         raise
+    #     else:
+    #         pass
 
-        return shaded
