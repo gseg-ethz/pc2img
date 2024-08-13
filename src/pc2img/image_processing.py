@@ -252,6 +252,7 @@ class ImageGenerator:
 
     def map_spherical_coordinates_to_pixels(self, fov, pcd) \
             -> tuple[tuple[np.ndarray, np.ndarray], tuple[np.ndarray, np.ndarray]]:
+
         row_index = np.arange(start=0, stop=self.image_resolution[0], dtype=np.float32)
         column_index = np.arange(start=0, stop=self.image_resolution[1], dtype=np.float32)
 
@@ -266,10 +267,13 @@ class ImageGenerator:
 
         return (ii, jj), (elevation_pixel, horizontal_pixel)
 
-    def project_and_rasterize_2d(self, fov: FoV, pcd: pch.geometry.PointCloudData,
+    def project_and_rasterize_2d(self, pcd: pch.geometry.PointCloudData, fov: Optional[FoV] = None,
                                  downsample_pcd: Optional[bool | float | int] = None,
                                  field_labels: str | Iterable[str] = ("scalar_Intensity", "range")) \
             -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
+
+        if fov is None:
+            fov = pcd.fov
 
         # Clean up different parameter types
         if isinstance(field_labels, str):
@@ -282,6 +286,9 @@ class ImageGenerator:
 
         # Match the fov ratio to the image ratio
         fov_extended = fov.extend_to_ratio(self.aspect_ratio)
+
+        # Filter pcd to fov_extended
+        pcd = pcd.extract_angles(fov_extended)
 
         pixel_raster, mapped_coordinates = self.map_spherical_coordinates_to_pixels(fov_extended, pcd)
         # Create image-pixel-space and Map spherical coordinates to this space
@@ -320,6 +327,7 @@ class ImageGenerator:
 
         values = tuple(values)
 
+        rasterized_data = None
         match self.rasterization_method:
             case "delaunay":
                 rasterized_data = barycentric_interpolation(
@@ -370,7 +378,7 @@ class ImageGenerator:
 
         field_labels = [f[0] for f in features]
 
-        pcd2d = self.project_and_rasterize_2d(fov, pcd, downsample_pcd, field_labels)
+        pcd2d = self.project_and_rasterize_2d(pcd, fov, downsample_pcd, field_labels)
 
         for feature in features:
             match feature[1]:

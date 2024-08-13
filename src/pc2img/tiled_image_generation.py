@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 from typing import Optional, Iterable
 
@@ -13,12 +14,13 @@ from pchandler.geometry import PointCloudData, merge_pcd, split_pc_with_fov_tree
 from pc2img.image_processing import ImageGenerator
 
 
-def generate_overview_image(pcd: PointCloudData, image_path: Path, image_width: int = 12000, return_fov: bool = False) \
+def generate_overview_image(pcd: PointCloudData, fov_roi: FoV, image_path: Path, image_width: int = 12000,
+                            return_fov: bool = False) \
         -> [None | FoV]:
-    image_resolution = (int(image_width / pcd.fov.ratio()), image_width)
+    image_resolution = (int(image_width / fov_roi.ratio()), image_width)
     image_gen = ImageGenerator(image_resolution=image_resolution, minimum_nb_points=0, rasterization_method="raw",
                                results_folder=image_path.parent)
-    image_data = image_gen.project_and_rasterize_2d(fov=pcd.fov, pcd=pcd, downsample_pcd=False,
+    image_data = image_gen.project_and_rasterize_2d(fov=fov_roi, pcd=pcd, downsample_pcd=False,
                                                     field_labels="scalar_Intensity")
     image = np.nan_to_num(image_data[0]["scalar_Intensity"]["original_values"], copy=True, nan=1.0)
     iio.imwrite(image_path, (image * 255).astype(np.uint8))
@@ -89,12 +91,17 @@ def annotate_overview_image(overview_path: Path, overview_fov: FoV, fov_tree: Fo
     return
 
 
-def generate_and_save_tiled_images(pcd_directory: Path, results_directory: Path, image_resolution: tuple[int, int],
-              angular_resolution_gon: float, fov_roi: Optional[FoV] = None, scanner_center: Optional[np.ndarray] = None,
-              features: Optional[Iterable[tuple[str, ImageGenerator.NormalizationFlag]]] = None) -> int:
-    # features: The int can be 0, 1 or 2; 0 means save original, 1 normalized, 2 both
+def generate_tiled_images_from_pcd_folder(
+        pcd_folder: Path,
+        image_resolution: tuple[int, int],
+        angular_resolution_gon: float,
+        fov_roi: Optional[FoV] = None,
+        scanner_center: Optional[np.ndarray] = None,
+        features: Optional[Iterable[tuple[str, ImageGenerator.NormalizationFlag]]] = None,
+        results_folder: Optional[Path] = None
+) -> dict[int, dict[str, tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]]:
 
-    pcd_path_list = pch.data_io.find_pcd_in_directory(pcd_directory, pcd_file_types=['.ply'],
+    pcd_path_list = pch.data_io.find_pcd_in_directory(pcd_folder, pcd_file_types=['.ply'],
                                                       include_subdirectories=False)
 
     pcds: [PointCloudData] = [pch.data_io.load_ply(pcd_path, spherical_coordinates_origin=scanner_center).
@@ -107,9 +114,8 @@ def generate_and_save_tiled_images(pcd_directory: Path, results_directory: Path,
         fov_roi = pcd_merged.fov
 
     if features is None:
-        features = [("scalar_Intensity", 2), ("range", 1)]
-
-    # field_labels = [f[0] for f in features]
+        features = [("scalar_Intensity", ImageGenerator.NormalizationFlag.BOTH),
+                    ("range", ImageGenerator.NormalizationFlag.NORMALIZATION)]
 
     # Build common FoVTree to split the pointclouds
     fov_patch_size = FoV(elevation_min=0, elevation_max=image_resolution[0] * angular_resolution_gon,
@@ -118,23 +124,29 @@ def generate_and_save_tiled_images(pcd_directory: Path, results_directory: Path,
     fov_patches = fov_roi.tile(fov_patch_size)
     fov_tree = FoVTree.build_from_tiles(fov_patches)
 
-    overview_fov = generate_overview_image(pcds[0], results_directory / "_overview.png", return_fov=True)
-    annotate_overview_image(results_directory / "_overview.png", overview_fov, fov_tree)
+    if results_folder is not None:
+        generate_overview_image(pcds[0].copy(), fov_roi, results_folder / "_overview.png", return_fov=True)
+        annotate_overview_image(results_folder / "_overview.png", fov_roi, fov_tree)
 
     pcds_tree = [split_pc_with_fov_tree(pcd, fov_tree, True, -5) for pcd in pcds]
 
+    rasterization_results = defaultdict(dict)
     for i, pcd in enumerate(pcds_tree):
         image_gen = ImageGenerator(image_resolution=image_resolution, minimum_nb_points=0,
-                                  rasterization_method="delaunay", results_folder=results_directory)
+                                   rasterization_method="delaunay", results_folder=results_folder)
         for cfk in pcd.keys():
             try:
-                pcd2d = image_gen.generate_and_save_image(fov_tree[cfk].node, pcd[cfk], f"{i:02d}_{cfk}",
-                                                          features, False)
-
-                print(f"Patch {cfk} done and saved")
-            except:
-                print(f"!Patch {cfk} failed")
-    return 0
+                if results_folder is not None:
+                    pcd2d = image_gen.generate_and_save_image(fov_tree[cfk].node, pcd[cfk], f"{i:02d}_{cfk}",
+                                                              features, False)
+                else:
+                    pcd2d = image_gen.project_and_rasterize_2d(pcd[cfk], fov_tree[cfk].node, False,
+                                                               [feature[0] for feature in features])
+                rasterization_results[i][cfk] = pcd2d
+                print(f"Point cloud {i:d}, patch {cfk} done and saved")
+            except e:
+                print(f"!Point cloud {i:d}, patch {cfk} failed due to {e}")
+    return rasterization_results
 
 
 if __name__ == "__main__":
@@ -158,5 +170,8 @@ if __name__ == "__main__":
     IMAGE_RESOLUTION = (1920, 4000) # height x width
     ANGULAR_RESOLUTION_GON = 6e-3
 
-    generate_and_save_tiled_images(PCD_DIR, RESULTS_FOLDER, IMAGE_RESOLUTION, ANGULAR_RESOLUTION_GON,
-                                   scanner_center=SCANNER_CENTER, fov_roi=FOV_ROI, features=FEATURES)
+    pcds_2d = generate_tiled_images_from_pcd_folder(
+        PCD_DIR, IMAGE_RESOLUTION, ANGULAR_RESOLUTION_GON, scanner_center=SCANNER_CENTER, fov_roi=FOV_ROI,
+        features=FEATURES, results_folder=RESULTS_FOLDER)
+
+    print("Done")
