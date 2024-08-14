@@ -132,7 +132,7 @@ def generate_tiled_images_from_pcd_folder(
 
     rasterization_results = defaultdict(dict)
     for i, pcd in enumerate(pcds_tree):
-        image_gen = ImageGenerator(image_resolution=image_resolution, minimum_nb_points=0,
+        image_gen = ImageGenerator(image_resolution=image_resolution, minimum_nb_points=1000,
                                    rasterization_method="delaunay", results_folder=results_folder)
         for cfk in pcd.keys():
             try:
@@ -142,6 +142,9 @@ def generate_tiled_images_from_pcd_folder(
                 else:
                     pcd2d = image_gen.project_and_rasterize_2d(pcd[cfk], fov_tree[cfk].node, False,
                                                                [feature[0] for feature in features])
+                if pcd2d is None:
+                    print(f"Point cloud {i:d}, patch {cfk} had too few points to generate sensible image.")
+                    continue
                 rasterization_results[i][cfk] = pcd2d
                 print(f"Point cloud {i:d}, patch {cfk} done and saved")
             except Exception as e:

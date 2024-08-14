@@ -270,7 +270,10 @@ class ImageGenerator:
     def project_and_rasterize_2d(self, pcd: pch.geometry.PointCloudData, fov: Optional[FoV] = None,
                                  downsample_pcd: Optional[bool | float | int] = None,
                                  field_labels: str | Iterable[str] = ("scalar_Intensity", "range")) \
-            -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
+            -> Optional[tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]:
+
+        if self.minimum_nb_points and pcd.nbPoints < self.minimum_nb_points:
+            return None
 
         if fov is None:
             fov = pcd.fov
