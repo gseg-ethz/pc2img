@@ -144,7 +144,7 @@ def generate_tiled_images_from_pcd_folder(
                                                                [feature[0] for feature in features])
                 rasterization_results[i][cfk] = pcd2d
                 print(f"Point cloud {i:d}, patch {cfk} done and saved")
-            except e:
+            except Exception as e:
                 print(f"!Point cloud {i:d}, patch {cfk} failed due to {e}")
     return rasterization_results
 

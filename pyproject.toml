@@ -25,7 +25,7 @@ dependencies = [
 	"scipy ~= 1.11",
 	"typing-extensions ~= 4.9",
 	"tifffile[all] ~= 2024.1",
-	"opencv-python ~= 4.9",
+	"opencv-python ~= 4.0",
 #	"cupy-cuda12x ~= 13.2",
 #	"PyYAML ~= 6.0",
 #	"omegaconf ~= 2.2",
@@ -53,7 +53,7 @@ cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
 	"cupy-cuda12x ~= 13.0",
 ]
 cuda11 = [ # Check version numbers
-	"cudf-cu11 ~= 23.12",
-	"cuml-cu11 ~= 23.12",
+	"cudf-cu11 ~= 24.8",
+	"cuml-cu11 ~= 24.8",
 	"cupy-cuda11x ~= 13.0",
 ]
