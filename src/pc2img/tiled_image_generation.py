@@ -9,7 +9,7 @@ import imageio.v3 as iio  # TODO: Remove after meeting
 
 import pchandler as pch
 from pchandler.fov import FoV, FoVTree
-from pchandler.geometry import PointCloudData, merge_pcd, split_pc_with_fov_tree
+from pchandler.geometry import PointCloudData, split_pc_with_fov_tree
 
 from pc2img.image_processing import ImageGenerator
 
@@ -110,7 +110,7 @@ def generate_tiled_images_from_pcd_folder(
     # Find combined FoV if not defined
     if fov_roi is None:
         pcds_downsampled = [pcd.random_subsample(1./100., in_place=False) for pcd in pcds]
-        pcd_merged = merge_pcd(pcds_downsampled)
+        pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
         fov_roi = pcd_merged.fov
 
     if features is None:

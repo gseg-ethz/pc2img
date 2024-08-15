@@ -379,6 +379,8 @@ class ImageGenerator:
                                 downsample_pcd: Optional[bool | float | int] = None) \
             -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
 
+
+
         field_labels = [f[0] for f in features]
 
         pcd2d = self.project_and_rasterize_2d(pcd, fov, downsample_pcd, field_labels)
@@ -400,6 +402,8 @@ class ImageGenerator:
                                                copy=True, nan=1.0) * 255).astype(np.uint8))
                     iio.imwrite(self.results_folder / f"{identifier}_{feature[0]}_normalized.png",
                                 (pcd2d[0][feature[0]]["normalized_values"][0] * 255).astype(np.uint8))
+                case _:
+                    print(f"!{feature[1]} not of type ImageGenerator.NormalizationFlag")
 
         return pcd2d
 
