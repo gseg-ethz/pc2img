@@ -99,17 +99,17 @@ def generate_tiled_images_from_pcd_folder(
         scanner_center: Optional[np.ndarray] = None,
         features: Optional[Iterable[tuple[str, ImageGenerator.NormalizationFlag]]] = None,
         results_folder: Optional[Path] = None
-) -> dict[int, dict[str, tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]]:
+) -> dict[str, dict[str, tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]]:
 
     pcd_path_list = pch.data_io.find_pcd_in_directory(pcd_folder, pcd_file_types=['.ply'],
                                                       include_subdirectories=False)
 
-    pcds: [PointCloudData] = [pch.data_io.load_ply(pcd_path, spherical_coordinates_origin=scanner_center).
-                              extract_range(low=25) for pcd_path in pcd_path_list]
+    pcds: [PointCloudData] = {pcd_path.stem: pch.data_io.load_ply(pcd_path, spherical_coordinates_origin=scanner_center).
+                              extract_range(low=25) for pcd_path in pcd_path_list}
 
     # Find combined FoV if not defined
     if fov_roi is None:
-        pcds_downsampled = [pcd.random_subsample(1./100., in_place=False) for pcd in pcds]
+        pcds_downsampled = [pcd.random_subsample(1./100., in_place=False) for pcd in pcds.values()]
         pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
         fov_roi = pcd_merged.fov
 
@@ -125,30 +125,31 @@ def generate_tiled_images_from_pcd_folder(
     fov_tree = FoVTree.build_from_tiles(fov_patches)
 
     if results_folder is not None:
-        generate_overview_image(pcds[0].copy(), fov_roi, results_folder / "_overview.png", return_fov=True)
+        first_epoch = sorted(pcds.keys())[0]
+        generate_overview_image(pcds[first_epoch].copy(), fov_roi, results_folder / "_overview.png", return_fov=True)
         annotate_overview_image(results_folder / "_overview.png", fov_roi, fov_tree)
 
-    pcds_tree = [split_pc_with_fov_tree(pcd, fov_tree, True, -5) for pcd in pcds]
+    pcds_tree = {pcd_id: split_pc_with_fov_tree(pcd, fov_tree, True, -5) for pcd_id, pcd in pcds.items()}
 
     rasterization_results = defaultdict(dict)
-    for i, pcd in enumerate(pcds_tree):
+    for pcd_id, pcd in pcds_tree.items():
         image_gen = ImageGenerator(image_resolution=image_resolution, minimum_nb_points=1000,
                                    rasterization_method="delaunay", results_folder=results_folder)
         for cfk in pcd.keys():
             try:
                 if results_folder is not None:
-                    pcd2d = image_gen.generate_and_save_image(fov_tree[cfk].node, pcd[cfk], f"{i:02d}_{cfk}",
+                    pcd2d = image_gen.generate_and_save_image(fov_tree[cfk].node, pcd[cfk], f"{pcd_id}_{cfk}",
                                                               features, False)
                 else:
                     pcd2d = image_gen.project_and_rasterize_2d(pcd[cfk], fov_tree[cfk].node, False,
                                                                [feature[0] for feature in features])
                 if pcd2d is None:
-                    print(f"Point cloud {i:d}, patch {cfk} had too few points to generate sensible image.")
+                    print(f"Point cloud {pcd_id}, patch {cfk} had too few points to generate sensible image.")
                     continue
-                rasterization_results[i][cfk] = pcd2d
-                print(f"Point cloud {i:d}, patch {cfk} done and saved")
+                rasterization_results[pcd_id][cfk] = pcd2d
+                print(f"Point cloud {pcd_id}, patch {cfk} done and saved")
             except Exception as e:
-                print(f"!Point cloud {i:d}, patch {cfk} failed due to {e}")
+                print(f"!Point cloud {pcd_id}, patch {cfk} failed due to {e}")
     return rasterization_results
 
 
