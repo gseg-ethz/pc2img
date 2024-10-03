@@ -27,6 +27,15 @@ from pchandler.fov import FoV
 
 EPS32 = np.finfo(np.float32).eps
 
+@dataclass
+class PC2IMGRunSettings:
+    pcd_directory: Path
+    image_results_directory: Path
+    image_resolution: tuple[int, int]
+    angular_resolution_gon: float
+    rasterization_features: Optional[Iterable[tuple[str, ImageGenerator.NormalizationFlag]]] = None
+
+
 
 class PointCloudSplitter:
     @property

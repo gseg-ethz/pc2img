@@ -81,6 +81,9 @@ def barycentric_interpolation(points: np.ndarray | tuple[np.ndarray, np.ndarray]
         original_shape = xi.shape[:-1]
         xi = np.reshape(xi, newshape=(-1, 2))
 
+    if not isinstance(values, tuple):
+        values = tuple(values)
+
     delaunay = Delaunay(points)
     simplex_index = delaunay.find_simplex(xi)
     indices = delaunay.simplices[simplex_index]
@@ -283,7 +286,8 @@ class ImageGenerator:
             field_labels = (field_labels,)
 
         if isinstance(downsample_pcd, bool) and downsample_pcd is True:
-            pcd.random_subsample(np.prod(self.image_resolution, dtype=int) * 4)
+            if np.prod(self.image_resolution, dtype=int) * 4 < 1:
+                pcd.random_subsample(np.prod(self.image_resolution, dtype=int) * 4)
         elif isinstance(downsample_pcd, (float, int)) and not isinstance(downsample_pcd, bool):
             pcd.random_subsample(downsample_pcd)
 
