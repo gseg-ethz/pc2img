@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Iterable
+from typing import Optional, Iterable, Generator
 
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -91,6 +91,39 @@ class TiledImageGeneration:
                         continue
                     rasterization_results[pcd_id][cfk] = pcd2d
                     print(f"Point cloud {pcd_id}, patch {cfk} done and saved")
+                except Exception as e:
+                    print(f"!Point cloud {pcd_id}, patch {cfk} failed due to {e}")
+        return rasterization_results
+
+    def tiled_images_generator(self) :# -> Generator[tuple[str, str, None | tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]]:
+
+        # if self.image_results_directory is not None:
+        #     first_epoch = sorted(self.pcds.keys())[0]
+        #     self.generate_overview_image(self.pcds[first_epoch].copy(), self.image_results_directory / "_overview.png",
+        #                                  return_fov=False)
+        #     self.annotate_overview_image(overview_fov=self.fov_roi,
+        #                                  overview_path=self.image_results_directory / "_overview.png")
+
+        pcds_tree = {pcd_id: split_pc_with_fov_tree(pcd, self.fov_tree, True, -5) for pcd_id, pcd in self.pcds.items()}
+
+        rasterization_results = defaultdict(dict)
+        for pcd_id, pcd in pcds_tree.items():
+            image_gen = ImageGenerator(image_resolution=self.image_resolution, minimum_nb_points=1000,
+                                       rasterization_method="delaunay", results_folder=self.image_results_directory)
+            for cfk in pcd.keys():
+                try:
+                    if self.image_results_directory is not None:
+                        pcd2d = image_gen.generate_and_save_image(self.fov_tree[cfk].node, pcd[cfk], f"{pcd_id}_{cfk}",
+                                                                  self.rasterization_features, False)
+                    else:
+                        pcd2d = image_gen.project_and_rasterize_2d(pcd[cfk], fov_tree[cfk].node, False,
+                                                                   [feature[0] for feature in self.rasterization_features])
+                    if pcd2d is None:
+                        print(f"Point cloud {pcd_id}, patch {cfk} had too few points to generate sensible image.")
+                        continue
+                    # rasterization_results[pcd_id][cfk] = pcd2d
+                    print(f"Point cloud {pcd_id}, patch {cfk} done and saved")
+                    yield (pcd_id, cfk, pcd2d)
                 except Exception as e:
                     print(f"!Point cloud {pcd_id}, patch {cfk} failed due to {e}")
         return rasterization_results

@@ -4,11 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from fractions import Fraction
 from itertools import chain
+# from optparse import Option
+
 from joblib import Parallel, delayed
 import json
 import math
 from pathlib import Path
-from typing import Iterable#, Self
+from typing import Any, Iterable, Optional#, Self
 # from typing_extensions import Self
 from timeit import default_timer as timer
 
@@ -19,7 +21,12 @@ import imageio.v3 as iio
 import tifffile
 
 import pchandler as pch
+from pchandler.geometry import PointCloudData
 from pchandler.fov import FoV
+from skimage.io import image_stack
+
+from pc2img.image_processing import ImageGenerator
+
 # from pc2img.image_processing import ImageGenerator
 # from pc2img import image_processing
 # from pc2img.image_processing import knn_griddata as knn_griddata
@@ -194,3 +201,56 @@ class PointCloudSplitter:
         split = list(chain.from_iterable(split))
 
         return list(split)
+
+    @dataclass
+    class PCDImageLink:
+        pcd: PointCloudData
+        image_stacks: dict[str, ImageStack]
+        identifier: Optional[str]
+
+        cache_folder: Optional[Path]
+
+        def get_image(self, stack_identifier: str, feature: str):
+            if not stack_identifier in self.image_stacks.keys():
+                raise KeyError(f"{stack_identifier} not available")
+
+
+            if feature in self.image_stacks.images.keys():
+                return self.image_stacks[stack_identifier].images[feature]
+
+            else:
+
+
+
+    @dataclass(init=False)
+    class ImageStack:
+        images: dict[str, ImageData]
+        images_fov: FoV
+
+        image_generator: ImageGenerator
+
+        # camera_parameters
+
+        @property
+        def identifier(self):
+            return hash(self.image_fov) # Should be changed to camera parameters at a later point
+
+
+        def __init__(self):
+            pass
+
+        def add_images_from_pcd(self, pcd: PointCloudData, features: Iterable[str]):
+            self.image_generator.project_to_spherical_image(pcd, self.images_fov, False, field_labels=features)
+
+
+
+        #
+        # def get_image(self, feature: str):
+        #     if feature in self.images.keys():
+        #         return self.images[feature]
+
+    @dataclass
+    class ImageData:
+        data: np.ndarray
+
+        cache_path: Optional[Path]

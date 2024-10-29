@@ -1,10 +1,17 @@
 import sys
 import warnings
+from copyreg import pickle
+from dataclasses import field
 
 from enum import Enum
+from linecache import cache
+
+from dask.array import percentile
+from functools import partial
 from joblib import Parallel, delayed
 import json
 from pathlib import Path
+import pickle
 import re
 from timeit import default_timer as timer
 from typing import Optional, Iterable, Tuple, List, Any
@@ -193,9 +200,13 @@ def knn_griddata(points, values, xi, method='linear', filter_distance=0.0, fill_
     return list(results)
 
 
-def normalization(values: np.ndarray, return_bounds: bool = False) -> np.ndarray | tuple[np.ndarray, tuple[float, float]]:
+def normalization(values: np.ndarray, return_bounds: bool = False, percentile_region: tuple[int, int] = (0,100)) -> np.ndarray | tuple[np.ndarray, tuple[float, float]]:
+    if any(len(percentile_region) != 2, percentile_region[0] >= percentile_region[1],
+           percentile_region[0] < 0, percentile_region[1] > 100):
+        raise ValueError(f"`percentile_region` needs values between 0 and 100, and the second value has to be larger than the first!")
+
     values_flat = np.ndarray.flatten(values)
-    lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], [1, 99])
+    lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], list(percentile_region))
     normalized_values = (values - lower) / (upper - lower + EPS32)
 
     np.nan_to_num(normalized_values, copy=False, nan=1.0)
@@ -220,6 +231,8 @@ def calculate_hillshade(values: np.ndarray, azimuth: float = 315,
     shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(azimuth_rad - aspect)
 
     return shaded
+
+
 
 
 class ImageGenerator:
@@ -270,20 +283,24 @@ class ImageGenerator:
 
         return (ii, jj), (elevation_pixel, horizontal_pixel)
 
+
     def project_and_rasterize_2d(self, pcd: pch.geometry.PointCloudData, fov: Optional[FoV] = None,
                                  downsample_pcd: Optional[bool | float | int] = None,
                                  field_labels: str | Iterable[str] = ("scalar_Intensity", "range")) \
             -> Optional[tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]]:
+
+        # Clean up different parameter types
+        if isinstance(field_labels, str):
+            field_labels = (field_labels,)
+
+        if not field_labels:
+            return None
 
         if self.minimum_nb_points and pcd.nbPoints < self.minimum_nb_points:
             return None
 
         if fov is None:
             fov = pcd.fov
-
-        # Clean up different parameter types
-        if isinstance(field_labels, str):
-            field_labels = (field_labels,)
 
         if isinstance(downsample_pcd, bool) and downsample_pcd is True:
             if np.prod(self.image_resolution, dtype=int) * 4 < 1:
@@ -380,14 +397,25 @@ class ImageGenerator:
 
     def generate_and_save_image(self, fov: FoV, pcd: pch.geometry.PointCloudData, identifier: str,
                                 features: Iterable[tuple[str, 'ImageGenerator.NormalizationFlag']],
-                                downsample_pcd: Optional[bool | float | int] = None) \
+                                downsample_pcd: Optional[bool | float | int] = None, cache_results: bool = True,
+                                load_cached: bool = True) \
             -> tuple[dict[str, dict[str, np.ndarray, tuple[np.ndarray, tuple[float, float]]]], FoV]:
+
+        cache_dir = self.results_folder / "cache"
 
 
 
         field_labels = [f[0] for f in features]
 
-        pcd2d = self.project_and_rasterize_2d(pcd, fov, downsample_pcd, field_labels)
+        if load_cached and cache_dir.exists():
+            cached_field_labels = [file.stem.split('_')[1] for file in cache_dir.iterdir()
+                                   if all(file.is_file(), file.stem.startswith(identifier), file.suffix == '.pkl')]
+
+            field_labels = [set(field_labels) - set(field_labels)]
+
+        if field_labels:
+            pcd2d = self.project_and_rasterize_2d(pcd, fov, downsample_pcd, field_labels)
+
 
         for feature in features:
             match feature[1]:
@@ -408,6 +436,21 @@ class ImageGenerator:
                                 (pcd2d[0][feature[0]]["normalized_values"][0] * 255).astype(np.uint8))
                 case _:
                     print(f"!{feature[1]} not of type ImageGenerator.NormalizationFlag")
+
+            if cache_results:
+                if not cache_dir.exists():
+                    cache_dir.mkdir(parents=True)
+                with open(cache_dir / f"{identifier}_{feature[0]}.pkl", "wb") as f:
+                    pickle.dump(pcd2d[0][feature[0]], f)
+
+        if load_cached and cached_field_labels:
+            if pcd2d is None:
+                pcd2d = dict()
+            for field_label in cached_field_labels:
+                with open(cache_dir / f"{identifier}_{field_label}.pkl", "rb") as f:
+                    pcd2d[field_label] = pickle.load(f)
+
+
 
         return pcd2d
 
