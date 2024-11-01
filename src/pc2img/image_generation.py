@@ -2,6 +2,7 @@ from abc import abstractmethod, ABC
 from functools import partial
 import re
 from typing import Iterable, Optional
+import warnings
 
 
 from cuml.neighbors import NearestNeighbors
@@ -30,6 +31,13 @@ class ImageGenerator(ABC):
         self._pixel_raster = self._generate_pixel_raster()
 
         self._interpolation = None
+
+
+    @property
+    @abstractmethod
+    def identifier(self):
+        pass
+
 
     @property
     def aspect_ratio(self):
@@ -152,7 +160,7 @@ class ImageGenerator(ABC):
         weights = np.stack((alpha, beta, gamma), axis=1)
 
         if filter_distance:
-            filter_indices = np.logical_or(np.min(distances, axis=1) > filter_distance, simplex_index == -1)
+            filter_indices = np.min(distances, axis=1) > filter_distance
         else:
             filter_indices = np.isinf(distances).any(axis=1)
 
@@ -167,6 +175,22 @@ class ImageGenerator(ABC):
             interpolation_results.append(interpolation_values)
         return interpolation_results
 
+    def map_to_nearest_pixel(self, points: np.ndarray, values: np.ndarray | tuple[np.ndarray, ...]):
+        # Todo: Think about splitting the two tasks
+        if isinstance(values, np.ndarray):
+            values = (values,)
+
+        elevation_pixel_int = np.floor(points[0]).astype(int)
+        horizontal_pixel_int = np.floor(points[1]).astype(int)
+        rasterized_blank = np.full(self.image_resolution, np.nan)
+
+        rasterized_data = list()
+        for v in values:
+            rasterized_values = rasterized_blank.copy()
+            rasterized_values[elevation_pixel_int, horizontal_pixel_int] = v
+            rasterized_data.append(rasterized_values)
+
+        return rasterized_data
 
 
 class ImageGeneratorFromPCD(ImageGenerator):
@@ -192,12 +216,19 @@ class ImageGeneratorFromPCD(ImageGenerator):
                     self._interpolation = partial(self.barycentric_interpolation, simplices = simplices, indices=indices,
                                                   distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
                                                   fill_value=fill_value)
+                case 'bary_knn':
+                    simplices, indices, distances = self.calculate_triangulation(self._coordinates_mapped_to_pixels,
+                                                                                 self._pixel_raster, "knn")
+                    self._interpolation = partial(self.barycentric_interpolation, simplices=simplices, indices=indices,
+                                                  distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
+                                                  fill_value=fill_value)
+                case 'raw':
+                    self._interpolation = partial(self.map_to_nearest_pixel, points=self._coordinates_mapped_to_pixels,)
 
         rasterized_results = self._interpolation(values=tuple(pcd_data_for_features.values()))
         rasterization_results = dict(zip(pcd_data_for_features.keys(), rasterized_results))
 
         return self.extract_features_from_pcd_data(features, rasterization_results)
-
 
 
 
@@ -261,6 +292,8 @@ class ImageGeneratorFromPCD(ImageGenerator):
 
     def extract_features_from_pcd_data(self, features: str | Iterable[str],
                                        pcd_data_for_features: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        if isinstance(features, str):
+            features = [features]
         feature_data = dict()
         for feature in features:
             if feature in pcd_data_for_features.keys():
@@ -320,6 +353,12 @@ class SphericalImageGeneratorFromPCD(ImageGeneratorFromPCD):
         self.pcd = self.pcd.extract_angles(self.fov)
 
         self._coordinates_mapped_to_pixels = self._map_spherical_coordinates_to_pixel_raster()
+
+    @property
+    def identifier(self):
+        id = f"Spherical_projection-fov_{self.fov}-resolution_{self.image_resolution[0]}x{self.image_resolution[1]}"
+        return "".join(id.split())  # Removes all whitespaces
+
 
 
     def _map_to_pixel_raster(self):
