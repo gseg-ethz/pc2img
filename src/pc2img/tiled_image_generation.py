@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from functools import partial
 import hashlib
 from joblib import Parallel, delayed
+import logging
 from pathlib import Path
 import pickle
 from typing import Optional, Iterable, Generator
@@ -20,6 +21,8 @@ from pchandler.geometry import PointCloudData, split_pc_with_fov_tree
 # from pc2img.image_processing import ImageGenerator
 from pc2img.image_generation import SphericalImageGeneratorFromPCD
 from pc2img.core import PCDImageLink, ImageStack, ImageData
+
+logger = logging.getLogger(__name__)
 
 # @dataclass
 # class TiledImageGenerationSettings:
@@ -345,10 +348,13 @@ class CommonTiledImageGeneratorFromPCDs:
 
 
 
-    def get_feature(self, tile_id: str, feature: str) -> dict[str, np.ndarray | np.memmap]:
+    def get_feature(self, tile_id: str, feature: str, normalize: bool = False,
+                    normilization_percentiles: tuple[int, int] = (0, 100),) -> dict[str, np.ndarray | np.memmap]:
+
         if self.common_tile_pcd is None:
             raise RuntimeError("Cannot call 'get_feature' before splitting the pointclouds!")
-        feature_data = {pcd_id: pcd_link.get_image_data(pcd_link.available_stacks[0], feature)
+
+        feature_data = {pcd_id: pcd_link.get_image_data(pcd_link.available_stacks[0], feature, normalize, normilization_percentiles)
                         for pcd_id, pcd_link in self.common_tile_pcd[tile_id].items()}
         return feature_data
 

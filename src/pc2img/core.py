@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 from functools import cached_property
 from itertools import chain
+import logging
 from joblib import Parallel, delayed
 import warnings
 
@@ -40,6 +41,8 @@ from pc2img.image_generation import ImageGenerator, ImageGeneratorFromPCD
 # from pc2img.image_processing import barycentric_interpolation
 
 EPS32 = np.finfo(np.float32).eps
+
+logger = logging.getLogger(__name__)
 
 @dataclass
 class PC2IMGRunSettings:
@@ -237,14 +240,17 @@ class PCDImageLink:
     def available_stacks(self):
         return sorted(list(self.image_stacks.keys()))
 
-    def get_image_data(self, stack_identifier: str, feature: str):
+    def get_image_data(self, stack_identifier: str, feature: str, normalize: bool = False,
+                       normilization_percentiles: tuple[int, int] = (0, 100)) -> Union[np.ndarray, np.memmap]:
+
         if not stack_identifier in self.image_stacks.keys():
             raise KeyError(f"{stack_identifier} not in {self.available_stacks}")
-
-        return self.image_stacks[stack_identifier][feature]
+        return self.image_stacks[stack_identifier].get_image_data(feature, normalize, normilization_percentiles)
+        # return self.image_stacks[stack_identifier][feature]
 
     def save_stack_as_images(self, save_dir: Path, stack_identifier: str, features: Optional[Union[str,Iterable[str]]] = None,
                              normalize: bool = True, normalization_percentiles: tuple[int, int] = (0, 100), create_subdirs: bool = False):
+        # logging.debug(f"Starting savcalculation of triangulation with method: {method}.")
         self.image_stacks[stack_identifier].save_images(save_dir, features, normalize, normalization_percentiles, create_subdirs)
 
         # if feature in self.image_stacks.images.keys():
@@ -283,7 +289,11 @@ class ImageStack:
         if isinstance(self.image_generator, ImageGeneratorFromPCD):
             self._add_images_from_pcd(**kwargs)
 
-    def _add_images_from_pcd(self, features: Iterable[str]):
+    def _add_images_from_pcd(self, features: str | Iterable[str]):
+        if isinstance(features, str):
+            features = [features,]
+        # Check if features have been already computed
+        features = [feature for feature in features if feature not in self.images]
         if self.cache_folder is not None:
             existing_features = [f for f in features if ImageData.cache_exists(self.cache_folder / f"{f}")]
             for ef in existing_features:
@@ -291,17 +301,46 @@ class ImageStack:
             features = list(set(features) - set(existing_features))
         if not features:
             return
+        # Check if the necessary primary features have already been computed (such as in the case of `hillshade` or `gradient`)
+        primary_features = ImageGeneratorFromPCD.extract_primary_features(features)
+        primary_features_data = {pf: self.images[pf] for pf in primary_features if pf in self.images} # Todo: maybe passing .data makes more sense
+        primary_features = [pf for pf in primary_features if pf not in self.images]
+        if self.cache_folder is not None:
+            cached_primary_features = [f for f in primary_features if ImageData.cache_exists(self.cache_folder / f"{f}")]
+            for cpf in cached_primary_features:
+                self.images[cpf] = ImageData(cache_path=self.cache_folder / f"{cpf}")
+                primary_features_data[cpf] = self.images[cpf].data
+            primary_features = list(set(primary_features) - set(cached_primary_features))
 
-        projected_data = self.image_generator.project_and_rasterize(features=features, filter_distance=5.0)  # Todo: Filter distance might be too hidden
+
+
+        projected_data = self.image_generator.project_and_rasterize(features=features, filter_distance=5.0,
+                                                                    precomputed_features=primary_features_data)  # Todo: Filter distance might be too hidden
         for feature, projected_feature_data in projected_data.items():
             feature_cache_path = self.cache_folder / f"{feature}" if self.cache_folder is not None else None
             self.images[feature] = ImageData(data=projected_feature_data, cache_path=feature_cache_path,)
+        return
+        # if self.cache_folder is not None:
+        #     existing_features = [f for f in features if ImageData.cache_exists(self.cache_folder / f"{f}")]
+        #     for ef in existing_features:
+        #         self.images[ef] = ImageData(cache_path=self.cache_folder / f"{ef}")
+        #     features = list(set(features) - set(existing_features))
+        # if not features:
+        #     return
+        #
+        # projected_data = self.image_generator.project_and_rasterize(features=features, filter_distance=5.0)  # Todo: Filter distance might be too hidden
+        # for feature, projected_feature_data in projected_data.items():
+        #     feature_cache_path = self.cache_folder / f"{feature}" if self.cache_folder is not None else None
+        #     self.images[feature] = ImageData(data=projected_feature_data, cache_path=feature_cache_path,)
+        # return
 
-    def get_image_data(self, feature: str):
+    def get_image_data(self, feature: str, normalize: bool = False,
+                       normilization_percentiles: tuple[int, int] = (0, 100)) -> Union[np.ndarray, np.memmap]:
         if feature not in self.images:
             self.add_images(features=[feature])
 
-        return self.images[feature].data
+        image_data = self.images[feature].data if not normalize else self.images[feature].normalized(normilization_percentiles)
+        return image_data
 
     def save_images(self, save_dir: Path, features: Optional[Union[str,Iterable[str]]] = None, normalilze: bool = True,
                     normalization_percentiles: tuple[int, int] = (0, 100), create_subdirs: bool = False):
@@ -365,11 +404,12 @@ class ImageStack:
 
 @dataclass
 class ImageData:
-    data: Optional[Union[np.ndarray, np.memmap]] = None
+    data: Union[np.ndarray, np.memmap] = None
     cache_path: Optional[Path] = None
     _normalized_cache: Dict[Tuple[int, int], Union[np.ndarray, np.memmap]] = field(default_factory=dict, init=False)
 
-    # derivative_images: list[ImageData]
+    # derivative_from: Optional[ImageData] = None
+    # derivative_images: list[ImageData] = None
 
     # Class-level constants for suffixes
     DATA_SUFFIX = ".data.npy"
