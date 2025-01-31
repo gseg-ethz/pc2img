@@ -1,5 +1,17 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from datetime import datetime
+
+
+# Define log directory
+LOG_DIR = Path.home() / r".log/PC2Image"
+LOG_DIR.mkdir(parents=True, exist_ok=True)  # Ensure directory exists
+
+# Define log file with timestamp
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_FILE = LOG_DIR / f"main_{timestamp}.log"
+
+LOG_LEVEL = 10  # DEBUG
 
 
 @dataclass(init=False)

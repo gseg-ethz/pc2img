@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import partial
+from functools import partial, reduce
 import hashlib
 from joblib import Parallel, delayed
 import logging
@@ -14,7 +14,6 @@ from PIL import Image, ImageDraw, ImageFont
 import imageio.v3 as iio  # TODO: Remove after meeting
 
 import pchandler as pch
-from markdown_it.rules_inline import image
 from pchandler.fov import FoV, FoVTree
 from pchandler.geometry import PointCloudData, split_pc_with_fov_tree
 
@@ -234,6 +233,9 @@ class CommonTiledImageGeneratorSettings:
             self.image_base_directory.mkdir(parents=True)
         if self.cache_base_directory is not None and not self.cache_base_directory.exists():
             self.cache_base_directory.mkdir(parents=True)
+            
+    # def __repr__(self):
+    #     return f""
 
 class CommonTiledImageGeneratorFromPCDs:
 
@@ -270,9 +272,11 @@ class CommonTiledImageGeneratorFromPCDs:
 
         self.fov_roi = config.fov_roi
         if self.fov_roi is None:
-            pcds_downsampled = [pcd.random_subsample(1. / 100., in_place=False) for pcd in self.pcds.values()]
-            pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
-            self.fov_roi = pcd_merged.fov
+            fovs = [pcd.fov for pcd in self.pcds.values()]
+            self.fov_roi = reduce(lambda fov1, fov2: fov1.intersect(fov2), fovs)
+            # pcds_downsampled = [pcd.random_subsample(1. / 100., in_place=False) for pcd in self.pcds.values()]
+            # pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
+            # self.fov_roi = pcd_merged.fov
 
         self.fov_structure = None
         self.common_tile_pcd = {}

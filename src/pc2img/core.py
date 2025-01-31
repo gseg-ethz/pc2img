@@ -274,7 +274,7 @@ class ImageStack:
 
     @property
     def identifier(self) -> int:
-        return self.image_generator.identifier # Should be changed to camera parameters at a later point
+        return self.image_generator.identifier # Todo: Should be changed to camera parameters at a later point
 
 
     # def __init__(self):
