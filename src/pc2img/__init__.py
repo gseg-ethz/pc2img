@@ -1,13 +1,14 @@
 # pc2img/__init__.py
+__all__ = ["core", "image_processing", "tiled_image_generation", "__version__"]
 
 import logging
 
 from .conf import LOG_FILE, LOG_LEVEL
 from . import tiled_image_generation, image_processing
+from .version import __version__
 
 __author__ = "Nicholas Meyer"
 __email__ = "meyernic@ethz.ch"
-__version__ = "0.10.0"
 
 # Configure logger for IOF3D
 logger = logging.getLogger(__name__)
@@ -27,4 +28,3 @@ if not logger.hasHandlers():
     logger.addHandler(handler)
     logger.addHandler(console_handler)
 
-__all__ = ["core", "image_processing", "tiled_image_generation"]

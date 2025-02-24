@@ -362,46 +362,6 @@ class ImageStack:
         return self.get_image_data(feature)
 
 
-    #
-    # def get_image(self, feature: str):
-    #     if feature in self.images.keys():
-    #         return self.images[feature]
-
-# @dataclass()
-# class ImageData:
-#     data: np.ndarray
-#
-#     cache_path: Optional[Path]
-#     _normalized_cache: dict[tuple[int,int], np.ndarray] = None
-#
-#     def __post_init__(self):
-#         self._normalized_cache = {}
-#
-#     def normalized(self, percentile_region: tuple[int, int] = (0,100)) -> np.ndarray:
-#         if any((len(percentile_region) != 2, percentile_region[0] >= percentile_region[1],
-#                percentile_region[0] < 0, percentile_region[1] > 100)):
-#             raise ValueError(
-#                 f"`percentile_region` needs values between 0 and 100, and the second value has to be larger than the first!")
-#
-#         if percentile_region in self._normalized_cache:
-#             return self._normalized_cache[percentile_region]
-#
-#         values_flat = np.ndarray.flatten(self.data)
-#         lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], list(percentile_region))
-#         normalized_values = (self.data - lower) / (self.data - self.data + EPS32)
-#
-#         np.nan_to_num(normalized_values, copy=False, nan=1.0)
-#         np.clip(normalized_values, 0, 1, out=normalized_values)
-#
-#         self._normalized_cache[percentile_region] = normalized_values
-#         return normalized_values
-#
-#
-#     def save_image(self, image_path: Path, normalize: bool = True, normalization_percentiles: tuple[int, int] = (0,100)):
-#         data = self.normalized(percentile_region=normailzation_percentiles) if normalize else np.nan_to_num(self.data, copy=True, nan=1.0)
-#         iio.imwrite(image_path, (data * 255).astype(np.uint8))
-#         return
-
 @dataclass
 class ImageData:
     data: Union[np.ndarray, np.memmap] = None

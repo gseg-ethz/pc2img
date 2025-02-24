@@ -1,3 +1,9 @@
+# Actions
+src/pchandler/_version.py
+
+# BAK files
+**/*.bak
+
 _data/
 
 # Created by .ignore support plugin (hsz.mobi)

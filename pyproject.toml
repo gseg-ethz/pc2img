@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools", "setuptools_scm"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -33,8 +33,13 @@ dependencies = [
 ]
 
 [tool.setuptools.dynamic]
-version = {attr = "pc2img.__version__"}
+#version = {attr = "pc2img.__version__"}
 readme = {file = ["README.rst"]}
+
+[tool.setuptools_scm]
+write_to = "src/pchandler/_version.py"
+local_scheme = "no-local-version"
+version_scheme = "post-release"
 
 [project.urls]
 homepage = "https://gseg.igp.ethz.ch/"
