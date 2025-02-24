@@ -37,7 +37,7 @@ dependencies = [
 readme = {file = ["README.rst"]}
 
 [tool.setuptools_scm]
-write_to = "src/pchandler/_version.py"
+write_to = "src/pc2img/_version.py"
 local_scheme = "no-local-version"
 version_scheme = "post-release"
 
