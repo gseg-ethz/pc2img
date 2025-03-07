@@ -11,9 +11,11 @@ import numpy as np
 from scipy.spatial import Delaunay
 
 from pchandler.geometry import PointCloudData
+from pchandler.geometry.filters import FoVFilter
 from pchandler.fov import FoV
 
-logger = logging.getLogger(__name__)
+
+logger = logging.getLogger(__name__.split(".")[0])
 
 
 class ImageGenerator(ABC):
@@ -309,7 +311,7 @@ class ImageGeneratorFromPCD(ImageGenerator):
             if rpf == "range":
                 pcd_data_for_features[rpf] = self.pcd.spherical_coordinates[:, 0]
             elif rpf in self.pcd.scalar_fields:
-                pcd_data_for_features[rpf] = self.pcd.scalar_fields[rpf]
+                pcd_data_for_features[rpf] = self.pcd.scalar_fields[rpf].data
             else:
                 warnings.warn(f"!{rpf} does not match a scalar field")
         return pcd_data_for_features
@@ -422,7 +424,8 @@ class SphericalImageGeneratorFromPCD(ImageGeneratorFromPCD):
 
         # Match the fov ratio to the image ratio and the pcd to fov
         self.fov = fov.extend_to_ratio(self.aspect_ratio)
-        self.pcd = self.pcd.sample_angles(self.fov)
+        # self.pcd = self.pcd.sample_angles(self.fov)
+        FoVFilter(self.fov).reduce(self.pcd)
 
         self._coordinates_mapped_to_pixels = self._map_spherical_coordinates_to_pixel_raster()
 

@@ -1,30 +1,56 @@
 # pc2img/__init__.py
-__all__ = ["core", "image_processing", "tiled_image_generation", "__version__"]
+__all__ = ["image_generation", "tiled_image_generation", "__version__",
+           "PC2IMGRunSettings","PCDImageLink","ImageData","ImageStack"]
 
 import logging
 
-from .conf import LOG_FILE, LOG_LEVEL
-from . import tiled_image_generation, image_processing
+from .core import (
+    PC2IMGRunSettings,
+    PCDImageLink,
+    ImageStack,
+    ImageData
+)
+
+from . import tiled_image_generation, image_generation
 from .version import __version__
 
 __author__ = "Nicholas Meyer"
 __email__ = "meyernic@ethz.ch"
 
-# Configure logger for IOF3D
-logger = logging.getLogger(__name__)
 
-if not logger.hasHandlers():
-    handler = logging.FileHandler(LOG_FILE, mode='a')  # Append mode
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    handler.setFormatter(formatter)
-    logger.setLevel(LOG_LEVEL)
 
-    # Console handler
-    console_handler = logging.StreamHandler() # Adjust level for console output if needed
-    console_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    console_handler.setFormatter(console_formatter)
-    console_handler.setLevel(LOG_LEVEL)
+logger = logging.getLogger(__name__.split(".")[0])
 
-    logger.addHandler(handler)
-    logger.addHandler(console_handler)
+# If root logger has no handlers, configure "library minimum" for root: level: warning -> stderr
+if not logging.getLogger().hasHandlers():
+    config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            },
+            "detailed": {
+                "format": "[%(levelname)s|%(module)s|L%(lineno)d] %(asctime)s: %(message)s",
+                "datefmt": "%Y-%m-%dT%H:%M:%S%z"
+            }
+        },
+        "handlers": {
+            "stderr": {
+                "class": "logging.StreamHandler",
+                "formatter": "detailed",
+                "stream": "ext://sys.stderr"
+            }
+        },
+        "loggers": {
+            "root": {
+                "level": "WARNING",
+                "handlers": [
+                    "stderr"
+                ]
+            }
+        }
+    }
+    logging.config.dictConfig(config)
+
 
