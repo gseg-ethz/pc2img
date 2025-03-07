@@ -1,10 +1,17 @@
 # Actions
-src/pchandler/_version.py
+src/**/_version.py
 
 # BAK files
 **/*.bak
 
 _data/
+
+# Old files
+_old/
+_scrap/
+_future/
+
+
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
