@@ -7,6 +7,8 @@ from fractions import Fraction
 from functools import cached_property
 from itertools import chain
 import logging
+
+from PIL.ImageColor import colormap
 from joblib import Parallel, delayed
 import warnings
 
@@ -17,6 +19,7 @@ from typing import Any, Callable, Iterable, Optional, Union#, Self
 # from typing_extensions import Self
 
 import numpy as np
+from numpy.typing import NDArray
 # from scipy.interpolate import griddata as scipy_gd
 import imageio.v3 as iio
 # from imageio.plugins.tifffile_v3 import TifffilePlugin as iio_tiff
@@ -27,7 +30,8 @@ from pchandler.geometry import PointCloudData
 from pchandler.fov import FoV
 
 
-from pc2img.image_generation import ImageGenerator, ImageGeneratorFromPCD
+from .image_generation import ImageGenerator, ImageGeneratorFromPCD
+from .util import convert_to_image
 
 
 EPS32 = np.finfo(np.float32).eps
@@ -79,10 +83,13 @@ class PCDImageLink:
         return self.image_stacks[stack_identifier].get_image_data(feature, normalize, normilization_percentiles)
         # return self.image_stacks[stack_identifier][feature]
 
-    def save_stack_as_images(self, save_dir: Path, stack_identifier: str, features: Optional[Union[str,Iterable[str]]] = None,
-                             normalize: bool = True, normalization_percentiles: tuple[int, int] = (0, 100), create_subdirs: bool = False):
+    def save_stack_as_images(self, save_dir: Path, stack_identifier: str,
+                             features: Optional[Union[str,Iterable[str]]] = None, normalize: bool = True,
+                             normalization_percentiles: tuple[int, int] = (0, 100), replace_nan: str = "max",
+                             colormap: Optional[str] = None, create_subdirs: bool = False) -> list[Path]:
         # logging.debug(f"Starting savcalculation of triangulation with method: {method}.")
-        self.image_stacks[stack_identifier].save_images(save_dir, features, normalize, normalization_percentiles, create_subdirs)
+        return self.image_stacks[stack_identifier].save_images(save_dir, features, normalize, normalization_percentiles,
+                                                               replace_nan, colormap, create_subdirs)
 
         # if feature in self.image_stacks.images.keys():
         #     return self.image_stacks[stack_identifier].images[feature]
@@ -171,7 +178,9 @@ class ImageStack:
         return image_data
 
     def save_images(self, save_dir: Path, features: Optional[Union[str,Iterable[str]]] = None, normalilze: bool = True,
-                    normalization_percentiles: tuple[int, int] = (0, 100), create_subdirs: bool = False):
+                    normalization_percentiles: tuple[int, int] = (0, 100), replace_nan: str = "max",
+                    colormap: Optional[str] = None, create_subdirs: bool = False) -> list[Path]:
+        image_paths = []
         if isinstance(features, str):
             features = [features]
         if features is None:
@@ -181,9 +190,12 @@ class ImageStack:
                 self.add_images(features=[feature])
             if feature in self.images:
                 save_path = save_dir / f"{feature}.png" if create_subdirs else save_dir.with_stem(save_dir.stem + f"_{feature}.png")
-                self.images[feature].save_image(save_path, normalilze, normalization_percentiles)
+                image_paths.append(self.images[feature].save_image(save_path, normalilze, normalization_percentiles,
+                                                                   replace_nan, colormap))
             else:
                 warnings.warn(f"Feature: {feature} not available!")
+        return image_paths
+
 
 
     def __getitem__(self, feature: str):  # Todo: Rethink if this sensible
@@ -192,9 +204,9 @@ class ImageStack:
 
 @dataclass
 class ImageData:
-    data: Union[np.ndarray, np.memmap] = None
+    data: NDArray[np.floating] = None
     cache_path: Optional[Path] = None
-    _normalized_cache: Dict[Tuple[int, int], Union[np.ndarray, np.memmap]] = field(default_factory=dict, init=False)
+    _normalized_cache: Dict[Tuple[int, int], NDArray[np.floating]] = field(default_factory=dict, init=False)
 
     # derivative_from: Optional[ImageData] = None
     # derivative_images: list[ImageData] = None
@@ -242,9 +254,8 @@ class ImageData:
         data_path = cache_path.with_suffix(cls.DATA_SUFFIX)
         return data_path.exists()
 
-    def normalized(self, percentile_region: tuple[int, int] = (0, 100)) -> Union[np.ndarray, np.memmap]:
-        if any((len(percentile_region) != 2, percentile_region[0] >= percentile_region[1],
-                percentile_region[0] < 0, percentile_region[1] > 100)):
+    def normalized(self, percentile_region: tuple[int, int] = (0, 100)) -> NDArray[np.floating]:
+        if len(percentile_region) != 2 or not (0 <= percentile_region[0] < percentile_region[1] <= 100):
             raise ValueError(
                 "`percentile_region` needs values between 0 and 100, and the second value has to be larger than the first!"
             )
@@ -252,12 +263,15 @@ class ImageData:
         if percentile_region in self._normalized_cache:
             return self._normalized_cache[percentile_region]
 
-        values_flat = np.ndarray.flatten(self.data)
-        lower, upper = np.nanpercentile(values_flat[~np.isnan(values_flat)], list(percentile_region))
+
+        # values_flat = np.ndarray.flatten(self.data)
+        lower, upper = np.nanpercentile(self.data, list(percentile_region))
+        np.clip(self.data, lower, upper, out=self.data)
         normalized_values = (self.data - lower) / (upper - lower + EPS32)
 
-        np.nan_to_num(normalized_values, copy=False, nan=1.0)
-        np.clip(normalized_values, 0, 1, out=normalized_values)
+        #
+        # np.nan_to_num(normalized_values, copy=False, nan=1.0)
+        # np.clip(normalized_values, 0, 1, out=normalized_values)
 
         if self.cache_path:
             norm_path = self.cache_path.with_suffix(self.NORMALIZED_SUFFIX_TEMPLATE.format(*percentile_region))
@@ -271,12 +285,23 @@ class ImageData:
             self._normalized_cache[percentile_region] = normalized_values
             return normalized_values
 
-    def save_image(self, image_path: Path, normalize: bool = True, normalization_percentiles: tuple[int, int] = (0, 100)):
+    def save_image(self, image_path: Path, normalize: bool = True,
+                   normalization_percentiles: Optional[tuple[int, int]] = None,
+                   replace_nan: str = "max", colormap: Optional[str] = None, override_path_changes: bool = False) -> Path:
         if not image_path.parent.exists():
             image_path.parent.mkdir(parents=True)
-        if normalize:
+
+        if normalization_percentiles is None:
+            normalization_percentiles = (0, 100)
+
+        if normalize and not override_path_changes:
             image_path = image_path.with_stem(image_path.stem +
                                               f"_norm_{normalization_percentiles[0]}_{normalization_percentiles[1]}")
-        data = self.normalized(percentile_region=normalization_percentiles) if normalize else np.nan_to_num(self.data, copy=True, nan=1.0)
-        iio.imwrite(image_path, (data * 255).astype(np.uint8))
+
+        data = self.normalized(percentile_region=normalization_percentiles) if normalize else self.data
+
+        data = convert_to_image(data, replace_nan, normalize, colormap)
+
+        iio.imwrite(image_path, data)
         print(f"{image_path} saved")
+        return image_path

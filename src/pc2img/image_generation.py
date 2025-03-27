@@ -8,11 +8,14 @@ import warnings
 
 from cuml.neighbors import NearestNeighbors
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial import Delaunay
 
 from pchandler.geometry import PointCloudData
 from pchandler.geometry.filters import FoVFilter
 from pchandler.fov import FoV
+
+from .util import nanconv, gaussian_kernel
 
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -182,7 +185,7 @@ class ImageGenerator(ABC):
             interpolation_results.append(interpolation_values)
         return interpolation_results
 
-    def map_to_nearest_pixel(self, points: np.ndarray, values: np.ndarray | tuple[np.ndarray, ...]):
+    def map_to_nearest_pixel(self, points: np.ndarray, values: np.ndarray | tuple[np.ndarray, ...]) -> list[NDArray]:
         # Todo: Think about splitting the two tasks
         if isinstance(values, np.ndarray):
             values = (values,)
@@ -193,11 +196,21 @@ class ImageGenerator(ABC):
 
         rasterized_data = list()
         for v in values:
-            rasterized_values = rasterized_blank.copy()
+            rasterized_values = rasterized_blank.copy().astype(v.dtype) if v.dtype.kind == "f" else rasterized_blank.copy()
             rasterized_values[elevation_pixel_int, horizontal_pixel_int] = v
             rasterized_data.append(rasterized_values)
 
         return rasterized_data
+
+    def map_to_nearest_pixel_with_nanconv(self, points: np.ndarray, values: np.ndarray | tuple[np.ndarray, ...],
+                                          kernel: NDArray) -> NDArray:
+        rasterized_data = self.map_to_nearest_pixel(points, values)
+
+        rasterized_data_with_nanconv = list()
+        for rd in rasterized_data:
+            rasterized_data_with_nanconv.append(nanconv(rd, kernel))
+
+        return rasterized_data_with_nanconv
 
 
 class ImageGeneratorFromPCD(ImageGenerator):
@@ -238,6 +251,12 @@ class ImageGeneratorFromPCD(ImageGenerator):
                                                   fill_value=fill_value)
                 case 'raw':
                     self._interpolation = partial(self.map_to_nearest_pixel, points=self._coordinates_mapped_to_pixels,)
+                case 'nanconv':
+                    kernel = gaussian_kernel()
+                    self._interpolation = partial(self.map_to_nearest_pixel_with_nanconv,
+                                                  points=self._coordinates_mapped_to_pixels, kernel=kernel)
+
+
 
         rasterized_results = self._interpolation(values=tuple(pcd_data_for_features.values()))
         rasterization_results = dict(zip(pcd_data_for_features.keys(), rasterized_results))

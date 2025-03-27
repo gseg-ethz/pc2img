@@ -1,33 +1,78 @@
+from typing import Optional
+
+import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import convolve2d
 
 
-def nanconv(a, k):
+def nanconv(a: NDArray, k: NDArray, replace_nan: Optional[float] = None) -> NDArray:
     on = np.ones(a.shape, dtype=a.dtype)
 
     n = np.isnan(a)
     a[n] = 0
     on[n] = 0
 
-    del n
-
     flat = convolve2d(on, k, mode="same").astype(np.float16)
-    del on
 
     c = np.divide(convolve2d(a, k, mode="same").astype(np.float16), flat).astype(np.float16)
-    del flat
-    np.nan_to_num(c, copy=False, nan=1.0)
+    if replace_nan is not None:
+        np.nan_to_num(c, copy=False, nan=replace_nan)
     return c
 
 
 def gaussian_kernel(l=5, sig=1.):
-    """\
+    """
     creates gaussian kernel with side length `l` and a sigma of `sig`
     """
     ax = np.linspace(-(l - 1) / 2., (l - 1) / 2., l)
     gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
     kernel = np.outer(gauss, gauss)
     return kernel / np.sum(kernel)
+
+def convert_to_image(image_data: NDArray[np.floating], replace_nan: str = "max", normalize: bool = False,
+                     colormap: Optional[str] = None) -> NDArray[np.uint8]:
+    if replace_nan not in ["max", "min", "random"]:
+        raise ValueError("replace_nan must be one of 'max', 'min', 'random'")
+
+    image_min = np.nanmin(image_data)
+    image_max = np.nanmax(image_data)
+    nan_positions = np.isnan(image_data)
+    match replace_nan:
+        case "max":
+            np.nan_to_num(image_data, copy=False, nan=image_max)
+        case "min":
+            np.nan_to_num(image_data, copy=False, nan=image_min)
+        case "random":
+            rng = np.random.default_rng()
+            random = rng.uniform(image_min, image_max, size=image_data.shape)
+            image_data[nan_positions] = random[nan_positions]
+
+
+    if normalize or image_min < 0.0 or image_max > 1.0:
+        image_data = (image_data - image_min) / (image_max - image_min)
+        image_min = 0.0
+        image_max = 1.0
+        if replace_nan == "random":
+            random = (random - image_min) / (image_max - image_min)
+
+    if colormap is not None:
+        cmap = plt.get_cmap(colormap)
+        # cmap returns an RGBA image in float [0, 1]; drop the alpha channel
+        colored_image = cmap(image_data)[..., :3]
+        match replace_nan:
+            case "max":
+                colored_image[nan_positions,:] = image_max
+            case "min":
+                colored_image[nan_positions,:] = image_min
+            case "random":
+                colored_image[nan_positions] = np.dstack(3*(random,))[nan_positions,:]
+        return (255.0 * colored_image).astype(np.uint8)
+
+
+    return (255.0 * image_data).astype(np.uint8)
+
+
 
 
 def calculate_dip_direction_and_angle(xyz: np.ndarray) -> np.ndarray:
@@ -60,7 +105,7 @@ class OpticalFlowVisualization:
             URL: http://vision.middlebury.edu/flow/flowEval-iccv07.pdf
 
         Code follows the original C++ source code of Daniel Scharstein.
-        Code follows the the Matlab source code of Deqing Sun.
+        Code follows the Matlab source code of Deqing Sun.
 
         Returns:
             np.ndarray: Color wheel

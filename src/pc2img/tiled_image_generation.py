@@ -19,9 +19,9 @@ from pchandler.geometry import PointCloudData
 from pchandler.geometry.splitter import FoVTreePointCloudSplitter
 
 # from pc2img.image_processing import ImageGenerator
-from pc2img.image_generation import SphericalImageGeneratorFromPCD
-from pc2img.core import PCDImageLink, ImageStack, ImageData
-
+from .image_generation import SphericalImageGeneratorFromPCD
+from .core import PCDImageLink, ImageStack, ImageData
+from .util import convert_to_image
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -76,7 +76,7 @@ class CommonTiledImageGeneratorFromPCDs:
         self.rasterization_method_overview = config.rasterization_method_overview
 
         self.image_base_directory = config.image_base_directory
-        self.cache_base_directory = config.cache_base_directory / cache_key
+        self.cache_base_directory = config.cache_base_directory / cache_key if config.cache_base_directory else None
 
         # self.rasterization_features = config.rasterization_features
         # if self.rasterization_features is None:
@@ -165,7 +165,7 @@ class CommonTiledImageGeneratorFromPCDs:
             self.common_tile_pcd[tile_id] = {
                 pcd_id: PCDImageLink(pcd=pcds_tree[pcd_id][tile_id],
                                      image_generators_skeletons=[image_generator_skeleton], identifier=tile_id,
-                                     cache_folder=self.cache_base_directory / pcd_id / tile_id)
+                                     cache_folder=self.cache_base_directory / pcd_id / tile_id if self.cache_base_directory else None)
                 for pcd_id in pcd_ids
             }
 
@@ -192,13 +192,14 @@ class CommonTiledImageGeneratorFromPCDs:
     #             )
 
     def save_all_images(self, feature: str, normalize: bool = True,
-                        normilization_percentiles: tuple[int, int] = (0, 100), n_jobs: int = -1):
+                        normilization_percentiles: tuple[int, int] = (0, 100), replace_nan: str = 'max',
+                        colormap: Optional[str] = None, n_jobs: int = -1) -> None:
         logger.info(f"Saving all images for {feature} to {self.image_resolution}")
         # Define the task to parallelize
         def save_image_task(tile_id, pcd_id, pcd_link):
             pcd_link.save_stack_as_images(
                 self.image_base_directory / f"{pcd_id}_{tile_id}",
-                pcd_link.available_stacks[0], feature, normalize, normilization_percentiles
+                pcd_link.available_stacks[0], feature, normalize, normilization_percentiles, replace_nan, colormap,
             )
 
         # Create a list of tasks
@@ -209,8 +210,8 @@ class CommonTiledImageGeneratorFromPCDs:
         ]
 
 
-            # Run the tasks in parallel
-        Parallel(n_jobs=n_jobs)(delayed(save_image_task)(tile_id, pcd_id, pcd_link)
+        # Run the tasks in parallel
+        Parallel(n_jobs=n_jobs, verbose=50)(delayed(save_image_task)(tile_id, pcd_id, pcd_link)
                                     for tile_id, pcd_id, pcd_link in tasks)
 
 
@@ -218,8 +219,9 @@ class CommonTiledImageGeneratorFromPCDs:
         return self.common_tile_pcd[tile_id]
 
     def generate_overview_image(self, image_path: Optional[Path] = None, feature: str = "intensity", normalize: bool = False,
-                                normilization_percentiles: tuple[int,int] = (0,100), image_width: int = 12000,
-                                fov: Optional[FoV] = None, annotate_fovs: bool = True, pcd_id: Optional[str] = None):
+                                normilization_percentiles: tuple[int,int] = (0,100), replace_nan: str = "max",
+                                colormap: Optional[str] = None, image_width: int = 12000, fov: Optional[FoV] = None,
+                                annotate_fovs: bool = True, pcd_id: Optional[str] = None):
 
         if pcd_id is None:
             pcd_id = self.available_pcds[0]
@@ -236,20 +238,22 @@ class CommonTiledImageGeneratorFromPCDs:
         image_resolution = (int(image_width / fov.ratio()), image_width)
 
         logger.info(f"Generating overview image of size {image_resolution} for {feature} and saving to {image_path}")
-        image_generator = SphericalImageGeneratorFromPCD(pcd=self.pcds[pcd_id], image_resolution=image_resolution,
-                                                         rasterization_method='raw', minimum_nb_points=0, fov=fov)
-        rasterization_results = image_generator.project_and_rasterize(feature)
-        image_data = rasterization_results[feature]
 
-        image = np.nan_to_num(image_data, nan=1.0)
-        iio.imwrite(image_path, (image * 255).astype(np.uint8))
+        overview_image_link = PCDImageLink(
+            self.pcds[pcd_id],
+            [partial(SphericalImageGeneratorFromPCD, image_resolution=image_resolution,
+                    rasterization_method="nanconv", minimum_nb_points=0)]
+        )
+        overview_path =  overview_image_link.save_stack_as_images(image_path, overview_image_link.available_stacks[0],
+                                                                  feature, normalize, normilization_percentiles,
+                                                                  replace_nan, colormap)
 
         if annotate_fovs:
-            self.annotate_overview_image(image_path, fov)
+            self.annotate_overview_image(overview_path[0], fov)
 
 
     def annotate_overview_image(self, overview_path: Path, overview_fov: FoV) -> None:
-        def calculate_font_size(text, desired_height, font_path, initial_font_size=10):
+        def calculate_font_size(text, max_width, max_height, font_path, initial_font_size=10):
             # Create a temporary image to draw text
             temp_image = Image.new('RGB', (1, 1), 'white')
             draw = ImageDraw.Draw(temp_image)
@@ -258,14 +262,15 @@ class CommonTiledImageGeneratorFromPCDs:
             while True:
                 font = ImageFont.truetype(font_path, font_size)
                 text_bbox = draw.textbbox((0, 0), text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
                 text_height = text_bbox[3] - text_bbox[1]
 
-                # Check if the text height is close to the desired height
-                if text_height >= desired_height:
+                # Check if either dimension exceeds the allowed space
+                if text_width > max_width or text_height > max_height:
                     break
                 font_size += 1
 
-            return font_size
+            return font_size - 1  # Return the last valid size that fit
 
         # Open the image
         image = Image.open(overview_path)
@@ -298,7 +303,11 @@ class CommonTiledImageGeneratorFromPCDs:
             # To use a specific font file, uncomment the line below and provide the path to your font file
             font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
-            font_size = calculate_font_size(fov_identifier, int(0.25*(y2-y1)), font_path, 12)
+            max_text_width = 0.5 * (x2 - x1)
+            max_text_height = 0.25 * (y2 - y1)
+            font_size = calculate_font_size(fov_identifier, max_text_width, max_text_height, font_path, 1)
+
+            # font_size = calculate_font_size(fov_identifier, int(0.25*(y2-y1)), font_path, 12)
             font = ImageFont.truetype(font_path, font_size)
 
             # Calculate the text size to center it

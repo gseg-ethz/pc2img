@@ -12,7 +12,7 @@ from .core import (
 )
 
 from . import tiled_image_generation, image_generation
-from .version import __version__
+from ._version import __version__
 
 __author__ = "Nicholas Meyer"
 __email__ = "meyernic@ethz.ch"
