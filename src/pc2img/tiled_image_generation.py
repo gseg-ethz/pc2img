@@ -137,7 +137,10 @@ class CommonTiledImageGeneratorFromPCDs:
         return cache_result
 
 
-    def split_pcds_on_fov_tree(self, fov_tree: FoVTree = None):
+    def split_pcds_on_fov_tree(self, fov_tree: FoVTree = None, overwrite: bool = False, n_jobs: int = -1):
+        if not overwrite and self.common_tile_pcd:
+            return
+
         if fov_tree is None:
             # Build common FoVTree to split the pointclouds
             fov_target_patch_size = FoV(elevation_min=0,
@@ -151,17 +154,20 @@ class CommonTiledImageGeneratorFromPCDs:
         else:
             self.fov_structure = fov_tree
 
-        pcd_splitter = FoVTreePointCloudSplitter(self.fov_structure, remove_empty=True, n_jobs=-5, method="iterative")
+        pcd_splitter = FoVTreePointCloudSplitter(self.fov_structure, remove_empty=True, n_jobs=n_jobs, method="iterative")
         pcds_tree = {pcd_id: pcd_splitter.split(pcd.copy()) for pcd_id, pcd in self.pcds.items()}
 
         # pcds_tree = {pcd_id: split_pc_with_fov_tree(pcd.copy(), self.fov_structure, True, -5) for pcd_id, pcd in self.pcds.items()}
         common_tile_ids = sorted(list(set.intersection(*[set(tiled_pcd.keys()) for tiled_pcd in pcds_tree.values()])))
         logger.info(f"A total of {len(common_tile_ids)} tiles were found")
         pcd_ids = sorted(pcds_tree.keys())
-
-        image_generator_skeleton = partial(SphericalImageGeneratorFromPCD, image_resolution=self.image_resolution,
-                                           rasterization_method=self.rasterization_method, minimum_nb_points=0)
+        #
+        # image_generator_skeleton = partial(SphericalImageGeneratorFromPCD, image_resolution=self.image_resolution,
+        #                                    rasterization_method=self.rasterization_method, minimum_nb_points=0)
         for tile_id in common_tile_ids:
+            image_generator_skeleton = partial(SphericalImageGeneratorFromPCD, image_resolution=self.image_resolution,
+                                               rasterization_method=self.rasterization_method, minimum_nb_points=0,
+                                               fov=self.fov_structure[tile_id].node)
             self.common_tile_pcd[tile_id] = {
                 pcd_id: PCDImageLink(pcd=pcds_tree[pcd_id][tile_id],
                                      image_generators_skeletons=[image_generator_skeleton], identifier=tile_id,
@@ -174,12 +180,12 @@ class CommonTiledImageGeneratorFromPCDs:
 
 
     def get_feature(self, tile_id: str, feature: str, normalize: bool = False,
-                    normilization_percentiles: tuple[int, int] = (0, 100),) -> dict[str, np.ndarray | np.memmap]:
+                    normilization_percentiles: tuple[int, int] = (0, 100), replace_nan_with: Optional[str] = None) -> dict[str, np.ndarray | np.memmap]:
 
         if self.common_tile_pcd is None:
             raise RuntimeError("Cannot call 'get_feature' before splitting the pointclouds!")
 
-        feature_data = {pcd_id: pcd_link.get_image_data(pcd_link.available_stacks[0], feature, normalize, normilization_percentiles)
+        feature_data = {pcd_id: pcd_link.get_image_data(pcd_link.available_stacks[0], feature, normalize, normilization_percentiles, replace_nan_with)
                         for pcd_id, pcd_link in self.common_tile_pcd[tile_id].items()}
         return feature_data
 
@@ -219,7 +225,7 @@ class CommonTiledImageGeneratorFromPCDs:
         return self.common_tile_pcd[tile_id]
 
     def generate_overview_image(self, image_path: Optional[Path] = None, feature: str = "intensity", normalize: bool = False,
-                                normilization_percentiles: tuple[int,int] = (0,100), replace_nan: str = "max",
+                                normilization_percentiles: tuple[int,int] = (0,100), replace_nan_with: str = "max",
                                 colormap: Optional[str] = None, image_width: int = 12000, fov: Optional[FoV] = None,
                                 annotate_fovs: bool = True, pcd_id: Optional[str] = None):
 
@@ -246,7 +252,7 @@ class CommonTiledImageGeneratorFromPCDs:
         )
         overview_path =  overview_image_link.save_stack_as_images(image_path, overview_image_link.available_stacks[0],
                                                                   feature, normalize, normilization_percentiles,
-                                                                  replace_nan, colormap)
+                                                                  replace_nan_with, colormap)
 
         if annotate_fovs:
             self.annotate_overview_image(overview_path[0], fov)

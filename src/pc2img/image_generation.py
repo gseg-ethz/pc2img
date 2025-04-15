@@ -12,7 +12,7 @@ from numpy.typing import NDArray
 from scipy.spatial import Delaunay
 
 from pchandler.geometry import PointCloudData
-from pchandler.geometry.filters import FoVFilter
+from pchandler.geometry.filters import FoVFilter, BoxFilter, VoxelDownsample
 from pchandler.fov import FoV
 
 from .util import nanconv, gaussian_kernel
@@ -222,8 +222,9 @@ class ImageGeneratorFromPCD(ImageGenerator):
 
 
     def project_and_rasterize(self, features: str | Iterable[str], filter_distance: float = 0.0,
-                              fill_value: float = np.nan, precomputed_features: Optional[dict[str,np.ndarray]] = None):
-        if self.minimum_nb_points and pcd.nbPoints < self.minimum_nb_points:
+                              fill_value: float = np.nan,
+                              precomputed_features: Optional[dict[str,np.ndarray]] = None) -> Optional[dict[str, NDArray]]:
+        if self.minimum_nb_points and self.pcd.nbPoints < self.minimum_nb_points:
             return None
 
         if precomputed_features is None:
@@ -301,6 +302,10 @@ class ImageGeneratorFromPCD(ImageGenerator):
                 pcd_features.append(match.groupdict()["feature"])
             elif "hillshade" in fl:
                 pcd_features.append("range")
+            elif "color" in fl:
+                pcd_features.append("red")
+                pcd_features.append("green")
+                pcd_features.append("blue")
             else:
                 pcd_features.append(fl)
         pcd_features = list(set(pcd_features))
@@ -308,7 +313,7 @@ class ImageGeneratorFromPCD(ImageGenerator):
 
 
     def extract_pcd_data_for_features(self, features: str | Iterable[str],
-                                      precomputed_features: Optional[dict[str,np.ndarray]] = None) -> dict[str, np.ndarray]:
+                                      precomputed_features: Optional[dict[str,np.ndarray]] = None) -> dict[str, NDArray]:
         # Clean up different parameter types
         if isinstance(features, str):
             features = (features,)
@@ -329,6 +334,12 @@ class ImageGeneratorFromPCD(ImageGenerator):
         for rpf in remaining_primary_features:
             if rpf == "range":
                 pcd_data_for_features[rpf] = self.pcd.spherical_coordinates[:, 0]
+            elif rpf in ["red", "r"]:
+                pcd_data_for_features[rpf] = self.pcd.color[:,0].astype(np.float32) / 255.0
+            elif rpf in ["green", "g"]:
+                pcd_data_for_features[rpf] = self.pcd.color[:,1].astype(np.float32) / 255.0
+            elif rpf in ["blue", "b"]:
+                pcd_data_for_features[rpf] = self.pcd.color[:,2].astype(np.float32) / 255.0
             elif rpf in self.pcd.scalar_fields:
                 pcd_data_for_features[rpf] = self.pcd.scalar_fields[rpf].data
             else:
@@ -382,6 +393,8 @@ class ImageGeneratorFromPCD(ImageGenerator):
         for feature in features:
             if feature in pcd_data_for_features.keys():
                 rd = pcd_data_for_features[feature]
+            elif feature == "color":
+                rd = np.dstack((pcd_data_for_features["red"],pcd_data_for_features["green"],pcd_data_for_features["blue"],) )
             elif "gradient" in feature.lower():
                 match = ImageGenerator.REGEX_GRADIENT_PATTERN.match(feature)
                 if not match:
@@ -444,7 +457,7 @@ class SphericalImageGeneratorFromPCD(ImageGeneratorFromPCD):
         # Match the fov ratio to the image ratio and the pcd to fov
         self.fov = fov.extend_to_ratio(self.aspect_ratio)
         # self.pcd = self.pcd.sample_angles(self.fov)
-        FoVFilter(self.fov).reduce(self.pcd)
+        self.pcd = FoVFilter(self.fov).sample(self.pcd)
 
         self._coordinates_mapped_to_pixels = self._map_spherical_coordinates_to_pixel_raster()
 
@@ -466,3 +479,86 @@ class SphericalImageGeneratorFromPCD(ImageGeneratorFromPCD):
                 (self.image_resolution[1] - 1) * (self.pcd.spherical_coordinates[:, 2] - self.fov.horizontal_min)
                 / self.fov.width("rad")).astype(np.float32)
         return (elevation_pixel, horizontal_pixel)
+
+
+class OrthographicImageGeneratorFromPCD(ImageGeneratorFromPCD):
+    def __init__(self, pcd: PointCloudData, image_resolution: tuple[int, int], rasterization_method: str,
+                 minimum_nb_points: int, plane: str, roi_box: Optional[tuple[float, float, float, float]] = None,
+                 downsample: bool = True):
+        super().__init__(pcd, image_resolution, rasterization_method)
+
+        self.minimum_nb_points = minimum_nb_points
+        match plane:
+            case 'xy':
+                self.xyz_column_selection = [0,1]
+            case 'yz':
+                self.xyz_column_selection = [1,2]
+            case 'xz':
+                self.xyz_column_selection = [0,2]
+            case _:
+                raise ValueError(f"plane must be 'xy' or 'yz' or 'xz'")
+
+        self.plane = plane
+
+        if roi_box is None:
+            roi_box = np.concatenate((np.min(pcd.xyz[:,self.xyz_column_selection], axis=0),
+                                      np.max(pcd.xyz[:,self.xyz_column_selection], axis=0)))
+
+
+        min_corner = np.array(3 * (-np.inf,))
+        max_corner = np.array(3 * (np.inf,))
+
+        min_corner[self.xyz_column_selection] = roi_box[:2]
+        max_corner[self.xyz_column_selection] = roi_box[2:]
+
+
+        self.pcd = BoxFilter(min_corner, max_corner).sample(self.pcd)
+
+        if downsample:
+            meter_per_vertical_pixels =  (roi_box[2] - roi_box[0]) / image_resolution[0]
+            meter_per_horizontal_pixels = (roi_box[3] - roi_box[1]) / image_resolution[1]
+            self.pcd = VoxelDownsample(min(meter_per_vertical_pixels, meter_per_horizontal_pixels) / 2,).sample(self.pcd)
+
+        # Adjust roi_box to fit apect ratio of image_resolution
+        roi_width = roi_box[2] - roi_box[0]
+        roi_height = roi_box[3] - roi_box[1]
+        roi_box_aspect = roi_width / roi_height
+        image_resolution_aspect = image_resolution[0] / image_resolution[1]
+
+        if roi_box_aspect > image_resolution_aspect:
+            new_height = roi_width / image_resolution_aspect
+            cy = (roi_box[1] + roi_box[3]) / 2
+            roi_box[1] = cy - new_height / 2
+            roi_box[3] = cy + new_height / 2
+
+        elif roi_box_aspect < image_resolution_aspect:
+            new_width = roi_height * image_resolution_aspect
+            cx = (roi_box[0] + roi_box[2]) / 2
+            roi_box[0] = cx - new_width / 2
+            roi_box[2] = cx + new_width / 2
+
+        self.roi_box = roi_box
+
+        self._coordinates_mapped_to_pixels = self._map_spherical_coordinates_to_pixel_raster()
+        
+
+
+    def _map_to_pixel_raster(self):
+        return self._map_spherical_coordinates_to_pixel_raster()
+
+    def _map_spherical_coordinates_to_pixel_raster(self) -> tuple[np.ndarray, np.ndarray]:
+        elevation_pixel = (
+                (self.image_resolution[0] - 1) * (self.pcd.xyz[:, self.xyz_column_selection[0]] - self.roi_box[0])
+                / (self.roi_box[2] - self.roi_box[0])).astype(np.float32)
+        horizontal_pixel = (
+                (self.image_resolution[1] - 1) * (self.pcd.xyz[:, self.xyz_column_selection[1]] - self.roi_box[1])
+                / (self.roi_box[3] - self.roi_box[1])).astype(np.float32)
+        return (elevation_pixel, horizontal_pixel)
+
+
+    @property
+    def identifier(self):
+        id = f"Orthographic-plane_{self.plane}-roi_box_{self.roi_box}-resolution_{self.image_resolution[0]}x{self.image_resolution[1]}"
+        return "".join(id.split())  # Removes all whitespaces
+
+
