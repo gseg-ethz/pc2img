@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.3](https://github.com/gseg-ethz/pc2img/compare/v0.10.2...v0.10.3) (2025-04-15)
+
+
+### 🐛 Bug Fixes
+
+* Removed manifest file ([107ae10](https://github.com/gseg-ethz/pc2img/commit/107ae101f87f0f24d45b1c2e53926869fe8afdb3))
+
 ## [0.10.2](https://github.com/gseg-ethz/pc2img/compare/v0.10.1...v0.10.2) (2025-04-15)
 
 
