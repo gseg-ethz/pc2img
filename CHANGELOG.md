@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.10.4](https://github.com/gseg-ethz/pc2img/compare/v0.10.3...v0.10.4) (2025-04-15)
+
+
+### ✨ Features
+
+* Updated the changelog sections ([d32f783](https://github.com/gseg-ethz/pc2img/commit/d32f78393fb60d589c14e2b17a8e7a4dea8871ce))
+
+
+### 🐛 Bug Fixes
+
+* added current version to manifest ([3441411](https://github.com/gseg-ethz/pc2img/commit/34414119ddf9185d29985ad7159d80bf0d8771e9))
+
 ## [0.10.3](https://github.com/gseg-ethz/pc2img/compare/v0.10.2...v0.10.3) (2025-04-15)
 
 
