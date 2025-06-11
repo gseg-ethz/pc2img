@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypeVar, Generic, TYPE_CHECKING, Any, Callable, ParamSpec
+from typing import TypeVar, Generic, TYPE_CHECKING, Callable, ParamSpec
 
 if TYPE_CHECKING:
     from .interpolation import InterpolationStrategy
@@ -14,15 +14,15 @@ class StrategyRegistry(Generic[P, T]):
     def __init__(self) -> None:
         self._map: dict[str, Callable[P, T]] = {}
 
-    def register(self, name: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
+    def register(self, identifier: str) -> Callable[[Callable[P, T]], Callable[P, T]]:
         def decorator(cls: Callable[P, T]) -> Callable[P, T]:
-            self._map[name] = cls
+            self._map[identifier] = cls
             return cls
         return decorator
 
-    def create(self, name: str, *args: P.args, **kwargs: P.kwargs) ->  T:
-        cls = self._map[name]
-        return cls(*args, **kwargs)
+    def create(self, identifier: str, **kwargs: P.kwargs) -> T:  # Only allow for named arguments
+        cls = self._map[identifier]
+        return cls(**kwargs)
 
-PROJECTIONS: StrategyRegistry[Any, "ProjectionStrategy"] = StrategyRegistry()
-INTERPOLATIONS: StrategyRegistry[Any, "InterpolationStrategy"] = StrategyRegistry()
+PROJECTIONS: StrategyRegistry[str, "ProjectionStrategy"] = StrategyRegistry()
+INTERPOLATIONS: StrategyRegistry[str, "InterpolationStrategy"] = StrategyRegistry()
