@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass
 from functools import partial, reduce
@@ -26,7 +28,7 @@ from .util import convert_to_image
 logger = logging.getLogger(__name__.split(".")[0])
 
 
-@dataclass
+@dataclass(frozen=True)
 class CommonTiledImageGeneratorSettings:
     # pcd_directory: Path
     image_resolution: tuple[int, int]  # width x height
@@ -50,56 +52,103 @@ class CommonTiledImageGeneratorSettings:
                      f"{self.image_base_directory=}; {self.cache_base_directory=}")
 
 
+
+
 class CommonTiledImageGeneratorFromPCDs:
-
-    def __init__(self, pcds: dict[str, PointCloudData], config: CommonTiledImageGeneratorSettings):
-        # Generate a unique cache key
-        cache_key = self._generate_cache_key(list(pcds.keys()), config)
-        logger.debug(f"Generated cache key {cache_key}")
-        cache_file = (config.cache_base_directory / f"{cache_key}.pkl") if config.cache_base_directory else None
-
-        # Try to load from cache if the file exists
-        if cache_file and cache_file.exists():
-            logger.info(f"Loading cache file {cache_file}")
-            with open(cache_file, 'rb') as f:
-                cached_object = pickle.load(f)
-            self.__dict__.update(cached_object.__dict__)
-            return
-
-
+    def __init__(self, pcds: dict[str, PointCloudData], config: CommonTiledImageGeneratorSettings, cache_key: str):
         self.pcds = pcds
-        # self.config = config
-        self.image_base_directory = config.image_base_directory
-        self.image_resolution = config.image_resolution
-        self.angular_resolution_gon = config.angular_resolution_gon
-        self.rasterization_method = config.rasterization_method
-        self.rasterization_method_overview = config.rasterization_method_overview
-
-        self.image_base_directory = config.image_base_directory
+        self.config = config
+        # self.image_base_directory = config.image_base_directory
+        # self.image_resolution = config.image_resolution
+        # self.angular_resolution_gon = config.angular_resolution_gon
+        # self.rasterization_method = config.rasterization_method
+        # self.rasterization_method_overview = config.rasterization_method_overview
         self.cache_base_directory = config.cache_base_directory / cache_key if config.cache_base_directory else None
 
-        # self.rasterization_features = config.rasterization_features
-        # if self.rasterization_features is None:
-        #     self.rasterization_features = [
-        #         ("scalar_Intensity", ImageGenerator.NormalizationFlag.BOTH),
-        #         ("range", ImageGenerator.NormalizationFlag.NORMALIZATION)
-        #     ]
-
-        self.fov_roi = config.fov_roi
+        # self.fov_roi = config.fov_roi
         if self.fov_roi is None:
             fovs = [pcd.fov for pcd in self.pcds.values()]
-            self.fov_roi = reduce(lambda fov1, fov2: fov1.intersect(fov2), fovs)
-            # pcds_downsampled = [pcd.random_subsample(1. / 100., in_place=False) for pcd in self.pcds.values()]
-            # pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
-            # self.fov_roi = pcd_merged.fov
+            self.fov_roi = reduce(lambda f1, f2: f1.intersect(f2), fovs)
             logger.info(f"Found {self.fov_roi.as_dict('gon')=}")
 
         self.fov_structure = None
         self.common_tile_pcd = {}
-        self.cache_file = cache_file
+        self.cache_file = (
+                    config.cache_base_directory / f"{cache_key}.pkl") if config.cache_base_directory else None
 
-        # Save to cache for future use
-        self.cache_current_state()
+    @classmethod
+    def from_pcds_or_cache(cls, pcd_paths: dict[str, Path], config: CommonTiledImageGeneratorSettings) -> "CommonTiledImageGeneratorFromPCDs":
+        cache_key = cls._generate_cache_key(list(pcd_paths.keys()), config)
+        cache_file = config.cache_base_directory / f"{cache_key}.pkl" if config.cache_base_directory else None
+
+        if cache_file and cache_file.exists():
+            logger.info(f"Loading from cache: {cache_file}")
+            with open(cache_file, "rb") as f:
+                return pickle.load(f)
+
+        logger.info("No cache found. Loading PCDs and creating new instance.")
+        pcds = {name: PointCloudData.load_from_path(path) for name, path in pcd_paths.items()}
+        instance = cls(pcds, config, cache_key)
+        instance.cache_current_state()
+        return instance
+
+    @classmethod
+    def is_cached(cls, pcds_paths: list[str], config: CommonTiledImageGeneratorSettings) -> bool:
+        if not config.cache_base_directory:
+            return False
+        cache_key = cls._generate_cache_key(sorted(pcds_paths), config)
+        return (config.cache_base_directory / f"{cache_key}.pkl").exists()
+
+
+
+    # def __init__(self, pcds: dict[str, PointCloudData], config: CommonTiledImageGeneratorSettings):
+    #     # Generate a unique cache key
+    #     cache_key = self._generate_cache_key(list(pcds.keys()), config)
+    #     logger.debug(f"Generated cache key {cache_key}")
+    #     cache_file = (config.cache_base_directory / f"{cache_key}.pkl") if config.cache_base_directory else None
+    #
+    #     # Try to load from cache if the file exists
+    #     if cache_file and cache_file.exists():
+    #         logger.info(f"Loading cache file {cache_file}")
+    #         with open(cache_file, 'rb') as f:
+    #             cached_object = pickle.load(f)
+    #         self.__dict__.update(cached_object.__dict__)
+    #         return
+    #
+    #
+    #     self.pcds = pcds
+    #     # self.config = config
+    #     self.image_base_directory = config.image_base_directory
+    #     self.image_resolution = config.image_resolution
+    #     self.angular_resolution_gon = config.angular_resolution_gon
+    #     self.rasterization_method = config.rasterization_method
+    #     self.rasterization_method_overview = config.rasterization_method_overview
+    #
+    #     self.image_base_directory = config.image_base_directory
+    #     self.cache_base_directory = config.cache_base_directory / cache_key if config.cache_base_directory else None
+    #
+    #     # self.rasterization_features = config.rasterization_features
+    #     # if self.rasterization_features is None:
+    #     #     self.rasterization_features = [
+    #     #         ("scalar_Intensity", ImageGenerator.NormalizationFlag.BOTH),
+    #     #         ("range", ImageGenerator.NormalizationFlag.NORMALIZATION)
+    #     #     ]
+    #
+    #     self.fov_roi = config.fov_roi
+    #     if self.fov_roi is None:
+    #         fovs = [pcd.fov for pcd in self.pcds.values()]
+    #         self.fov_roi = reduce(lambda fov1, fov2: fov1.intersect(fov2), fovs)
+    #         # pcds_downsampled = [pcd.random_subsample(1. / 100., in_place=False) for pcd in self.pcds.values()]
+    #         # pcd_merged = PointCloudData.merge_pcd(pcds_downsampled)
+    #         # self.fov_roi = pcd_merged.fov
+    #         logger.info(f"Found {self.fov_roi.as_dict('gon')=}")
+    #
+    #     self.fov_structure = None
+    #     self.common_tile_pcd = {}
+    #     self.cache_file = cache_file
+    #
+    #     # Save to cache for future use
+    #     self.cache_current_state()
 
     def cache_current_state(self):
         if self.cache_file:
@@ -327,30 +376,3 @@ class CommonTiledImageGeneratorFromPCDs:
         image.save(overview_path.with_stem(overview_path.stem + "_annotated"))
         return
 
-
-# if __name__ == "__main__":
-#     PCD_DIR = Path(r"/scratch/31_PCProjectionImage/_data/01_scans/Axpo_May24")
-#     RESULTS_FOLDER = Path(r"/scratch/31_PCProjectionImage/_data/02_results/42_Axpo_May24/"
-#                           r"12_MinAR_6mgon_FoV_1920x4000")
-#
-#     FEATURES = [("scalar_Intensity", 2), ("range", 1), ("hillshade", 1), ("hillshade_0_0_1.0", 1),
-#                 ("hillshade_0_45_1.0", 1), ("hillshade_0_90_1.0", 1), ("hillshade_0_135_1.0", 1),
-#                 ("hillshade_0_180_1.0", 1), ("hillshade_90_0_1.0", 1), ("hillshade_90_45_1.0", 1),
-#                 ("hillshade_90_90_1.0", 1), ("hillshade_90_135_1.0", 1), ("hillshade_90_180_1.0", 1),
-#                 ("gradient_x_range", 1), ("gradient_y_range", 1), ("gradient_x_scalar_Intensity", 1),
-#                 ("gradient_y_scalar_Intensity", 1)]
-#
-#     FEATURES = [(feature, ImageGenerator.NormalizationFlag(value)) for feature, value in FEATURES]
-#
-#     SCANNER_CENTER = None
-#     FOV_ROI = None
-#
-#     RESULTS_FOLDER.mkdir(parents=True, exist_ok=True)
-#     IMAGE_RESOLUTION = (1920, 4000) # height x width
-#     ANGULAR_RESOLUTION_GON = 6e-3
-#
-#     pcds_2d = generate_tiled_images_from_pcd_folder(
-#         PCD_DIR, IMAGE_RESOLUTION, ANGULAR_RESOLUTION_GON, scanner_center=SCANNER_CENTER, fov_roi=FOV_ROI,
-#         features=FEATURES, results_folder=RESULTS_FOLDER)
-#
-#     print("Done")

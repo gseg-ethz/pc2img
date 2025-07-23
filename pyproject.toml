@@ -47,7 +47,10 @@ documentation = "https://google.com"
 
 [project.optional-dependencies]
 doc = ["sphinx ~= 5.1"]
-dev = ["black ~= 22.10"]
+dev = [
+	"black ~= 22.10",
+	"pytest"
+]
 cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
 	"cudf-cu12 ~= 24.8",
 	"cuml-cu12 ~= 24.8",

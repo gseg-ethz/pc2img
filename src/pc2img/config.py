@@ -7,6 +7,8 @@ from datetime import datetime
 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
+
+
 @dataclass(init=False)
 class PathsConf:
     results_folder: Path
@@ -37,3 +39,17 @@ class PC2IMGConf:
     paths: PathsConf
     run_parameters: RunParametersConf
 
+
+class SingletonMeta(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+class Settings(metaclass=SingletonMeta):
+    def __init__(self):
+        self.preset_automatic_offloading = False
+
+SETTINGS = Settings()

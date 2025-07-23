@@ -4,8 +4,8 @@ from typing import Optional, Literal, Any
 import numpy as np
 from numpy.typing import NDArray
 
-from pchandler.v2.geometry import PointCloudData
-from pchandler.v2.geometry.filters import FoVFilter, BoxFilter
+from pchandler.geometry import PointCloudData
+from pchandler.geometry.filters import FoVFilter, BoxFilter
 from pchandler.fov import FoV
 
 from .registry import PROJECTIONS

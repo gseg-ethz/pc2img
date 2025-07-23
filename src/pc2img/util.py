@@ -15,7 +15,8 @@ def nanconv(a: NDArray, k: NDArray, replace_nan: Optional[float] = None) -> NDAr
 
     flat = convolve2d(on, k, mode="same").astype(np.float16)
 
-    c = np.divide(convolve2d(a, k, mode="same").astype(np.float16), flat).astype(np.float16)
+    c = np.full(flat.shape, np.nan, dtype=np.float16)
+    np.divide(convolve2d(a, k, mode="same").astype(np.float16), flat, out=c, where=(flat != 0))
     if replace_nan is not None:
         np.nan_to_num(c, copy=False, nan=replace_nan)
     return c

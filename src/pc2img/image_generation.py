@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
 from functools import partial
+from itertools import product
 import logging
 import re
 from typing import Iterable, Optional
@@ -10,12 +11,14 @@ from cuml.neighbors import NearestNeighbors
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import Delaunay
+from tqdm import tqdm
 
 from pchandler.geometry import PointCloudData
 from pchandler.geometry.filters import FoVFilter, BoxFilter, VoxelDownsample
 from pchandler.fov import FoV
 
 from .util import nanconv, gaussian_kernel
+from .delaunay_tests import delaunay_query_parallel, delaunay_query_threads
 
 
 logger = logging.getLogger(__name__.split(".")[0])
@@ -52,9 +55,13 @@ class ImageGenerator(ABC):
         return self.image_resolution[1] / self.image_resolution[0]
 
     @staticmethod
-    def calculate_triangulation(points: np.ndarray | tuple[np.ndarray, np.ndarray],
-                                xi: np.ndarray | tuple[np.ndarray, np.ndarray],
-                                method: str) -> tuple[tuple[np.ndarray, np.ndarray, np.ndarray], np.ndarray, np.ndarray]:
+    def calculate_triangulation(
+            points: np.ndarray | tuple[np.ndarray, np.ndarray],
+            xi: np.ndarray | tuple[np.ndarray, np.ndarray],
+            method: str,
+            batch_size: int = 5_000_000
+    ) -> tuple[tuple[np.ndarray, np.ndarray, np.ndarray], np.ndarray, np.ndarray]:
+
         logging.debug(f"Starting calculation of triangulation with method: {method}.")
 
         if isinstance(points, tuple):
@@ -71,8 +78,24 @@ class ImageGenerator(ABC):
             case 'knn':
                 knn = NearestNeighbors(n_neighbors=3)
                 knn.fit(points)
-                distances, indices = knn.kneighbors(xi)
+
+                nb_pixels = xi.shape[0]
+                if not batch_size or nb_pixels <= batch_size:
+                    distances, indices = knn.kneighbors(xi)
+                else:
+                    distances = np.empty((nb_pixels, 3), dtype=np.float32)
+                    indices = np.empty((nb_pixels, 3), dtype=np.int32)
+
+                    for start in tqdm(range(0, nb_pixels, batch_size),
+                                      disable=not (logger.getEffectiveLevel() <= logging.INFO),
+                                      desc="KNN triangulation batches"):
+                        end = min(start + batch_size, nb_pixels)
+                        dists_chunck, indices_chunck = knn.kneighbors(xi[start:end])
+                        distances[start:end] = distances[start:end]
+                        indices[start:end] = indices_chunck
+
                 simplices = points[indices[:, 0]], points[indices[:, 1]], points[indices[:, 2]]
+
             case 'delaunay':
                 tri = Delaunay(points)
                 simplex_index = tri.find_simplex(xi)
@@ -83,6 +106,104 @@ class ImageGenerator(ABC):
                 XB = np.repeat(xi, repeats=3, axis=0)
                 distances = np.linalg.norm(XA - XB, axis=1).reshape(-1, 3)
                 distances[simplex_index == -1] = np.inf
+
+            case 'delaunay_block':
+                Nx, Ny = 8, 8  # number of blocks in x and y
+                margin = 0.01  # fraction of block‐size to overlap
+                # global bounds and block sizes
+                simplices, indices, distances = delaunay_query_threads(
+                    points, xi,
+                    Nx=Nx, Ny=Ny, margin=0.01,
+                    n_workers=12
+                )
+
+            case 'test_gpu_delaunay':
+
+                # import cupy as cp
+                # from cupyx.scipy.spatial import Delaunay
+                Nx, Ny = 8, 8  # number of blocks in x and y
+                margin = 0.01  # fraction of block‐size to overlap
+                dtype = np.float32  # choose float32 for less GPU memory
+
+                # 1) global bounds and block sizes
+                xmin, ymin = points.min(axis=0)
+                xmax, ymax = points.max(axis=0)
+                bx = (xmax - xmin) / Nx
+                by = (ymax - ymin) / Ny
+
+                m = xi.shape[0]
+                # prepare output arrays
+                indices = -np.ones((m, 3), dtype=int)
+                distances = np.full((m, 3), np.inf, dtype=float)
+
+                # 2) loop over blocks
+                for i, j in tqdm(product(range(Nx), range(Ny)), total=Nx * Ny, desc="GPU blocks"):
+                    # core block
+                    x0c = xmin + i * bx;
+                    x1c = x0c + bx
+                    y0c = ymin + j * by;
+                    y1c = y0c + by
+                    # extended block for triangulation
+                    x0e = x0c - margin * bx;
+                    x1e = x1c + margin * bx
+                    y0e = y0c - margin * by;
+                    y1e = y1c + margin * by
+
+                    # 2a) pick the points in the extended block
+                    mask_ext = (
+                            (points[:, 0] >= x0e) & (points[:, 0] <= x1e)
+                            & (points[:, 1] >= y0e) & (points[:, 1] <= y1e)
+                    )
+                    idxs_ext = np.nonzero(mask_ext)[0]
+                    if idxs_ext.size < 3:
+                        continue
+
+                    # 2b) GPU‐Delaunay the block
+                    pts_block = cp.asarray(points[idxs_ext], dtype=dtype)
+                    tri_block = Delaunay(pts_block)
+                    verts = tri_block.simplices  # shape (n_tri, 3)
+
+                    # 2c) pick only the xi in *this block’s core* region
+                    mask_xi_core = (
+                            (xi[:, 0] >= x0c) & (xi[:, 0] <= x1c)
+                            & (xi[:, 1] >= y0c) & (xi[:, 1] <= y1c)
+                    )
+                    idxs_xi_core = np.nonzero(mask_xi_core)[0]
+                    if idxs_xi_core.size == 0:
+                        continue
+
+                    # 2d) locate those xi
+                    xi_gpu = cp.asarray(xi[idxs_xi_core], dtype=cp.float64)
+                    local_simp = tri_block.find_simplex(xi_gpu).get()  # (-1 if outside)
+
+                    # 2e) vectorized mapping & distance‐compute
+                    #   local_simp:  (n_core,)  int array on CPU after .get()
+                    #   idxs_xi_core: (n_core,) global-xi indices
+
+                    valid = local_simp >= 0
+                    if valid.any():
+                        # which query points are actually in some simplex
+                        qi_core = idxs_xi_core[valid]  # shape (v,)
+
+                        # get the GPU‐simplices for those valid ones, move to CPU
+                        # verts is GPU array of shape (n_tri,3)
+                        local_tris = verts[local_simp[valid]].get()  # shape (v,3)
+
+                        # map block‐local verts → global point indices
+                        global_tris = idxs_ext[local_tris]  # shape (v,3)
+                        indices[qi_core] = global_tris  # fill your m×3 output
+
+                        # and distances: shape (v,3,2) minus (v,1,2) → norm→ (v,3)
+                        P = points[global_tris]  # (v,3,2)
+                        Q = xi[qi_core][:, None, :]  # (v,1,2)
+                        distances[qi_core] = np.linalg.norm(P - Q, axis=2)
+
+                # 3) assemble the same “simplices” tuple as before
+                simplices = (
+                    points[indices[:, 0]],
+                    points[indices[:, 1]],
+                    points[indices[:, 2]],
+                )
 
             case _:
                 raise ValueError(f"{method} is not a correct method")
@@ -164,20 +285,38 @@ class ImageGenerator(ABC):
 
         detT = (v1[:, 1] - v2[:, 1]) * (v0[:, 0] - v2[:, 0]) + (v2[:, 0] - v1[:, 0]) * (v0[:, 1] - v2[:, 1])
 
-        alpha = ((v1[:, 1] - v2[:, 1]) * (xi[:, 0] - v2[:, 0]) + (v2[:, 0] - v1[:, 0]) * (xi[:, 1] - v2[:, 1])) / detT
-        beta = ((v2[:, 1] - v0[:, 1]) * (xi[:, 0] - v2[:, 0]) + (v0[:, 0] - v2[:, 0]) * (xi[:, 1] - v2[:, 1])) / detT
+        alpha = np.full_like(detT, fill_value=np.nan)
+        beta = np.full_like(detT, fill_value=np.nan)
+
+        np.divide(
+            ((v1[:, 1] - v2[:, 1]) * (xi[:, 0] - v2[:, 0]) + (v2[:, 0] - v1[:, 0]) * (xi[:, 1] - v2[:, 1])),
+            detT,
+            out=alpha,
+            where = (detT != 0)
+        )
+        np.divide(
+            ((v2[:, 1] - v0[:, 1]) * (xi[:, 0] - v2[:, 0]) + (v0[:, 0] - v2[:, 0]) * (xi[:, 1] - v2[:, 1])),
+            detT,
+            out=beta,
+            where = (detT != 0)
+        )
+
         gamma = 1 - alpha - beta
-        weights = np.stack((alpha, beta, gamma), axis=1)
+        barycentric_weights = np.stack((alpha, beta, gamma), axis=1)
+
+
+
 
         if filter_distance:
-            filter_indices = np.min(distances, axis=1) > filter_distance
+            filter_indices = np.nanmin(distances, axis=1) > filter_distance
         else:
             filter_indices = np.isinf(distances).any(axis=1)
 
         interpolation_results = []
         for v in values:
-            interpolation_values = np.sum(v[indices] * weights, axis=1)
+            interpolation_values = np.sum(v[indices] * barycentric_weights, axis=1)
             interpolation_values[filter_indices] = fill_value
+            interpolation_values[np.isnan(gamma)] = fill_value
 
             if "original_shape" in locals():
                 interpolation_values = np.reshape(interpolation_values, newshape=original_shape)
@@ -244,9 +383,22 @@ class ImageGeneratorFromPCD(ImageGenerator):
                     self._interpolation = partial(self.barycentric_interpolation, simplices = simplices, indices=indices,
                                                   distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
                                                   fill_value=fill_value)
+                case 'delaunay_block':
+                    simplices, indices, distances = self.calculate_triangulation(self._coordinates_mapped_to_pixels,
+                                                                                 self._pixel_raster, "delaunay_block")
+                    self._interpolation = partial(self.barycentric_interpolation, simplices = simplices, indices=indices,
+                                                  distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
+                                                  fill_value=fill_value)
                 case 'bary_knn':
                     simplices, indices, distances = self.calculate_triangulation(self._coordinates_mapped_to_pixels,
                                                                                  self._pixel_raster, "knn")
+                    self._interpolation = partial(self.barycentric_interpolation, simplices=simplices, indices=indices,
+                                                  distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
+                                                  fill_value=fill_value)
+                case 'test_gpu_delaunay':
+
+                    simplices, indices, distances = self.calculate_triangulation(self._coordinates_mapped_to_pixels,
+                                                                                 self._pixel_raster, "test_gpu_delaunay")
                     self._interpolation = partial(self.barycentric_interpolation, simplices=simplices, indices=indices,
                                                   distances=distances, filter_distance=filter_distance, xi=self._pixel_raster,
                                                   fill_value=fill_value)
@@ -444,7 +596,7 @@ class ImageGeneratorFromPCD(ImageGenerator):
 class SphericalImageGeneratorFromPCD(ImageGeneratorFromPCD):
 
     def __init__(self, pcd: PointCloudData, image_resolution: tuple[int, int], rasterization_method: str,
-                 minimum_nb_points: int, fov: Optional[FoV] = None):
+                 minimum_nb_points: int = 0, fov: Optional[FoV] = None):
 
 
         super().__init__(pcd, image_resolution, rasterization_method)

@@ -1,26 +1,27 @@
 from abc import ABC, abstractmethod
 from typing import Literal, Optional
 from pathlib import Path
+from dataclasses import dataclass
 
 import numpy as np
-from numpy._typing import DTypeLike
-from numpy.typing import NDArray
+from numpy.typing import DTypeLike, NDArray
+from numpy.lib.mixins import NDArrayOperatorsMixin
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, CloughTocher2DInterpolator
 from scipy.spatial import Delaunay
 
 from .registry import INTERPOLATIONS
-from .triangulation import TriangulationStrategy, DelaunayTriangulation
 from ..image_cache.lazy_disk_cache import LazyDiskCache
+from ...config import SETTINGS
 
 class InterpolationStrategy(ABC):
     @abstractmethod
     def interpolate(
         self,
-        values: np.ndarray,
-        points2d: np.ndarray,
-        grid_x: np.ndarray,
-        grid_y: np.ndarray
-    ) -> np.ndarray:
+        values: NDArray,
+        points2d: NDArray,
+        grid_x: NDArray,
+        grid_y: NDArray
+    ) -> NDArray:
         """Interpolate point-values onto a grid."""
 
 @INTERPOLATIONS.register("linear")
@@ -41,14 +42,14 @@ class CubicInterpolation(InterpolationStrategy):
         interp = CloughTocher2DInterpolator(points2d, values)
         return interp(grid_x, grid_y)
 
-class _DiskBackedNDArray(LazyDiskCache):
+class _DiskBackedNDArray(LazyDiskCache, NDArrayOperatorsMixin):
 
     def __init__(
             self,
             array_data: NDArray,
             enable_caching: bool = True,
             cache_path: Optional[Path] = None,
-            automatic_offloading: bool = True,
+            automatic_offloading: bool = SETTINGS.preset_automatic_offloading,
             purge_disk_on_gc: bool = True
 
     ) -> None:
@@ -65,6 +66,12 @@ class _DiskBackedNDArray(LazyDiskCache):
         arr = self._data
         return arr.astype(dtype, copy=True) if dtype else arr.copy()
 
+
+    @LazyDiskCache.ensure_loaded
+    def __getitem__(self, key):
+        return self._data[key]
+
+
     def _describe_buffer(self) -> tuple[tuple[int, ...], DTypeLike, np.ndarray]:
         return self._shape, self._dtype, self._data
 
@@ -80,33 +87,41 @@ class _DiskBackedNDArray(LazyDiskCache):
 
 @INTERPOLATIONS.register("delaunay")
 class DelaunayInterpolation(InterpolationStrategy):
-    grid_x: Optional[_DiskBackedNDArray] = None
-    grid_y: Optional[_DiskBackedNDArray] = None
-    points2d: Optional[_DiskBackedNDArray] = None
 
-    bary: Optional[_DiskBackedNDArray] = None
-    verts: Optional[_DiskBackedNDArray] = None
-    simplices: Optional[_DiskBackedNDArray] = None
-
+    @dataclass(frozen=True)
+    class TriangulationData:
+        bary: _DiskBackedNDArray
+        verts: _DiskBackedNDArray
+        simplices: _DiskBackedNDArray
 
 
     def __init__(self):
-        self._triangulation_precalc: Optional[dict[Literal["grid_x", "grid_y", "points2d", "bary", "verts", "simplices"], NDArray]] = None
+        self._triangulation_precalc: dict[int, DelaunayInterpolation.TriangulationData] = {}
+
+    @staticmethod
+    def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y:NDArray) -> int:
+        return hash((hash(points2d.tobytes()), hash(grid_x.tobytes()), hash(grid_y.tobytes())))
 
 
-    def interpolate(self, values, points2d, grid_x, grid_y, fill_value: float = np.nan) -> NDArray:
-        if (self._triangulation_precalc is None  #Todo: Rework
-                or not np.allclose(points2d, self.points2d)
-                or not np.allclose(grid_x, self._triangulation_precalc["grid_x"])
-                or not np.allclose(grid_y, self._triangulation_precalc["grid_y"])
-        ):
-            self._precalc_traingulation(points2d, grid_x, grid_y)
+    def interpolate(
+            self,
+            values: NDArray,
+            points2d: NDArray,
+            grid_x: NDArray,
+            grid_y: NDArray,
+            fill_value: float = np.nan
+    ) -> NDArray:
 
-        fill_value = np.nan
+        hash_id = self._hash_settings(points2d, grid_x, grid_y)
+        if hash_id not in self._triangulation_precalc:
+            self._precalc_traingulation(points2d, grid_x, grid_y, hash_id)
+
+        triangulation_data = self._triangulation_precalc[hash_id]
+
         grid = np.vstack((grid_x.ravel(), grid_y.ravel())).T
-        simplices = self._triangulation_precalc["simplices"]
-        verts = self._triangulation_precalc["verts"]
-        bary = self._triangulation_precalc["bary"]
+        simplices = triangulation_data.simplices
+        verts = triangulation_data.verts
+        bary = triangulation_data.bary
 
 
         nQ = grid.shape[0]
@@ -121,7 +136,13 @@ class DelaunayInterpolation(InterpolationStrategy):
         return result.reshape(grid_x.shape)
 
 
-    def _precalc_traingulation(self, points2d, grid_x, grid_y):
+    def _precalc_traingulation(
+            self,
+            points2d: NDArray,
+            grid_x: NDArray,
+            grid_y: NDArray,
+            hash_id: int
+    ) -> None:
         # 1) Build once
         tri = Delaunay(points2d)
         ndim = points2d.shape[1]
@@ -137,14 +158,14 @@ class DelaunayInterpolation(InterpolationStrategy):
         bary[:, -1] = 1 - bary_partial.sum(axis=1)
         verts = tri.simplices[simplices.clip(0)]  # for outside, we’ll ignore these rows
 
-        self._triangulation_precalc = {
-            "grid_x": grid_x,
-            "grid_y": grid_y,
-            "points2d": points2d,
-            "bary": bary,
-            "verts": verts,
-            "simplices": simplices,
-        }
+
+        self._triangulation_precalc[
+            hash_id
+        ] = DelaunayInterpolation.TriangulationData(
+            _DiskBackedNDArray(bary),
+            _DiskBackedNDArray(verts),
+            _DiskBackedNDArray(simplices)
+        )
 
 
 

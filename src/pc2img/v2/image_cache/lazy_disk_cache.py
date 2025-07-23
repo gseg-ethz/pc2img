@@ -11,6 +11,8 @@ import os
 import numpy as np
 from numpy.typing import NDArray, DTypeLike
 
+from ...config import SETTINGS
+
 logger = logging.getLogger(__name__)
 
 class LazyDiskCache(ABC):
@@ -20,7 +22,7 @@ class LazyDiskCache(ABC):
             self,
             enable_caching: bool = True,
             cache_path: Optional[Path] = None,
-            automatic_offloading: bool = False,
+            automatic_offloading: bool = SETTINGS.preset_automatic_offloading,
             purge_disk_on_gc: bool = True,
     ) -> None:
         self._enable_caching = enable_caching

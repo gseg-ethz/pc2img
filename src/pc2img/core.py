@@ -47,6 +47,9 @@ class PC2IMGRunSettings:
     rasterization_features: Optional[Iterable[tuple[str, ImageGenerator.NormalizationFlag]]] = None
 
 
+
+
+
 @dataclass(init=False)
 class PCDImageLink:
     pcd: PointCloudData

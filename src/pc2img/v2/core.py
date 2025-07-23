@@ -15,7 +15,6 @@ from .features.registry import FEATURES
 from .image_cache.disk_backed_image_data import DiskBackedImageData
 
 
-# REGEX_GRADIENT_PATTERN = re.compile(r"^gradient_(?P<axis>[xy])_(?P<feature>.+)$")
 
 class PointCloudImageGenerator:
     def __init__(
