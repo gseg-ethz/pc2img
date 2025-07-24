@@ -9,9 +9,13 @@ from numpy.lib.mixins import NDArrayOperatorsMixin
 from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, CloughTocher2DInterpolator
 from scipy.spatial import Delaunay
 
-from .registry import INTERPOLATIONS
+from GSEGUtils.config import get_defaults, CacheDefaults
+
 from pc2img.image_cache.lazy_disk_cache import LazyDiskCache
-from _old.v1.config import SETTINGS
+from .registry import INTERPOLATIONS
+
+DEFAULT: CacheDefaults = get_defaults()
+
 
 class InterpolationStrategy(ABC):
     @abstractmethod
@@ -49,7 +53,7 @@ class _DiskBackedNDArray(LazyDiskCache, NDArrayOperatorsMixin):
             array_data: NDArray,
             enable_caching: bool = True,
             cache_path: Optional[Path] = None,
-            automatic_offloading: bool = SETTINGS.preset_automatic_offloading,
+            automatic_offloading: bool = DEFAULT.preset_automatic_offloading,
             purge_disk_on_gc: bool = True
 
     ) -> None:

@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
 import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import numpy as np
 from pchandler.geometry import PointCloudData
+
+if TYPE_CHECKING:
+    from .manager import FeatureManager
 
 class BaseFeatureStrategy(ABC):
     """Produces a 1D array of length N (per point)."""

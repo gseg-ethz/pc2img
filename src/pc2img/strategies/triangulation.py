@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import Delaunay
 
+
 class TriangulationStrategy(ABC):
     @abstractmethod
     def triangulate(

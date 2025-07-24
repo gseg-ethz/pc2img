@@ -1,14 +1,17 @@
 from pathlib import Path
 from typing import Optional
+
 import numpy as np
 from numpy.typing import NDArray
-from .core import BaseFeatureStrategy
 
-from .registry import FEATURES, FeatureRegistry, FeatureSpec
+from pchandler.geometry import PointCloudData
+
 from pc2img.image_cache import DiskBackedImageData
 from pc2img.image_cache import DiskBackedImageStore
 
-from pchandler.geometry import PointCloudData
+from .registry import FEATURES, FeatureRegistry, FeatureSpec
+from .core import BaseFeatureStrategy
+
 
 class FeatureManager:
     def __init__(

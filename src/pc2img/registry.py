@@ -1,8 +1,5 @@
 from pc2img.core import PointCloudImageGenerator
 from pc2img.strategies.registry import PROJECTIONS, INTERPOLATIONS
-# from .strategies.projection import ProjectionStrategy
-# from .strategies.interpolation import InterpolationStrategy
-# from .strategies.registry import StrategyRegistry
 
 
 # Factory for assembling a configured generator

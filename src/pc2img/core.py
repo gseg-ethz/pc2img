@@ -2,12 +2,12 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
+
 from pchandler.geometry import PointCloudData
+
 from pc2img.strategies.projection import ProjectionStrategy
 from pc2img.strategies.interpolation import InterpolationStrategy
-
 from pc2img.features.manager import FeatureManager
-
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
 
 
