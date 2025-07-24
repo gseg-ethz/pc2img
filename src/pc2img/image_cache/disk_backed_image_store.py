@@ -7,27 +7,31 @@ from typing import Dict, Iterator, Optional, Union, Any
 import numpy as np
 from numpy.typing import NDArray
 
-
 from .disk_backed_image_data import DiskBackedImageData
-from ..image_generation import ImageGenerator, ImageGeneratorFromPCD
+
 
 logger = logging.getLogger(__name__.split(".")[0])
 
 class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
     def __init__(
             self,
+            enable_caching: bool = True,
             cache_dir: Optional[Path] = None,
-            automatic_offloading: bool = False
+            automatic_offloading: bool = False,
+            purge_disk_on_gc: bool = True,
     ) -> None:
         self._data: Dict[str, Optional[DiskBackedImageData]] = {}
+        self._enable_caching = enable_caching
         self._cache_dir = cache_dir
         self._automatic_offloading = automatic_offloading and cache_dir is not None
+        self._purge_disk_on_gc = purge_disk_on_gc
+
         if self._cache_dir is not None:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
 
     def __getitem__(self, key: str) -> DiskBackedImageData:
-        if key not in self._data or self._data[key] is None:
-            self.fetch_image(key)
+        # if key not in self._data or self._data[key] is None:
+        #     self.fetch_image(key)
 
         return self._data[key]
 
@@ -51,46 +55,60 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
     def _get_pickle_path(self, feature: str) -> Path:
         return self._cache_dir / f"{feature}.pkl"
 
-    def fetch_image(self, feature: str) -> None:
-        image_data_cache_path = self._get_pickle_path(feature) if self._cache_dir else None
-        if image_data_cache_path and image_data_cache_path.is_file():
-            with open(image_data_cache_path, "rb") as f:
-                self._data[feature] = pickle.load(f)
-            logger.debug(f"Loaded ImageData for {feature=} from {image_data_cache_path}")
-            return
+    def add_image_to_store(
+            self,
+            img_name: str,
+            img_data: NDArray,
+            enable_caching: Optional[bool] = None,
+            automatic_offloading: Optional[bool] = None,
+            purge_disk_on_gc: Optional[bool] = None,
+    ) -> None:
 
-        if isinstance(self._image_generator, ImageGeneratorFromPCD):
-            self._create_image_from_pcd(feature, image_data_cache_path)
-        else:
-            logger.error("Not implemented")
-            raise NotImplementedError
+        self._data[img_name] = DiskBackedImageData(
+            img_data,
+            enable_caching if enable_caching is not None else self._enable_caching,
+            self._cache_dir / f"{img_name}.pkl" if self._cache_dir else None,
+            automatic_offloading if automatic_offloading is not None else self._automatic_offloading,
+            purge_disk_on_gc if purge_disk_on_gc is not None else self._purge_disk_on_gc
+        )
 
-    def _create_image_from_pcd(self, feature: str, image_data_path: Optional[Path]) -> None:
-        image_generator: ImageGeneratorFromPCD = self._image_generator
-        image_data: dict[str, NDArray[np.generic]] = image_generator.project_and_rasterize(feature)
-        if image_data is None:
-            logger.warning(f"PointCloudData has no scalar feature {feature} available.")
-            return
-        self._data[feature] = DiskBackedImageData(image_data[feature], image_data_path, self._automatic_offloading)
+    # def fetch_image(self, feature: str) -> None:
+    #     image_data_cache_path = self._get_pickle_path(feature) if self._cache_dir else None
+    #     if image_data_cache_path and image_data_cache_path.is_file():
+    #         with open(image_data_cache_path, "rb") as f:
+    #             self._data[feature] = pickle.load(f)
+    #         logger.debug(f"Loaded ImageData for {feature=} from {image_data_cache_path}")
+    #         return
+    #
+    #     if isinstance(self._image_generator, ImageGeneratorFromPCD):
+    #         self._create_image_from_pcd(feature, image_data_cache_path)
+    #     else:
+    #         logger.error("Not implemented")
+    #         raise NotImplementedError
+    #
+    # def _create_image_from_pcd(self, feature: str, image_data_path: Optional[Path]) -> None:
+    #     image_generator: ImageGeneratorFromPCD = self._image_generator
+    #     image_data: dict[str, NDArray[np.generic]] = image_generator.project_and_rasterize(feature)
+    #     if image_data is None:
+    #         logger.warning(f"PointCloudData has no scalar feature {feature} available.")
+    #         return
+    #     self._data[feature] = DiskBackedImageData(image_data[feature], image_data_path, self._automatic_offloading)
 
     @property
-    def image_data(self) -> DiskBackedImageData:
+    def image_data(self) -> dict[str, Optional[DiskBackedImageData]]:
         return self._data
 
     @property
     def cache_dir(self) -> Optional[Path]:
         return self._cache_dir
 
-    @property
-    def image_generator(self) -> ImageGenerator:
-        return self._image_generator
 
-    @property
-    def identifier(self) -> str:
-        return self._image_generator.identifier
-
-    def __repr__(self):
-        return f"Factory for {self.identifier} with available images for {list(self._data.keys())}"
+    # @property
+    # def identifier(self) -> str:
+    #     return self._image_generator.identifier
+    #
+    # def __repr__(self):
+    #     return f"Factory for {self.identifier} with available images for {list(self._data.keys())}"
 
     def keys(self) -> list[str]:
         """

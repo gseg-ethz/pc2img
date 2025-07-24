@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Literal, Optional
+from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -10,8 +10,8 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, Cloug
 from scipy.spatial import Delaunay
 
 from .registry import INTERPOLATIONS
-from ..image_cache.lazy_disk_cache import LazyDiskCache
-from ...config import SETTINGS
+from pc2img.image_cache.lazy_disk_cache import LazyDiskCache
+from _old.v1.config import SETTINGS
 
 class InterpolationStrategy(ABC):
     @abstractmethod

@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Any, Dict, Set, Optional
+from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
-from .core import BaseFeatureStrategy, DerivativeFeatureStrategy
+from .core import BaseFeatureStrategy
 
 from .registry import FEATURES, FeatureRegistry, FeatureSpec
-from ..image_cache.disk_backed_image_data import DiskBackedImageData
-from ..image_cache.disk_backed_image_store import DiskBackedImageStore
+from pc2img.image_cache import DiskBackedImageData
+from pc2img.image_cache import DiskBackedImageStore
 
 from pchandler.geometry import PointCloudData
 

@@ -4,7 +4,7 @@ __all__ = ["image_generation", "tiled_image_generation", "__version__",
 
 import logging
 
-from .core import (
+from _old.v1.core import (
     PC2IMGRunSettings,
     PCDImageLink,
     ImageStack,
