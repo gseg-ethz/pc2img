@@ -14,8 +14,8 @@ from .registry import FEATURES
 class RangeFeature(BaseFeatureStrategy):
     regex_pattern = re.compile(r"^range$")
 
-    def compute(self, pcd, _):
-        return pcd.spherical_coordinates[:, 0]
+    def compute(self, pcd, _) -> NDArray:
+        return pcd.r
 
 
 @FEATURES.register(default=True)
@@ -29,8 +29,8 @@ class ScalarFieldFeature(BaseFeatureStrategy):
     def __init__(self, feature: str):
         self.feature = feature
 
-    def compute(self, pcd: PointCloudData, _) -> np.ndarray:
+    def compute(self, pcd: PointCloudData, _) -> NDArray:
         try:
-            return pcd.scalar_fields[self.feature].data
+            return np.asarray(pcd.scalar_fields[self.feature])
         except KeyError as e:
             raise ValueError(f"Scalar field '{self.feature}' not found on PointCloudData.") from e

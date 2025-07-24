@@ -14,8 +14,8 @@ from scipy.spatial import Delaunay
 from tqdm import tqdm
 
 from pchandler.geometry import PointCloudData
-from pchandler.geometry.filters import FoVFilter, BoxFilter, VoxelDownsample
-from pchandler.fov import FoV
+from pchandler.filters import FoVFilter, BoxFilter, VoxelDownsample
+from pchandler.geometry.fov import FoV
 
 from .util import nanconv, gaussian_kernel
 from .delaunay_tests import delaunay_query_parallel, delaunay_query_threads

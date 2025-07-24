@@ -27,7 +27,7 @@ import tifffile
 
 import pchandler as pch
 from pchandler.geometry import PointCloudData
-from pchandler.fov import FoV
+from pchandler.geometry.fov import FoV
 
 
 from .image_generation import ImageGenerator, ImageGeneratorFromPCD

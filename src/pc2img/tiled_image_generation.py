@@ -14,7 +14,7 @@ from PIL import Image, ImageDraw, ImageFont
 import imageio.v3 as iio  # TODO: Remove after meeting
 
 import pchandler as pch
-from pchandler.fov import FoV, FoVTree
+from pchandler.geometry.fov import FoV, FoVTree
 from pchandler.geometry import PointCloudData
 from pchandler.geometry.splitter import FoVTreePointCloudSplitter
 

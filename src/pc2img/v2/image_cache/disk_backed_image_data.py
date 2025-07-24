@@ -9,11 +9,11 @@ import numpy as np
 from numpy.typing import NDArray
 from numpy.lib.mixins import NDArrayOperatorsMixin
 
-from .lazy_disk_cache import LazyDiskCache
+from GSEGUtils.lazy_disk_cache import LazyDiskCache
 from ...util import convert_to_image
 
 
-class DiskBackedImageData(NDArrayOperatorsMixin, LazyDiskCache):
+class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     __array_priority__ = 1000
 
     def __init__(
@@ -28,7 +28,12 @@ class DiskBackedImageData(NDArrayOperatorsMixin, LazyDiskCache):
         self._image_data = image_data
         self._shape = image_data.shape
         self._dtype = image_data.dtype
-        super().__init__(enable_caching, cache_path, automatic_offloading, purge_disk_on_gc)
+        super().__init__(
+            enable_caching = enable_caching,
+            cache_path=cache_path,
+            purge_disk_on_gc=purge_disk_on_gc,
+            preset_automatic_offloading=automatic_offloading
+        )
 
     @property
     def data(self):

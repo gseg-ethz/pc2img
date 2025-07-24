@@ -5,8 +5,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from pchandler.geometry import PointCloudData
-from pchandler.geometry.filters import FoVFilter, BoxFilter
-from pchandler.fov import FoV
+from pchandler.filters import FoVFilter, BoxFilter
+from pchandler.geometry.fov import FoV
 
 from .registry import PROJECTIONS
 
@@ -69,7 +69,7 @@ class SphericalProjection(ProjectionStrategy):
             else np.ones((pcd.nbPoints,), dtype=bool)
 
 
-        return pcd.spherical_coordinates[mask, -1:0:-1], mask
+        return pcd.spher[mask, 1:], mask
 
 
 @PROJECTIONS.register("orthographic")
