@@ -53,7 +53,7 @@ class _DiskBackedNDArray(LazyDiskCache, NDArrayOperatorsMixin):
             array_data: NDArray,
             enable_caching: bool = True,
             cache_path: Optional[Path] = None,
-            automatic_offloading: bool = DEFAULT.preset_automatic_offloading,
+            automatic_offloading: bool = DEFAULT["preset_automatic_offloading"],
             purge_disk_on_gc: bool = True
 
     ) -> None:
