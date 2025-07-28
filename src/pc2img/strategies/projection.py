@@ -15,23 +15,33 @@ ProjectionName = Literal["spherical", "orthographic"]
 
 class ProjectionStrategy(ABC):
 
-    # @classmethod
-    # def __get_validators__(cls) -> Generator[Callable, None, None]:
-    #     yield cls.validate
-    #
-    # @classmethod
-    # def validate(cls, value: Any) -> Self:
-    #     if isinstance(value, cls):
-    #         return value
-    #     if isinstance(value, str):
-    #         try:
-    #             return PROJECTIONS.
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, value: Any, _) -> Self:
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, str):
+            return PROJECTIONS.create(value)
+        if (
+                isinstance(value, tuple)
+                and len(value) == 2
+                and isinstance(value[0], str)
+                and isinstance(value[1], dict)
+        ):
+            key, kwargs = value
+            return PROJECTIONS.create(key, **kwargs)
+
+        raise TypeError(f"Cannot interpret {value!r} as a {cls.__name__} strategy")
+
 
     @abstractmethod
     def project_raw(
         self,
         pcd: PointCloudData,
-    ) -> tuple[NDArray, NDArray]:
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         """
         Compute raw 2D coordinates in model space and a mask of valid points.
         Returns:
@@ -130,4 +140,5 @@ class OrthographicProjection(ProjectionStrategy):
         else:
             mask = np.ones((pcd.nbPoints,), dtype=bool)
 
+        # Todo: Update to pass min and max back!
         return pcd.xyz[mask, self._xyz_column_selection], mask

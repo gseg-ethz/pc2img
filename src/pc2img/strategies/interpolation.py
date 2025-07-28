@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, Any, Generator, Callable, Self
 from pathlib import Path
 from dataclasses import dataclass
 import logging
@@ -22,6 +22,28 @@ DEFAULT: CacheDefaults = get_defaults()
 InterpolationName = Literal["linear", "nearest_neighbor", "cubic", "delaunay"]
 
 class InterpolationStrategy(ABC):
+
+    @classmethod
+    def __get_validators__(cls) -> Generator[Callable, None, None]:
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, value: Any, _) -> Self:
+        if isinstance(value, cls):
+            return value
+        if isinstance(value, str):
+            return INTERPOLATIONS.create(value)
+        if (
+                isinstance(value, tuple)
+                and len(value) == 2
+                and isinstance(value[0], str)
+                and isinstance(value[1], dict)
+        ):
+            key, kwargs = value
+            return INTERPOLATIONS.create(key, **kwargs)
+
+        raise TypeError(f"Cannot interpret {value!r} as a {cls.__name__} strategy")
+
     @abstractmethod
     def interpolate(
         self,

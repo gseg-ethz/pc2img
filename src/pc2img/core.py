@@ -1,18 +1,42 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TypeVar, Any, overload
 
+from pydantic import ConfigDict, validate_call
 import numpy as np
 
 from pchandler.geometry import PointCloudData
 
-from pc2img.strategies.projection import ProjectionStrategy
-from pc2img.strategies.interpolation import InterpolationStrategy
+from pc2img.strategies.projection import ProjectionStrategy, ProjectionName
+from pc2img.strategies.interpolation import InterpolationStrategy, InterpolationName
 from pc2img.features.manager import FeatureManager
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
 
-
+ProjArg = (
+    ProjectionStrategy
+    | ProjectionName
+    | tuple[ProjectionName, dict[str, Any]]
+)
+InterpArg = (
+    InterpolationStrategy
+    | InterpolationName
+    | tuple[InterpolationName, dict[str, Any]]
+)
 
 class PointCloudImageGenerator:
+
+    @overload
+    def __init__(
+        self,
+        pcd: PointCloudData,
+        proj: ProjArg,
+        interp: InterpArg,
+        enable_caching: bool = False,
+        cache_dir: Optional[Path] = None,
+        automatic_offloading: bool = False,
+        purge_disk_on_gc: bool = True,
+    ) -> None: ...
+
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
         pcd: PointCloudData,
@@ -22,7 +46,7 @@ class PointCloudImageGenerator:
         cache_dir: Optional[Path] = None,
         automatic_offloading: bool = False,
         purge_disk_on_gc: bool = True,
-    ):
+    ) -> None:
         self._pcd = pcd
         self._proj = proj
         self._interp = interp
