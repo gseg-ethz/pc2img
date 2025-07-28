@@ -126,20 +126,64 @@ class DelaunayInterpolation(InterpolationStrategy):
     ) -> NDArray:
 
         hash_id = self._hash_settings(points2d, grid_x, grid_y)
+
+        logger.debug(f"Starting interpolation with hash {hash_id}")
         if hash_id not in self._triangulation_precalc:
             self._precalc_traingulation(points2d, grid_x, grid_y, hash_id)
 
         triangulation_data = self._triangulation_precalc[hash_id]
 
         grid = np.vstack((grid_x.ravel(), grid_y.ravel())).T
-        simplices = triangulation_data.simplices
-        verts = triangulation_data.verts
-        bary = triangulation_data.bary
 
+        simplices = np.asarray(triangulation_data.simplices)
+        verts = np.asarray(triangulation_data.verts)
+        bary = np.asarray(triangulation_data.bary)
+        triangles = np.asarray(triangulation_data.triangles)
 
         nQ = grid.shape[0]
         result = np.full(nQ, fill_value, dtype=float)
         mask = (simplices >= 0)
+
+        # area_thresh = 6
+        # max_edge_thresh = 10
+
+        # if area_thresh is not None or max_edge_thresh is not None:
+        # Compute triangle metrics once
+        tri_vertices = points2d[triangles]  # shape (M, 3, 2)
+
+        def compute_metrics(tri_pts):
+            a = tri_pts[:, 1] - tri_pts[:, 0]
+            b = tri_pts[:, 2] - tri_pts[:, 1]
+            c = tri_pts[:, 0] - tri_pts[:, 2]
+            edges = np.stack([np.linalg.norm(a, axis=1),
+                              np.linalg.norm(b, axis=1),
+                              np.linalg.norm(c, axis=1)], axis=1)
+            s = edges.sum(axis=1) / 2
+            area = np.sqrt(s * (s - edges[:, 0]) * (s - edges[:, 1]) * (s - edges[:, 2]))
+            max_edge = edges.max(axis=1)
+            return area, max_edge
+
+        area, max_edge = compute_metrics(tri_vertices)
+
+        # area_thresh = np.median(area) + 3 * np.median(np.abs(area-np.median(area)))
+        # max_edge_thresh = np.median(max_edge) + 3 * np.median(np.abs(max_edge-np.median(max_edge)))
+        area_thresh = np.median(area)*3
+        max_edge_thresh = np.median(max_edge)*3
+
+        # Find bad triangles
+        tri_is_good = np.ones_like(area, dtype=bool)
+        if area_thresh is not None:
+            tri_is_good &= area < area_thresh
+        if max_edge_thresh is not None:
+            tri_is_good &= max_edge < max_edge_thresh
+
+        # Mask out query points whose triangle is bad
+        mask &= tri_is_good[simplices]
+
+        logger.debug(f"Valid query point percentage: {mask.sum() / len(mask):.1%}")
+
+
+
         # only compute where inside hull
         result[mask] = np.einsum(
             'qi,qi->q',
@@ -156,10 +200,12 @@ class DelaunayInterpolation(InterpolationStrategy):
             grid_y: NDArray,
             hash_id: int
     ) -> None:
+        logger.debug(f"Starting computation of Delaunay triangles for {len(points2d)} candidate points.")
         # 1) Build once
         tri = Delaunay(points2d)
         ndim = points2d.shape[1]
 
+        logger.debug(f"Assigning triangles for {len(grid_x)*len(grid_y.T)} query points.")
         # 2) Precompute geometry for your grid
         grid = np.vstack((grid_x.ravel(), grid_y.ravel())).T
         simplices = tri.find_simplex(grid)  # (n_query,) holds -1 for “outside”
@@ -177,7 +223,8 @@ class DelaunayInterpolation(InterpolationStrategy):
         ] = DelaunayInterpolation.TriangulationData(
             _DiskBackedNDArray(bary),
             _DiskBackedNDArray(verts),
-            _DiskBackedNDArray(simplices)
+            _DiskBackedNDArray(simplices),
+            _DiskBackedNDArray(tri.simplices),
         )
 
 
