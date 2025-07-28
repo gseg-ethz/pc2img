@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Literal, Any
 from pathlib import Path
 from dataclasses import dataclass
+import logging
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
@@ -10,12 +11,15 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, Cloug
 from scipy.spatial import Delaunay
 
 from GSEGUtils.config import get_defaults, CacheDefaults
+from GSEGUtils.lazy_disk_cache import LazyDiskCache
 
-from pc2img.image_cache.lazy_disk_cache import LazyDiskCache
-from .registry import INTERPOLATIONS
+from .registry import INTERPOLATIONS, _StrategyClass, StrategyFactory
+
+logger = logging.getLogger(__name__)
 
 DEFAULT: CacheDefaults = get_defaults()
 
+InterpolationName = Literal["linear", "nearest_neighbor", "cubic", "delaunay"]
 
 class InterpolationStrategy(ABC):
     @abstractmethod
@@ -27,6 +31,10 @@ class InterpolationStrategy(ABC):
         grid_y: NDArray
     ) -> NDArray:
         """Interpolate point-values onto a grid."""
+
+class InterpolationStrategyClass(_StrategyClass, StrategyFactory[Any, InterpolationStrategy]):
+    registry = INTERPOLATIONS
+    base_type = InterpolationStrategy
 
 @INTERPOLATIONS.register("linear")
 class LinearInterpolation(InterpolationStrategy):
@@ -60,7 +68,7 @@ class _DiskBackedNDArray(LazyDiskCache, NDArrayOperatorsMixin):
         self._data = array_data
         self._shape = array_data.shape
         self._dtype = array_data.dtype
-        super().__init__(enable_caching, cache_path, automatic_offloading, purge_disk_on_gc)
+        super().__init__(enable_caching, cache_path, purge_disk_on_gc, preset_automatic_offloading=automatic_offloading)
 
     @LazyDiskCache.ensure_loaded
     def __array__(self, dtype=None, *, copy=None):
@@ -94,9 +102,10 @@ class DelaunayInterpolation(InterpolationStrategy):
 
     @dataclass(frozen=True)
     class TriangulationData:
-        bary: _DiskBackedNDArray
-        verts: _DiskBackedNDArray
-        simplices: _DiskBackedNDArray
+        bary: _DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
+        verts: _DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
+        simplices: _DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
+        triangles: _DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
 
 
     def __init__(self):

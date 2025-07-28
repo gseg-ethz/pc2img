@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any
+from typing import Optional, Literal, Any, Generator, Callable, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -8,9 +8,25 @@ from pchandler.geometry import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
 from pchandler.geometry.fov import FoV
 
-from .registry import PROJECTIONS
+from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
+
+
+ProjectionName = Literal["spherical", "orthographic"]
 
 class ProjectionStrategy(ABC):
+
+    # @classmethod
+    # def __get_validators__(cls) -> Generator[Callable, None, None]:
+    #     yield cls.validate
+    #
+    # @classmethod
+    # def validate(cls, value: Any) -> Self:
+    #     if isinstance(value, cls):
+    #         return value
+    #     if isinstance(value, str):
+    #         try:
+    #             return PROJECTIONS.
+
     @abstractmethod
     def project_raw(
         self,
@@ -37,11 +53,11 @@ class ProjectionStrategy(ABC):
           - pts2d: array of pixel coordinates shape (M, 2)
           - mask: original boolean mask shape (N,)
         """
-        coords_raw, mask = self.project_raw(pcd)
+        coords_raw, mask, mins, maxs = self.project_raw(pcd)
         w, h = resolution
         # normalize per-dimension
-        mins = coords_raw.min(axis=0)
-        maxs = coords_raw.max(axis=0)
+        # mins = coords_raw.min(axis=0)
+        # maxs = coords_raw.max(axis=0)
         span = maxs - mins
         # avoid division by zero
         span[span == 0] = 1
@@ -52,6 +68,11 @@ class ProjectionStrategy(ABC):
         y_px = v * (h - 1)
         pts2d = np.vstack((x_px, y_px)).T
         return pts2d, mask
+
+
+class ProjectionStrategyClass(_StrategyClass, StrategyFactory[Any, ProjectionStrategy]):
+    registry = PROJECTIONS
+    base_type = ProjectionStrategy
 
 
 @PROJECTIONS.register("spherical")
@@ -68,8 +89,12 @@ class SphericalProjection(ProjectionStrategy):
         mask = FoVFilter(fov=self._field_of_view).mask(pcd) if self._field_of_view is not None \
             else np.ones((pcd.nbPoints,), dtype=bool)
 
+        fov = self._field_of_view if self._field_of_view is not None else pcd.fov
+        mins = np.array([fov.left, fov.top]).squeeze()
+        maxs = np.array([fov.right, fov.bottom]).squeeze()
 
-        return pcd.spher[mask, 1:], mask
+
+        return pcd.spher[mask, 1:], mask, mins, maxs
 
 
 @PROJECTIONS.register("orthographic")
