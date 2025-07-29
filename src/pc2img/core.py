@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Optional, TypeVar, Any, overload
+from typing import Optional, TypeVar, Any, overload, Mapping
 
 from pydantic import ConfigDict, validate_call
 import numpy as np
+
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
 from pchandler.geometry import PointCloudData
 
@@ -14,12 +16,12 @@ from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
 ProjArg = (
     ProjectionStrategy
     | ProjectionName
-    | tuple[ProjectionName, dict[str, Any]]
+    | tuple[ProjectionName, Mapping[str, Any]]
 )
 InterpArg = (
     InterpolationStrategy
     | InterpolationName
-    | tuple[InterpolationName, dict[str, Any]]
+    | tuple[InterpolationName, Mapping[str, Any]]
 )
 
 class PointCloudImageGenerator:
@@ -30,10 +32,7 @@ class PointCloudImageGenerator:
         pcd: PointCloudData,
         proj: ProjArg,
         interp: InterpArg,
-        enable_caching: bool = False,
-        cache_dir: Optional[Path] = None,
-        automatic_offloading: bool = False,
-        purge_disk_on_gc: bool = True,
+        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
@@ -42,19 +41,12 @@ class PointCloudImageGenerator:
         pcd: PointCloudData,
         proj: ProjectionStrategy,
         interp: InterpolationStrategy,
-        enable_caching: bool = False,
-        cache_dir: Optional[Path] = None,
-        automatic_offloading: bool = False,
-        purge_disk_on_gc: bool = True,
+        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None:
         self._pcd = pcd
         self._proj = proj
         self._interp = interp
-        self._cache_dir = cache_dir
-        self._automatic_offloading = automatic_offloading
-        self._purge_disk_on_gc = purge_disk_on_gc
-        # self._cache = dict[str, NDArray]
-        self.feature_mgr = FeatureManager(self._pcd, enable_caching, cache_dir, automatic_offloading, purge_disk_on_gc)
+        self.feature_mgr = FeatureManager(self._pcd, lazy_disk_cache_config=lazy_disk_cache_config)
 
 
     def generate(

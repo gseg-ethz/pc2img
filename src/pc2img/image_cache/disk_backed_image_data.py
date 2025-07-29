@@ -3,13 +3,13 @@ import logging
 import uuid
 from collections.abc import Callable
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Unpack
 
 import numpy as np
 from numpy.typing import NDArray
 from numpy.lib.mixins import NDArrayOperatorsMixin
 
-from GSEGUtils.lazy_disk_cache import LazyDiskCache
+from GSEGUtils.lazy_disk_cache import LazyDiskCache, LazyDiskCacheConfig, LazyDiskCacheKw
 from pc2img.util import convert_to_image
 
 
@@ -19,20 +19,14 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     def __init__(
             self,
             image_data: np.ndarray,
-            enable_caching: bool = True,
-            cache_path: Optional[Path] = None,
-            automatic_offloading: bool = False,
-            purge_disk_on_gc: bool = True,
+            **lazy_disk_cache_settings: Unpack[LazyDiskCacheKw],
      ):
         assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or image_data.shape[-1] == 3)
         self._image_data = image_data
         self._shape = image_data.shape
         self._dtype = image_data.dtype
         super().__init__(
-            enable_caching = enable_caching,
-            cache_path=cache_path,
-            purge_disk_on_gc=purge_disk_on_gc,
-            preset_automatic_offloading=automatic_offloading
+            **lazy_disk_cache_settings
         )
 
     @property

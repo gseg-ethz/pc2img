@@ -1,11 +1,13 @@
 from collections import namedtuple
 from pathlib import Path
-from typing import Optional, NamedTuple, Sequence, overload, TypeVar, Type
+from typing import Optional, NamedTuple, Sequence, overload, TypeVar, Type, Mapping, Any
 from joblib import Parallel, delayed, parallel_config
 import logging
 from functools import wraps
 
 from pydantic import validate_call, ConfigDict
+
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
 from pchandler.geometry import PointCloudData
 from pchandler.geometry.fov import FoV
@@ -16,17 +18,6 @@ from pc2img.strategies import INTERPOLATIONS, InterpolationStrategy, Interpolati
 from pc2img.strategies import PROJECTIONS, ProjectionStrategy, ProjectionName, ProjectionStrategyClass
 
 
-def silence_logs(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        logger = logging.getLogger("pchandler.geometry.coordinates")            # root logger
-        previous = logger.level
-        logger.setLevel(logging.ERROR)          # silence below ERROR
-        try:
-            return func(*args, **kwargs)
-        finally:
-            logger.setLevel(previous)          # restore original level
-    return wrapper
 #
 # class PointCloudTile(NamedTuple):
 #     identifier: str
@@ -55,10 +46,11 @@ class TiledPointCloudImageGenerator:
             pcd_tiles: Sequence[PointCloudTile],
             proj_cls: ProjClassT,
             interp_cls: InterpClassT,
-            enable_caching: bool = False,
-            cache_dir: Optional[Path] = None,
-            automatic_offloading: bool = False,
-            purge_disk_on_gc: bool = True,
+            *,
+            proj_kwargs: Optional[Mapping[str, Any]] = None,
+            interp_kwargs: Optional[Mapping[str, Any]] = None,
+
+            lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
 
 
@@ -68,18 +60,18 @@ class TiledPointCloudImageGenerator:
             pcd_tiles: Sequence[PointCloudTile],
             proj_cls: ProjectionStrategyClass,
             interp_cls: InterpolationStrategyClass,
-            enable_caching: bool = False,
-            cache_dir: Optional[Path] = None,
-            automatic_offloading: bool = False,
-            purge_disk_on_gc: bool = True,
+            *,
+
+            proj_kwargs: Optional[Mapping[str, Any]] = None,
+            interp_kwargs: Optional[Mapping[str, Any]] = None,
+            lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ):
         self.pcd_tiles = pcd_tiles
         self.proj_cls = proj_cls
         self.interp_cls = interp_cls
-        self.enable_caching = enable_caching
-        self.cache_dir = cache_dir
-        self.automatic_offloading = automatic_offloading
-        self.purge_disk_on_gc = purge_disk_on_gc
+        self._proj_kwargs = proj_kwargs or {}
+        self._interp_kwargs = interp_kwargs or {}
+        self._lazy_disk_cache_config = lazy_disk_cache_config
 
 
     def generate(
@@ -106,7 +98,6 @@ class TiledPointCloudImageGenerator:
 
         return result_dict
 
-    @silence_logs
     def _process_tile(
             self,
             tile_id: str,
@@ -117,12 +108,9 @@ class TiledPointCloudImageGenerator:
     ):
         image_gen = PointCloudImageGenerator(
             pcd=tile,
-            proj=self.proj_cls(field_of_view=fov),
-            interp=self.interp_cls(),
-            enable_caching=self.enable_caching,
-            cache_dir=self.cache_dir,
-            automatic_offloading=self.automatic_offloading,
-            purge_disk_on_gc=self.purge_disk_on_gc,
+            proj=self.proj_cls(field_of_view=fov, **self._proj_kwargs),
+            interp=self.interp_cls(**self._interp_kwargs),
+            lazy_disk_cache_config=self._lazy_disk_cache_config,
         )
         tile_images = image_gen.generate(features, image_res)
         return {

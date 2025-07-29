@@ -2,10 +2,13 @@ from collections.abc import MutableMapping
 import logging
 from pathlib import Path
 import pickle
-from typing import Dict, Iterator, Optional, Union, Any
+from typing import Dict, Iterator, Optional, Union, Any, Unpack
 
 import numpy as np
 from numpy.typing import NDArray
+
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+from pydantic import validate_call, ConfigDict
 
 from .disk_backed_image_data import DiskBackedImageData
 
@@ -13,18 +16,20 @@ from .disk_backed_image_data import DiskBackedImageData
 logger = logging.getLogger(__name__.split(".")[0])
 
 class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
+
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
     def __init__(
             self,
-            enable_caching: bool = True,
-            cache_dir: Optional[Path] = None,
-            automatic_offloading: bool = False,
-            purge_disk_on_gc: bool = True,
+            *,
+            config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+
     ) -> None:
+
         self._data: Dict[str, Optional[DiskBackedImageData]] = {}
-        self._enable_caching = enable_caching
-        self._cache_dir = cache_dir
-        self._automatic_offloading = automatic_offloading and cache_dir is not None
-        self._purge_disk_on_gc = purge_disk_on_gc
+        self._enable_caching = config.enable_caching
+        self._cache_dir = config.cache_path
+        self._automatic_offloading = config.automatic_offloading and config.cache_path is not None
+        self._purge_disk_on_gc = config.purge_disk_on_gc
 
         if self._cache_dir is not None:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
@@ -59,17 +64,18 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             self,
             img_name: str,
             img_data: NDArray,
-            enable_caching: Optional[bool] = None,
-            automatic_offloading: Optional[bool] = None,
-            purge_disk_on_gc: Optional[bool] = None,
+            *,
+            enable_caching_override: Optional[bool] = None,
+            automatic_offloading_override: Optional[bool] = None,
+            purge_disk_on_gc_override: Optional[bool] = None,
     ) -> None:
 
         self._data[img_name] = DiskBackedImageData(
             img_data,
-            enable_caching if enable_caching is not None else self._enable_caching,
-            self._cache_dir / f"{img_name}.pkl" if self._cache_dir else None,
-            automatic_offloading if automatic_offloading is not None else self._automatic_offloading,
-            purge_disk_on_gc if purge_disk_on_gc is not None else self._purge_disk_on_gc
+            enable_caching=enable_caching_override if enable_caching_override is not None else self._enable_caching,
+            cache_path=self._cache_dir / f"{img_name}.pkl" if self._cache_dir else None,
+            automatic_offloading=automatic_offloading_override if automatic_offloading_override is not None else self._automatic_offloading,
+            purge_disk_on_gc=purge_disk_on_gc_override if purge_disk_on_gc_override is not None else self._purge_disk_on_gc
         )
 
     # def fetch_image(self, feature: str) -> None:

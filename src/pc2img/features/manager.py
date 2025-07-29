@@ -9,6 +9,8 @@ from pchandler.geometry import PointCloudData
 from pc2img.image_cache import DiskBackedImageData
 from pc2img.image_cache import DiskBackedImageStore
 
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+
 from .registry import FEATURES, FeatureRegistry, FeatureSpec
 from .core import BaseFeatureStrategy
 
@@ -17,15 +19,12 @@ class FeatureManager:
     def __init__(
             self,
             pcd: PointCloudData,
-            enable_caching: bool = False,
-            cache_dir: Optional[Path] = None,
-            automatic_offloading: bool = False,
-            purge_disk_on_gc: bool = False,
+            *,
+            lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ):
         self.registry: FeatureRegistry = FEATURES
         self.pcd: PointCloudData = pcd
-        self._raster_cache: DiskBackedImageStore = DiskBackedImageStore(enable_caching, cache_dir,
-                                                                        automatic_offloading, purge_disk_on_gc)
+        self._raster_cache: DiskBackedImageStore = DiskBackedImageStore(lazy_disk_cache_config)
         self._base_features: list[FeatureSpec] = []
         self._targets: list[FeatureSpec] = []
 
