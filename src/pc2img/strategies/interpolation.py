@@ -11,7 +11,7 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, Cloug
 from scipy.spatial import Delaunay
 
 from GSEGUtils.config import get_defaults, CacheDefaults
-from GSEGUtils.lazy_disk_cache import LazyDiskCache
+from GSEGUtils.lazy_disk_cache import DiskBackedNDArray
 
 from .registry import INTERPOLATIONS, _StrategyClass, StrategyFactory
 
@@ -76,47 +76,6 @@ class CubicInterpolation(InterpolationStrategy):
         interp = CloughTocher2DInterpolator(points2d, values)
         return interp(grid_x, grid_y)
 
-class _DiskBackedNDArray(LazyDiskCache, NDArrayOperatorsMixin):
-
-    def __init__(
-            self,
-            array_data: NDArray,
-            enable_caching: bool = True,
-            cache_path: Optional[Path] = None,
-            automatic_offloading: bool = DEFAULT["preset_automatic_offloading"],
-            purge_disk_on_gc: bool = True
-
-    ) -> None:
-        self._data = array_data
-        self._shape = array_data.shape
-        self._dtype = array_data.dtype
-        super().__init__(enable_caching, cache_path, purge_disk_on_gc, preset_automatic_offloading=automatic_offloading)
-
-    @LazyDiskCache.ensure_loaded
-    def __array__(self, dtype=None, *, copy=None):
-        if copy is False:
-            raise ValueError("`copy=False` isn't supported. A copy is always created.")
-
-        arr = self._data
-        return arr.astype(dtype, copy=True) if dtype else arr.copy()
-
-
-    @LazyDiskCache.ensure_loaded
-    def __getitem__(self, key):
-        return self._data[key]
-
-
-    def _describe_buffer(self) -> tuple[tuple[int, ...], DTypeLike, np.ndarray]:
-        return self._shape, self._dtype, self._data
-
-    def _drop_buffer(self) -> None:
-        self._data = None
-
-    def _describe_shape_dtype(self) -> tuple[tuple[int, ...], DTypeLike]:
-        return self._shape, self._dtype
-
-    def _set_buffer(self, buf: NDArray) -> None:
-        self._data = buf
 
 
 @INTERPOLATIONS.register("delaunay")
@@ -124,10 +83,10 @@ class DelaunayInterpolation(InterpolationStrategy):
 
     @dataclass(frozen=True)
     class TriangulationData:
-        bary: _DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
-        verts: _DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
-        simplices: _DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
-        triangles: _DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
+        bary: DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
+        verts: DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
+        simplices: DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
+        triangles: DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
 
 
     def __init__(self):
@@ -243,10 +202,10 @@ class DelaunayInterpolation(InterpolationStrategy):
         self._triangulation_precalc[
             hash_id
         ] = DelaunayInterpolation.TriangulationData(
-            _DiskBackedNDArray(bary),
-            _DiskBackedNDArray(verts),
-            _DiskBackedNDArray(simplices),
-            _DiskBackedNDArray(tri.simplices),
+            DiskBackedNDArray(bary),
+            DiskBackedNDArray(verts),
+            DiskBackedNDArray(simplices),
+            DiskBackedNDArray(tri.simplices),
         )
 
 

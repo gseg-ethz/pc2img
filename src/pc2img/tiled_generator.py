@@ -50,7 +50,7 @@ class TiledPointCloudImageGenerator:
             proj_kwargs: Optional[Mapping[str, Any]] = None,
             interp_kwargs: Optional[Mapping[str, Any]] = None,
 
-            lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+            lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
 
 
@@ -106,6 +106,7 @@ class TiledPointCloudImageGenerator:
             features: list[str],
             image_res: tuple[int,int],
     ):
+        print(1)
         image_gen = PointCloudImageGenerator(
             pcd=tile,
             proj=self.proj_cls(field_of_view=fov, **self._proj_kwargs),

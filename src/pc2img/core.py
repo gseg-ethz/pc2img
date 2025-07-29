@@ -32,7 +32,7 @@ class PointCloudImageGenerator:
         pcd: PointCloudData,
         proj: ProjArg,
         interp: InterpArg,
-        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig,
     ) -> None: ...
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)

@@ -24,7 +24,7 @@ class FeatureManager:
     ):
         self.registry: FeatureRegistry = FEATURES
         self.pcd: PointCloudData = pcd
-        self._raster_cache: DiskBackedImageStore = DiskBackedImageStore(lazy_disk_cache_config)
+        self._raster_cache = DiskBackedImageStore(config=lazy_disk_cache_config)
         self._base_features: list[FeatureSpec] = []
         self._targets: list[FeatureSpec] = []
 
