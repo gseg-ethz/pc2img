@@ -30,36 +30,45 @@ class PointCloudImageGenerator:
     def __init__(
         self,
         pcd: PointCloudData,
+        img_res: tuple[int,int],
         proj: ProjArg,
         interp: InterpArg,
-        lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig,
+        lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
         pcd: PointCloudData,
+        img_res: tuple[int,int],
         proj: ProjectionStrategy,
         interp: InterpolationStrategy,
         lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None:
         self._pcd = pcd
+        self._img_res = img_res
         self._proj = proj
         self._interp = interp
         self.feature_mgr = FeatureManager(self._pcd, lazy_disk_cache_config=lazy_disk_cache_config)
+        self.projection_results = {}
 
 
     def generate(
             self,
             features: list[str],
-            resolution: tuple[int,int],
     ) -> dict[str,DiskBackedImageData]:
-        pts2d, mask = self._proj.project(self._pcd, resolution)
+        resolution = self._img_res
+        if not self.projection_results:
+            self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(self._pcd, resolution)
+
+        pts2d = self.projection_results["pts2d"]
+        mask = self.projection_results["mask"]
 
         w, h = resolution
         gx = np.arange(w)
         gy = np.arange(h)
         grid_x, grid_y = np.meshgrid(gx, gy)
+
 
         self.feature_mgr.request(features)
         base_features_1D = self.feature_mgr.get_base_features()

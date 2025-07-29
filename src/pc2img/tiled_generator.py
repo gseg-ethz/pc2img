@@ -44,6 +44,7 @@ class TiledPointCloudImageGenerator:
     def __init__(
             self,
             pcd_tiles: Sequence[PointCloudTile],
+            img_res: tuple[int, int],
             proj_cls: ProjClassT,
             interp_cls: InterpClassT,
             *,
@@ -58,6 +59,7 @@ class TiledPointCloudImageGenerator:
     def __init__(
             self,
             pcd_tiles: Sequence[PointCloudTile],
+            img_res: tuple[int, int],
             proj_cls: ProjectionStrategyClass,
             interp_cls: InterpolationStrategyClass,
             *,
@@ -67,17 +69,18 @@ class TiledPointCloudImageGenerator:
             lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ):
         self.pcd_tiles = pcd_tiles
+        self._img_res = img_res
         self.proj_cls = proj_cls
         self.interp_cls = interp_cls
         self._proj_kwargs = proj_kwargs or {}
         self._interp_kwargs = interp_kwargs or {}
         self._lazy_disk_cache_config = lazy_disk_cache_config
+        self.image_generators: dict[str, PointCloudImageGenerator] = {}
 
 
     def generate(
             self,
             features: list[str],
-            image_res: tuple[int,int],
             n_jobs: int = 1,
     ):
 
@@ -87,7 +90,7 @@ class TiledPointCloudImageGenerator:
             results = Parallel()(
                 delayed(self._process_tile)(
                     task.tile_id, task.pcd, task.fov,
-                    features, image_res
+                    features
                 )
                 for task in tasks
             )
@@ -104,16 +107,17 @@ class TiledPointCloudImageGenerator:
             tile: PointCloudData,
             fov: FoV,
             features: list[str],
-            image_res: tuple[int,int],
     ):
-        print(1)
-        image_gen = PointCloudImageGenerator(
-            pcd=tile,
-            proj=self.proj_cls(field_of_view=fov, **self._proj_kwargs),
-            interp=self.interp_cls(**self._interp_kwargs),
-            lazy_disk_cache_config=self._lazy_disk_cache_config,
-        )
-        tile_images = image_gen.generate(features, image_res)
+        if tile_id not in self.image_generators:
+            self.image_generators[tile_id] = PointCloudImageGenerator(
+                pcd=tile,
+                proj=self.proj_cls(field_of_view=fov, **self._proj_kwargs),
+                interp=self.interp_cls(**self._interp_kwargs),
+                lazy_disk_cache_config=self._lazy_disk_cache_config,
+                img_res=self._img_res,
+            )
+        image_gen = self.image_generators[tile_id]
+        tile_images = image_gen.generate(features)
         return {
             ImageKey(tile_id, feature): image
             for feature, image in tile_images.items()
