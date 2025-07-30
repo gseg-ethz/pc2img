@@ -18,13 +18,12 @@ from pc2img.strategies import INTERPOLATIONS, InterpolationStrategy, Interpolati
 from pc2img.strategies import PROJECTIONS, ProjectionStrategy, ProjectionName, ProjectionStrategyClass
 
 
-#
-# class PointCloudTile(NamedTuple):
-#     identifier: str
-#     pcd: PointCloudData
-#     fov: FoV
-#
-PointCloudTile = namedtuple("PointCloudTile", ["tile_id", "pcd", "fov"])
+class PointCloudTile(NamedTuple):
+    tile_id: str
+    tile_pcd: PointCloudData
+    tile_kwargs: Mapping[str, Any]
+
+# PointCloudTile = namedtuple("PointCloudTile", ["tile_id", "tile_pcd", "tile_kwargs"])
 
 ImageKey = namedtuple("ImageKey", ["tile_id", "feature"])
 
@@ -43,7 +42,7 @@ class TiledPointCloudImageGenerator:
     @overload
     def __init__(
             self,
-            pcd_tiles: Sequence[PointCloudTile],
+            pcd_tiles: Sequence[PointCloudTile] | Sequence[tuple[str, PointCloudData, Mapping[str, Any]]],
             img_res: tuple[int, int],
             proj_cls: ProjClassT,
             interp_cls: InterpClassT,
@@ -89,7 +88,7 @@ class TiledPointCloudImageGenerator:
         with parallel_config(backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"):
             results = Parallel()(
                 delayed(self._process_tile)(
-                    task.tile_id, task.pcd, task.fov,
+                    task.tile_id, task.tile_pcd, task.tile_kwargs,
                     features
                 )
                 for task in tasks
@@ -104,14 +103,14 @@ class TiledPointCloudImageGenerator:
     def _process_tile(
             self,
             tile_id: str,
-            tile: PointCloudData,
-            fov: FoV,
+            tile_pcd: PointCloudData,
+            tile_kwargs: Mapping[str, Any],
             features: list[str],
     ):
         if tile_id not in self.image_generators:
             self.image_generators[tile_id] = PointCloudImageGenerator(
-                pcd=tile,
-                proj=self.proj_cls(field_of_view=fov, **self._proj_kwargs),
+                pcd=tile_pcd,
+                proj=self.proj_cls(**tile_kwargs, **self._proj_kwargs),
                 interp=self.interp_cls(**self._interp_kwargs),
                 lazy_disk_cache_config=self._lazy_disk_cache_config,
                 img_res=self._img_res,
@@ -122,4 +121,3 @@ class TiledPointCloudImageGenerator:
             ImageKey(tile_id, feature): image
             for feature, image in tile_images.items()
         }
-
