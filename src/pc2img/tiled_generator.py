@@ -81,7 +81,7 @@ class TiledPointCloudImageGenerator:
             self,
             features: list[str],
             n_jobs: int = 1,
-    ):
+    ) -> dict:
 
         tasks = self.pcd_tiles
 
@@ -95,7 +95,9 @@ class TiledPointCloudImageGenerator:
             )
 
         result_dict: dict[ImageKey, DiskBackedImageData] = {}
-        for tile_dict in results:
+        for tile_result in results:
+            self.image_generators[tile_result[0]] = tile_result[1]
+            tile_dict = {ImageKey(tile_result[0], feature_id): feature_data for feature_id, feature_data in tile_result[2].items()}
             result_dict.update(tile_dict)
 
         return result_dict
@@ -106,18 +108,14 @@ class TiledPointCloudImageGenerator:
             tile_pcd: PointCloudData,
             tile_kwargs: Mapping[str, Any],
             features: list[str],
-    ):
-        if tile_id not in self.image_generators:
-            self.image_generators[tile_id] = PointCloudImageGenerator(
-                pcd=tile_pcd,
-                proj=self.proj_cls(**tile_kwargs, **self._proj_kwargs),
-                interp=self.interp_cls(**self._interp_kwargs),
-                lazy_disk_cache_config=self._lazy_disk_cache_config,
-                img_res=self._img_res,
-            )
-        image_gen = self.image_generators[tile_id]
+    ) -> tuple[str, PointCloudImageGenerator, dict[str, DiskBackedImageData]]:
+        image_gen = self.image_generators[tile_id] if tile_id in self.image_generators else PointCloudImageGenerator(
+            pcd=tile_pcd,
+            proj=self.proj_cls(**tile_kwargs, **self._proj_kwargs),
+            interp=self.interp_cls(**self._interp_kwargs),
+            lazy_disk_cache_config=self._lazy_disk_cache_config.extend_cache_path(tile_id),
+            img_res=self._img_res,
+        )
+        # image_gen = self.image_generators[tile_id]
         tile_images = image_gen.generate(features)
-        return {
-            ImageKey(tile_id, feature): image
-            for feature, image in tile_images.items()
-        }
+        return tile_id, image_gen, tile_images
