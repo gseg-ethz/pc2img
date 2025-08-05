@@ -3,11 +3,13 @@ from typing import Optional, Literal, Any, Generator, Callable, Self
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.spatial.transform import Rotation
 
 from pchandler import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
 from pchandler.geometry.spherical import FoV
 from pchandler.geometry.coordinates import rhv2xyz
+from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
 
@@ -111,7 +113,6 @@ class SphericalProjection(ProjectionStrategy):
         mins = np.array([fov.left, fov.top]).squeeze()
         maxs = np.array([fov.right, fov.bottom]).squeeze()
 
-
         return pcd.spher[mask, 1:], mask, mins, maxs
 
     def inverse_projection(self, range_img: NDArray, spherical_origin: Optional[NDArray] = None) -> tuple[NDArray, NDArray]:
@@ -179,3 +180,56 @@ class OrthographicProjection(ProjectionStrategy):
 
         # Todo: Update to pass min and max back!
         return pcd.xyz[mask, self._xyz_column_selection], mask
+
+
+@PROJECTIONS.register("perspective")
+class PerspectiveProjection(ProjectionStrategy):
+    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        raise NotImplementedError("This function computes the projected coordinates in one shot.")
+
+    def __init__(
+            self,
+            *,
+            config: dict[str, Any]
+    ) -> None:
+        self.rotation_matrix = np.eye(3)
+        self.projection_matrix = np.eye(3)
+        self.pixel_size = config.get('pixel_size', 0.001)
+        self.plane_distance = config.get('plane_distance', 10)
+        self.yaw = config.get('yaw', 0.0)       # rotation around Z
+        self.pitch = config.get('pitch', 0.0)   # rotation around Y' or "tilt"
+        self.rotation_matrix = Rotation.from_euler('zxy', [self.yaw, self.pitch, 0.0], degrees=True).as_matrix()
+        self.config = config
+
+    def update_projection_matrix_from_resolution(self, resolution: tuple[int, int]) -> None:
+        """This function generates a pinhole camera projection matrix."""
+
+        # Focal length in pixels = 1.0 (normalized) / pixel_size
+        fx = 1.0 / (self.pixel_size / self.plane_distance)
+        fy = 1.0 / (self.pixel_size / self.plane_distance)
+
+        cx = resolution[0] / 2.0
+        cy = resolution[1] / 2.0
+
+        # Create the camera matrix
+        self.projection_matrix = np.array([
+            [fx, 0.0, cx],
+            [0.0, fy, cy],
+            [0.0, 0.0, 1.0]
+        ])
+
+    def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
+        """
+        Rotate the scan so that the projection direction
+
+        Returns:
+          - pts2d: array of pixel coordinates shape (M, 2)
+          - mask: original boolean mask shape (N,)
+        """
+        self.update_projection_matrix_from_resolution(resolution)
+        projected_points = (self.projection_matrix @ self.rotation_matrix) @ pcd
+        mask = (np.logical_and(0 <= projected_points[:, 0], projected_points[:, 0] < resolution[0])
+                 and  np.logical_and(0 <= projected_points[:, 1], projected_points[:, 1] < resolution[1]))
+
+        return projected_points[mask, :2], mask
+
