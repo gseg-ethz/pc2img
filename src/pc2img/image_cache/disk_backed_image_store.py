@@ -7,9 +7,9 @@ from typing import Dict, Iterator, Optional, Union, Any, Unpack
 
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import validate_call, ConfigDict
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
-from pydantic import validate_call, ConfigDict
 
 from .disk_backed_image_data import DiskBackedImageData
 

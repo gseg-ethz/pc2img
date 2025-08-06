@@ -9,8 +9,7 @@ from pydantic import validate_call, ConfigDict
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
-from pchandler.geometry import PointCloudData
-from pchandler.geometry.fov import FoV
+from pchandler import PointCloudData
 
 from pc2img import PointCloudImageGenerator
 from pc2img.image_cache import DiskBackedImageData

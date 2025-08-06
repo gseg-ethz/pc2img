@@ -10,6 +10,7 @@ from numpy.typing import NDArray
 from numpy.lib.mixins import NDArrayOperatorsMixin
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCache, LazyDiskCacheConfig, LazyDiskCacheKw
+
 from pc2img.util import convert_to_image
 
 

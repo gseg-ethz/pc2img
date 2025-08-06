@@ -4,9 +4,9 @@ from typing import Optional, Literal, Any, Generator, Callable, Self
 import numpy as np
 from numpy.typing import NDArray
 
-from pchandler.geometry import PointCloudData
+from pchandler import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
-from pchandler.geometry.fov import FoV
+from pchandler.geometry.spherical import FoV
 from pchandler.geometry.coordinates import rhv2xyz
 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
