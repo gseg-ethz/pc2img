@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from pchandler.geometry import PointCloudData
+from pchandler.core import PointCloudData
 
 from pc2img.image_cache import DiskBackedImageData
 from pc2img.image_cache import DiskBackedImageStore

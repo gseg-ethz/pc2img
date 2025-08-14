@@ -3,7 +3,7 @@ import re
 import numpy as np
 from numpy.typing import NDArray
 
-from pchandler.geometry import PointCloudData
+from pchandler.core import PointCloudData
 
 from .core import BaseFeatureStrategy
 
