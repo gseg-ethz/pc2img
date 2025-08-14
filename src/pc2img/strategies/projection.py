@@ -14,10 +14,10 @@ from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
 
 
-ProjectionName = Literal["spherical", "orthographic"]
+ProjectionName = Literal["spherical", "orthographic", "perspective"]
+
 
 class ProjectionStrategy(ABC):
-
     @classmethod
     def __get_validators__(cls) -> Generator[Callable[..., Self], None, None]:
         yield cls.validate
@@ -189,34 +189,12 @@ class PerspectiveProjection(ProjectionStrategy):
 
     def __init__(
             self,
-            *,
-            config: dict[str, Any]
+            projection_matrix: NDArray,
+            rotation_matrix: NDArray,
     ) -> None:
-        self.rotation_matrix = np.eye(3)
-        self.projection_matrix = np.eye(3)
-        self.pixel_size = config.get('pixel_size', 0.001)
-        self.plane_distance = config.get('plane_distance', 10)
-        self.yaw = config.get('yaw', 0.0)       # rotation around Z
-        self.pitch = config.get('pitch', 0.0)   # rotation around Y' or "tilt"
-        self.rotation_matrix = Rotation.from_euler('zxy', [self.yaw, self.pitch, 0.0], degrees=True).as_matrix()
-        self.config = config
+        self.projection_matrix = projection_matrix
+        self.rotation_matrix = rotation_matrix
 
-    def update_projection_matrix_from_resolution(self, resolution: tuple[int, int]) -> None:
-        """This function generates a pinhole camera projection matrix."""
-
-        # Focal length in pixels = 1.0 (normalized) / pixel_size
-        fx = 1.0 / (self.pixel_size / self.plane_distance)
-        fy = 1.0 / (self.pixel_size / self.plane_distance)
-
-        cx = resolution[0] / 2.0
-        cy = resolution[1] / 2.0
-
-        # Create the camera matrix
-        self.projection_matrix = np.array([
-            [fx, 0.0, cx],
-            [0.0, fy, cy],
-            [0.0, 0.0, 1.0]
-        ])
 
     def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
         """
@@ -226,7 +204,6 @@ class PerspectiveProjection(ProjectionStrategy):
           - pts2d: array of pixel coordinates shape (M, 2)
           - mask: original boolean mask shape (N,)
         """
-        self.update_projection_matrix_from_resolution(resolution)
         projected_points = (self.projection_matrix @ self.rotation_matrix) @ pcd
         mask = (np.logical_and(0 <= projected_points[:, 0], projected_points[:, 0] < resolution[0])
                  and  np.logical_and(0 <= projected_points[:, 1], projected_points[:, 1] < resolution[1]))
