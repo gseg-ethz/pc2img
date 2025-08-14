@@ -204,9 +204,12 @@ class PerspectiveProjection(ProjectionStrategy):
           - pts2d: array of pixel coordinates shape (M, 2)
           - mask: original boolean mask shape (N,)
         """
-        projected_points = (self.projection_matrix @ self.rotation_matrix) @ pcd
-        mask = (np.logical_and(0 <= projected_points[:, 0], projected_points[:, 0] < resolution[0])
-                 and  np.logical_and(0 <= projected_points[:, 1], projected_points[:, 1] < resolution[1]))
+        uv = (self.projection_matrix @ self.rotation_matrix) @ pcd
+        uv = uv.arr[:, :2] / uv.arr[:, 2].reshape(-1, 1)
+        mask = np.logical_and(
+            np.logical_and(uv[:, 0] >= 0, uv[:, 0] < resolution[0]),
+            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1])
+        )
 
-        return projected_points[mask, :2], mask
+        return uv[mask, :], mask
 
