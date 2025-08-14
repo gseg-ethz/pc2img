@@ -19,7 +19,8 @@ classifiers = [
 dependencies = [
 #	"pchandler[cuda12] ~= 1.0",
 #	"pchandler[cuda12] @ git+ssh://git@github.com/gseg-ethz/PCHandler.git@v2.0.0rc4",
-	"GSEGUtils ~= 0.2",
+    "GSEGUtils @ git+ssh://git@github.com/gseg-ethz/GSEGUtils.git@doc",
+    "pchandler @ git+ssh://git@github.com/gseg-ethz/pchandler.git@feature/v2/documentation",
 	"joblib ~= 1.5",
 	"numpy ~= 2.0",
 	"imageio ~= 2.31",
