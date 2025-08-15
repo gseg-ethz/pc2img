@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import re
 from typing import List, Dict, Any, Optional, TYPE_CHECKING
 import numpy as np
-from pchandler.core import PointCloudData
+from pchandler import PointCloudData
 
 if TYPE_CHECKING:
     from .manager import FeatureManager

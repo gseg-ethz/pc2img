@@ -1,3 +1,4 @@
+import tempfile
 from collections.abc import MutableMapping
 import logging
 from pathlib import Path
@@ -6,9 +7,9 @@ from typing import Dict, Iterator, Optional, Union, Any, Unpack
 
 import numpy as np
 from numpy.typing import NDArray
+from pydantic import validate_call, ConfigDict
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
-from pydantic import validate_call, ConfigDict
 
 from .disk_backed_image_data import DiskBackedImageData
 
@@ -27,7 +28,10 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
 
         self._data: Dict[str, Optional[DiskBackedImageData]] = {}
         self._enable_caching = config.enable_caching
-        self._cache_dir = config.cache_path
+        if config.cache_path is None or not config.cache_path.is_dir():
+            self._cache_dir = Path(tempfile.mkdtemp())
+        else:
+            self._cache_dir = config.cache_path
         self._automatic_offloading = config.automatic_offloading and config.cache_path is not None
         self._purge_disk_on_gc = config.purge_disk_on_gc
 
@@ -143,7 +147,7 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
                 continue
             self._data[feature].offload()
 
-    def pickle_image_data(self, features: Optional[str | list[str]] = None) -> None:
+    def offload_image_data_to_disk(self, features: Optional[str | list[str]] = None) -> None:
         if self._cache_dir is None:
             logger.warning(f"Without cache_dir, the pickle_image_data function is ignored!")
             return
@@ -162,14 +166,14 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             self._data[feature] = None
 
     def __getstate__(self) -> dict[str, Any]:
-        if self.cache_dir is not None:
-            self.pickle_image_data()
+        if self._enable_caching:
+            self.offload_image_data_to_disk()
         state = self.__dict__.copy()
         return state
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         self.__dict__.update(state)
-        if self.cache_dir is not None:
+        if self._enable_caching:
             for feature in self.keys():
                 if self._data[feature] is not None:
                     continue

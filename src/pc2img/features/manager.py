@@ -4,12 +4,13 @@ from typing import Optional
 import numpy as np
 from numpy.typing import NDArray
 
-from pchandler.core import PointCloudData
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+
+from pchandler import PointCloudData
 
 from pc2img.image_cache import DiskBackedImageData
 from pc2img.image_cache import DiskBackedImageStore
 
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
 from .registry import FEATURES, FeatureRegistry, FeatureSpec
 from .core import BaseFeatureStrategy

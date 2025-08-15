@@ -6,7 +6,7 @@ import numpy as np
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
-from pchandler.core import PointCloudData
+from pchandler import PointCloudData
 
 from pc2img.strategies.projection import ProjectionStrategy, ProjectionName
 from pc2img.strategies.interpolation import InterpolationStrategy, InterpolationName
