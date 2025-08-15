@@ -192,6 +192,9 @@ class PerspectiveProjection(ProjectionStrategy):
         self.rotation_matrix = rotation_matrix
 
 
+    def inverse_projection(self):
+        raise NotImplementedError
+
     def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
         """
         Rotate the scan so that the projection direction
@@ -208,4 +211,5 @@ class PerspectiveProjection(ProjectionStrategy):
         )
 
         return uv[mask, :], mask
+
 
