@@ -17,7 +17,7 @@ ProjectionName = Literal["spherical", "orthographic"]
 class ProjectionStrategy(ABC):
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:
+    def __get_validators__(cls) -> Generator[Callable[..., Self], None, None]:
         yield cls.validate
 
     @classmethod
@@ -84,7 +84,7 @@ class ProjectionStrategy(ABC):
         return pts2d, mask
 
 
-class ProjectionStrategyClass(_StrategyClass, StrategyFactory[Any, ProjectionStrategy]):
+class ProjectionStrategyClass(_StrategyClass[ProjectionStrategy]):
     registry = PROJECTIONS
     base_type = ProjectionStrategy
 

@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional, TypeVar, Any, overload, Mapping
+from typing import Optional, TypeVar, Any, overload, Mapping, NamedTuple, TypeAlias
 
 from pydantic import ConfigDict, validate_call
 import numpy as np
@@ -13,16 +13,25 @@ from pc2img.strategies.interpolation import InterpolationStrategy, Interpolation
 from pc2img.features.manager import FeatureManager
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
 
-ProjArg = (
+ProjArg: TypeAlias = (
     ProjectionStrategy
     | ProjectionName
     | tuple[ProjectionName, Mapping[str, Any]]
 )
-InterpArg = (
+InterpArg: TypeAlias = (
     InterpolationStrategy
     | InterpolationName
     | tuple[InterpolationName, Mapping[str, Any]]
 )
+
+# ImgRes: TypeAlias = tuple[int, int]
+class ImgRes(NamedTuple):
+    width: int
+    height: int
+
+    def __repr__(self) -> str:
+        return f"ImgRes(width={self.width}, height={self.height})"
+
 
 class PointCloudImageGenerator:
 
@@ -30,7 +39,7 @@ class PointCloudImageGenerator:
     def __init__(
         self,
         pcd: PointCloudData,
-        img_res: tuple[int,int],
+        img_res: ImgRes,
         proj: ProjArg,
         interp: InterpArg,
         lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
@@ -40,7 +49,7 @@ class PointCloudImageGenerator:
     def __init__(
         self,
         pcd: PointCloudData,
-        img_res: tuple[int,int],
+        img_res: ImgRes,
         proj: ProjectionStrategy,
         interp: InterpolationStrategy,
         lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),

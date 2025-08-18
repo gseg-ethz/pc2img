@@ -24,7 +24,7 @@ InterpolationName = Literal["linear", "nearest_neighbor", "cubic", "delaunay"]
 class InterpolationStrategy(ABC):
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable, None, None]:
+    def __get_validators__(cls) -> Generator[Callable[..., Self], None, None]:
         yield cls.validate
 
     @classmethod
@@ -54,7 +54,7 @@ class InterpolationStrategy(ABC):
     ) -> NDArray:
         """Interpolate point-values onto a grid."""
 
-class InterpolationStrategyClass(_StrategyClass, StrategyFactory[Any, InterpolationStrategy]):
+class InterpolationStrategyClass(_StrategyClass[InterpolationStrategy]):
     registry = INTERPOLATIONS
     base_type = InterpolationStrategy
 

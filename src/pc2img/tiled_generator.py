@@ -26,16 +26,19 @@ class PointCloudTile(NamedTuple):
 
 ImageKey = namedtuple("ImageKey", ["tile_id", "feature"])
 
-ProjClassT = TypeVar(
-    "ProjClassT",
-    ProjectionName,
-    Type[ProjectionStrategy],
-)
-InterpClassT = TypeVar(
-    "InterpClassT",
-    InterpolationName,
-    Type[InterpolationStrategy],
-)
+# ProjClassT = TypeAlias(
+#     "ProjClassT",
+#     ProjectionName,
+#     Type[ProjectionStrategy],
+# )
+# InterpClassT = TypeAlias(
+#     "InterpClassT",
+#     InterpolationName,
+#     Type[InterpolationStrategy],
+# )
+ProjectionLike: TypeAlias = ProjectionName | type[ProjectionStrategy]
+InterpolationLike: TypeAlias = InterpolationName | type[InterpolationStrategy]
+
 
 class TiledPointCloudImageGenerator:
     @overload
@@ -43,8 +46,8 @@ class TiledPointCloudImageGenerator:
             self,
             pcd_tiles: Sequence[PointCloudTile] | Sequence[tuple[str, PointCloudData, Mapping[str, Any]]],
             img_res: tuple[int, int],
-            proj_cls: ProjClassT,
-            interp_cls: InterpClassT,
+            proj_cls: ProjectionLike,
+            interp_cls: InterpolationLike,
             *,
             proj_kwargs: Optional[Mapping[str, Any]] = None,
             interp_kwargs: Optional[Mapping[str, Any]] = None,
@@ -79,8 +82,8 @@ class TiledPointCloudImageGenerator:
     def generate(
             self,
             features: list[str],
-            n_jobs: int = 1,
-    ) -> dict:
+            n_jobs: int = -1,
+    ) -> dict[ImageKey, DiskBackedImageData]:
 
         tasks = self.pcd_tiles
 
