@@ -139,8 +139,11 @@ class DelaunayInterpolation(InterpolationStrategy):
             edges = np.stack([np.linalg.norm(a, axis=1),
                               np.linalg.norm(b, axis=1),
                               np.linalg.norm(c, axis=1)], axis=1)
+            # Hero's formula
             s = edges.sum(axis=1) / 2
-            area = np.sqrt(s * (s - edges[:, 0]) * (s - edges[:, 1]) * (s - edges[:, 2]))
+            radicand = np.clip(s * (s - edges[:, 0]) * (s - edges[:, 1]) * (s - edges[:, 2]), 0, None)  # Guard against numeric instability
+            area = np.sqrt(radicand)
+
             max_edge = edges.max(axis=1)
             return area, max_edge
 
