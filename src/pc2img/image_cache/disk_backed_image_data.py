@@ -69,8 +69,9 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     #     new_name = f"{base}_{uuid.uuid4().hex}{self._MEMMAP_SUFFIX}"
     #     return self.cache_path.parent / new_name
 
-    # @LazyDiskCache.ensure_loaded
-    # def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    @LazyDiskCache.ensure_loaded
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        raise NotImplemented
     #     # unwrap and handle 'out' exactly as before…
     #     # [your existing unwrapping + out=… code]
     #

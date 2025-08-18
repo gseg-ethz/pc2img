@@ -66,23 +66,30 @@ class PointCloudImageGenerator:
             self,
             features: list[str],
     ) -> dict[str,DiskBackedImageData]:
-        resolution = self._img_res
-        if not self.projection_results:
-            self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(self._pcd, resolution)
-
-        pts2d = self.projection_results["pts2d"]
-        mask = self.projection_results["mask"]
-
-        w, h = resolution
-        gx = np.arange(w)
-        gy = np.arange(h)
-        grid_x, grid_y = np.meshgrid(gx, gy)
-
 
         self.feature_mgr.request(features)
         base_features_1D = self.feature_mgr.get_base_features()
-        for bf_name, bf_1D in base_features_1D.items():
-            bf_raster = self._interp.interpolate(bf_1D[mask], pts2d, grid_x, grid_y)
-            self.feature_mgr.submit(bf_name, bf_raster)
+
+        if base_features_1D:
+            resolution = self._img_res
+            if not self.projection_results:
+                self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(self._pcd, resolution)
+
+            pts2d = self.projection_results["pts2d"]
+            mask = self.projection_results["mask"]
+
+            w, h = resolution
+            gx = np.arange(w)
+            gy = np.arange(h)
+            grid_x, grid_y = np.meshgrid(gx, gy)
+
+            for bf_name, bf_1D in base_features_1D.items():
+                bf_raster = self._interp.interpolate(bf_1D[mask], pts2d, grid_x, grid_y)
+                self.feature_mgr.submit(bf_name, bf_raster)
+
         results = self.feature_mgr.get_targets()
         return results
+
+    @property
+    def projection(self) -> ProjectionStrategy:
+        return self._proj

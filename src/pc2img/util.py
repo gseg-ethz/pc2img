@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np

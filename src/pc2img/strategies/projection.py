@@ -99,6 +99,10 @@ class SphericalProjection(ProjectionStrategy):
     ) -> None:
         self._field_of_view = field_of_view
 
+    @property
+    def fov(self) -> Optional[FoV]:
+        return self._field_of_view
+
     def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         mask = FoVFilter(fov=self._field_of_view).mask(pcd) if self._field_of_view is not None \
             else np.ones((pcd.nbPoints,), dtype=bool)

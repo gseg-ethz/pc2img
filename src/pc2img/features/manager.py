@@ -50,13 +50,18 @@ class FeatureManager:
             self._targets.append(target_spec)
             visit(target_spec)
 
+    def available_features(self) -> list[str]:
+        return list(self._raster_cache.keys())
+
     def get_base_features(self) -> dict[str, NDArray]:
+        '''Returns base features needed for request which are not yet `self._raster_cache`'''
         base_features = {}
         for base_spec in self._base_features:
             inst = base_spec.cls(**base_spec.params)
             base_features[base_spec.name] = inst.compute(self.pcd, self._get)
 
         return base_features
+
 
 
     def submit(self, name: str, array: NDArray) -> None:

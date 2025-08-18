@@ -1,6 +1,6 @@
 from collections import namedtuple
 from pathlib import Path
-from typing import Optional, NamedTuple, Sequence, overload, TypeVar, Type, Mapping, Any
+from typing import Optional, NamedTuple, Sequence, overload, TypeVar, Type, Mapping, Any, TypeAlias
 from joblib import Parallel, delayed, parallel_config
 import logging
 from functools import wraps

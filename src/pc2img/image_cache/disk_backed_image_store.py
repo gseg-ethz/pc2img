@@ -3,7 +3,7 @@ from collections.abc import MutableMapping
 import logging
 from pathlib import Path
 import pickle
-from typing import Dict, Iterator, Optional, Union, Any, Unpack
+from typing import Dict, Iterator, Optional, Union, Any, Unpack, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -23,12 +23,11 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             self,
             *,
             config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
-
     ) -> None:
 
         self._data: Dict[str, Optional[DiskBackedImageData]] = {}
         self._enable_caching = config.enable_caching
-        if config.cache_path is None or not config.cache_path.is_dir():
+        if config.cache_path is None or config.cache_path.is_file():
             self._cache_dir = Path(tempfile.mkdtemp())
         else:
             self._cache_dir = config.cache_path
@@ -38,11 +37,26 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
         if self._cache_dir is not None:
             self._cache_dir.mkdir(parents=True, exist_ok=True)
 
-    def __getitem__(self, key: str) -> DiskBackedImageData:
-        # if key not in self._data or self._data[key] is None:
-        #     self.fetch_image(key)
+            # Scan for existing pkl files
+            available_files = [f for f in self._cache_dir.glob("*.pkl") if f.is_file()]
+            for f in available_files:
+                self._data[f.stem] = None
 
-        return self._data[key]
+
+    def __getitem__(self, key: str) -> DiskBackedImageData:
+        obj = self._data.get(key, None)
+        if obj is not None:
+            return obj
+
+        try:
+            with open(self._get_pickle_path(key), "rb") as f:
+                loaded_obj = cast(DiskBackedImageData, pickle.load(f))
+        except FileNotFoundError:
+            raise KeyError(key)
+
+        self._data[key] = loaded_obj
+        return loaded_obj
+
 
     def __setitem__(self, key: str, value: DiskBackedImageData) -> None:
         if not isinstance(value, DiskBackedImageData):
@@ -143,9 +157,10 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             features = [features]
 
         for feature in features:
-            if self._data[feature] is None:
+            obj = self._data[feature]
+            if obj is None:
                 continue
-            self._data[feature].offload()
+            obj.offload()
 
     def offload_image_data_to_disk(self, features: Optional[str | list[str]] = None) -> None:
         if self._cache_dir is None:
