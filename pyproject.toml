@@ -54,7 +54,8 @@ documentation = "https://google.com"
 doc = ["sphinx ~= 5.1"]
 dev = [
 	"black ~= 23.10",
-	"pytest"
+	"pytest",
+    "memory_profiler",
 ]
 cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
 	"cudf-cu12 == 25.4.*", "cuspatial-cu12 == 25.4.*", "cuproj-cu12 == 25.4.*",
