@@ -1,6 +1,6 @@
 # TODO: Make angle units more flexible
 from __future__ import annotations
-
+from typing import Dict, Tuple
 import ast
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -52,7 +52,6 @@ class PCDImageLink:
     pcd: PointCloudData
     image_stacks: dict[int, ImageStack] = None
     identifier: Optional[str] = None
-
     cache_folder: Optional[Path] = None
 
 

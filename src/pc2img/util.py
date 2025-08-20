@@ -38,13 +38,15 @@ def convert_to_image(image_data: NDArray[np.floating], replace_nan_with: str = "
     if image_data.ndim != 2 and colormap:
         raise ValueError("Can't use colormap with more than 1 channel'")
 
-    nan_positions = np.isnan(image_data)
+    if colormap is not None:
+        nan_positions = np.isnan(image_data)
     image_data = replace_nan(image_data, replace_nan_with)
 
     image_min = np.min(image_data)
     image_max = np.max(image_data)
-    if normalize or np.min(image_data) < 0.0 or np.max(image_data) > 1.0:
-        image_data = (image_data - image_min) / (image_max - image_min)
+    if normalize or image_min < 0.0 or image_max > 1.0:
+        val_range = image_max - image_min
+        image_data = np.true_divide(np.subtract(image_data, image_min, out=image_data), val_range, out=image_data)
 
     if colormap is not None:
         # Extract cmap from matplotlib; cmap returns an RGBA image in float [0, 1]; drop the alpha channel
@@ -55,7 +57,11 @@ def convert_to_image(image_data: NDArray[np.floating], replace_nan_with: str = "
         image_data = np.dstack(3*(image_data,))
         image_data[~nan_positions,:] = colored_image_data[~nan_positions,:]
 
-    return (255.0 * image_data).astype(np.uint8)
+    # Prep uint8 output:
+    out = np.empty(image_data.shape, dtype=np.uint8)
+    np.multiply(image_data, 255.0, out=out, casting="unsafe")
+
+    return out
 
 def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
     if replace_nan_with not in ["max", "min", "random"]:

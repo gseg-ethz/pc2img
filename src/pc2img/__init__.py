@@ -1,6 +1,9 @@
 # pc2img/__init__.py
 __all__ = ["image_generation", "tiled_image_generation", "__version__",
-           "PC2IMGRunSettings","PCDImageLink","ImageData","ImageStack", "decorators"]
+           "PC2IMGRunSettings","PCDImageLink","ImageData","ImageStack"]
+
+# __all__ = ["image_generation", "tiled_image_generation", "__version__",
+#            "PC2IMGRunSettings","PCDImageLink","ImageData","ImageStack", "decorators"]
 
 import logging
 
@@ -11,7 +14,7 @@ from .core import (
     ImageData
 )
 
-from . import tiled_image_generation, image_generation, decorators
+from . import tiled_image_generation, image_generation # decorators
 from ._version import __version__
 
 __author__ = "Nicholas Meyer"
