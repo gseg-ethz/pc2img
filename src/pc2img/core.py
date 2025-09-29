@@ -1,10 +1,10 @@
 from pathlib import Path
-from typing import Optional, TypeVar, Any, overload, Mapping, NamedTuple, TypeAlias
+from typing import Optional, TypeVar, Any, overload, Mapping, NamedTuple, TypeAlias, TYPE_CHECKING, Annotated, cast
 
-from pydantic import ConfigDict, validate_call
+from pydantic import ConfigDict, validate_call, BeforeValidator
 import numpy as np
 
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, LazyDiskCacheKw
 
 from pchandler import PointCloudData
 
@@ -12,17 +12,6 @@ from pc2img.strategies.projection import ProjectionStrategy, ProjectionName
 from pc2img.strategies.interpolation import InterpolationStrategy, InterpolationName
 from pc2img.features.manager import FeatureManager
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
-
-ProjArg: TypeAlias = (
-    ProjectionStrategy
-    | ProjectionName
-    | tuple[ProjectionName, Mapping[str, Any]]
-)
-InterpArg: TypeAlias = (
-    InterpolationStrategy
-    | InterpolationName
-    | tuple[InterpolationName, Mapping[str, Any]]
-)
 
 # ImgRes: TypeAlias = tuple[int, int]
 class ImgRes(NamedTuple):
@@ -32,35 +21,66 @@ class ImgRes(NamedTuple):
     def __repr__(self) -> str:
         return f"ImgRes(width={self.width}, height={self.height})"
 
+# --- Converters (single source of truth for coercion) ---
+
+def coerce_img_res(x: ImgRes | tuple[int, int]) -> ImgRes:
+    if isinstance(x, ImgRes):
+        return x
+    if (isinstance(x, tuple) and len(x) == 2 
+            and all(isinstance(v, int) for v in x)):
+        return ImgRes(*x)
+    raise TypeError("img_res must be ImgRes or (width:int, height:int)")
+
+def coerce_lazy_cfg(x: LazyDiskCacheConfig | Mapping[str, Any] | None) -> LazyDiskCacheConfig:
+    if x is None:
+        return LazyDiskCacheConfig()
+    if isinstance(x, LazyDiskCacheConfig):
+        return x
+    if isinstance(x, Mapping):
+        return LazyDiskCacheConfig(**x)
+    raise TypeError("lazy_disk_cache_config must be a mapping or LazyDiskCacheConfig")
+
+# --- Typing trick: show loose types to type-checkers, use converters at runtime ---
+
+if TYPE_CHECKING:
+    ProjectionStrategyLike: TypeAlias = (
+        ProjectionStrategy
+        | ProjectionName
+        | tuple[ProjectionName, Mapping[str, Any]]
+    )
+    InterpolationStrategyLike: TypeAlias = (
+        InterpolationStrategy
+        | InterpolationName
+        | tuple[InterpolationName, Mapping[str, Any]]
+    )
+    ImgResLike = ImgRes | tuple[int, int]
+    LazyDiskCacheConfigLike = LazyDiskCacheConfig | Mapping[str, Any] | None
+else:
+    ProjectionStrategyLike = ProjectionStrategy
+    InterpolationStrategyLike = InterpolationStrategy
+    ImgResLike = Annotated[ImgRes, BeforeValidator(coerce_img_res)]
+    LazyDiskCacheConfigLike = Annotated[LazyDiskCacheConfig, BeforeValidator(coerce_lazy_cfg)]
 
 class PointCloudImageGenerator:
-
-    @overload
-    def __init__(
-        self,
-        pcd: PointCloudData,
-        img_res: ImgRes,
-        proj: ProjArg,
-        interp: InterpArg,
-        lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
-    ) -> None: ...
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
         pcd: PointCloudData,
-        img_res: ImgRes,
-        proj: ProjectionStrategy,
-        interp: InterpolationStrategy,
-        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        img_res: ImgResLike,
+        proj: ProjectionStrategyLike,
+        interp: InterpolationStrategyLike,
+        lazy_disk_cache_config: LazyDiskCacheConfigLike = None,  # default handled by coerce_lazy_cfg
     ) -> None:
         self._pcd = pcd
-        self._img_res = img_res
-        self._proj = proj
-        self._interp = interp
-        self.feature_mgr = FeatureManager(self._pcd, lazy_disk_cache_config=lazy_disk_cache_config)
+        self._img_res = cast(ImgRes, img_res)
+        self._proj = cast(ProjectionStrategy, proj)
+        self._interp = cast(InterpolationStrategy, interp)
+        self.feature_mgr = FeatureManager(
+            self._pcd, 
+            lazy_disk_cache_config=cast(LazyDiskCacheConfig, lazy_disk_cache_config)
+        )
         self.projection_results = {}
-
 
     def generate(
             self,

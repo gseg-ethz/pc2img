@@ -1,6 +1,6 @@
 from typing import Optional, Literal
 
-import matplotlib.pyplot as plt
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import convolve2d
@@ -82,32 +82,216 @@ def convert_to_image(image_data: NDArray[np.floating], replace_nan_with: NAN_REP
 
     return (255.0 * image_data).astype(np.uint8)
 
-def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
-    if replace_nan_with not in ["max", "min", "random"]:
-        raise ValueError("replace_nan_with must be one of 'max', 'min', 'random'")
+# def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
+#     if replace_nan_with not in ["max", "min", "random"]:
+#         raise ValueError("replace_nan_with must be one of 'max', 'min', 'random'")
 
-    image_data = image_data.copy()
-    image_min = np.nanmin(image_data)
-    image_max = np.nanmax(image_data)
-    nan_positions = np.isnan(image_data)
-    if nan_positions.ndim > 2:
-        nan_positions = np.any(nan_positions, axis=2)
-    match replace_nan_with:
-        case "max":
-            np.nan_to_num(image_data, copy=False, nan=image_max)
-        case "min":
-            np.nan_to_num(image_data, copy=False, nan=image_min)
-        case "random":
+#     image_data = image_data.copy()
+#     image_min = np.nanmin(image_data)
+#     image_max = np.nanmax(image_data)
+#     nan_positions = np.isnan(image_data)
+#     if nan_positions.ndim > 2:
+#         nan_positions = np.any(nan_positions, axis=2)
+#     match replace_nan_with:
+#         case "max":
+#             np.nan_to_num(image_data, copy=False, nan=image_max)
+#         case "min":
+#             np.nan_to_num(image_data, copy=False, nan=image_min)
+#         case "random":
+#             rng = np.random.default_rng()
+#             random = rng.uniform(image_min, image_max, size=image_data.shape[:2])
+#             if image_data.ndim == 3:
+#                 random = np.stack(image_data.shape[-1] * (random,), axis=-1)
+#                 nan_positions = np.stack(image_data.shape[-1] * (nan_positions,), axis=-1)
+#             image_data[nan_positions] = random[nan_positions]
+
+#     return image_data
+
+def replace_nan(
+    image_data: NDArray[np.floating] | NDArray[np.integer],
+    replace_nan_with: NAN_REPLACEMENT_STR | float = "max",
+    *,
+    rng: np.random.Generator | int | None = None,
+) -> NDArray[np.floating]:
+    """
+    Replace NaNs in a 2D/3D array.
+
+    - If `replace_nan_with` is a float, use that literal value.
+    - Else use {"max","min","random"} computed over finite values per-channel.
+    - For 3D input, replacement is broadcast channel-wise.
+    """
+    x = np.asarray(image_data)
+    out = x.astype(np.float32, copy=True)
+
+    isnan = np.isnan(out)
+    if not np.any(isnan):
+        return out
+
+    # Build RNG if needed
+    if replace_nan_with == "random":
+        if isinstance(rng, int):
+            rng = np.random.default_rng(rng)
+        elif rng is None:
             rng = np.random.default_rng()
-            random = rng.uniform(image_min, image_max, size=image_data.shape[:2])
-            if image_data.ndim == 3:
-                random = np.stack(image_data.shape[-1] * (random,), axis=-1)
-                nan_positions = np.stack(image_data.shape[-1] * (nan_positions,), axis=-1)
-            image_data[nan_positions] = random[nan_positions]
 
-    return image_data
+    # Per-channel stats for 3D, scalar for 2D
+    if out.ndim == 3:
+        finite = np.isfinite(out)
+        ch_axis = -1
+        mins = np.nanmin(out, axis=(0, 1))
+        maxs = np.nanmax(out, axis=(0, 1))
+        if isinstance(replace_nan_with, float):
+            fill = np.full_like(out, replace_nan_with, dtype=np.float32)
+        elif replace_nan_with == "max":
+            fill = np.broadcast_to(maxs, out.shape).astype(np.float32)
+        elif replace_nan_with == "min":
+            fill = np.broadcast_to(mins, out.shape).astype(np.float32)
+        elif replace_nan_with == "random":
+            H, W, C = out.shape
+            lows  = np.broadcast_to(mins, (H, W, C)).astype(np.float32)
+            highs = np.broadcast_to(maxs, (H, W, C)).astype(np.float32)
+            fill = rng.uniform(lows, highs).astype(np.float32)  # type: ignore[arg-type]
+        else:
+            raise ValueError(f"Unknown policy {replace_nan_with!r}")
+    else:
+        # 2D
+        finite = np.isfinite(out)
+        mn = np.nanmin(out)
+        mx = np.nanmax(out)
+        if isinstance(replace_nan_with, float):
+            fill = np.full_like(out, replace_nan_with, dtype=np.float32)
+        elif replace_nan_with == "max":
+            fill = np.full_like(out, mx, dtype=np.float32)
+        elif replace_nan_with == "min":
+            fill = np.full_like(out, mn, dtype=np.float32)
+        elif replace_nan_with == "random":
+            fill = np.random.default_rng(rng).uniform(mn, mx, size=out.shape).astype(np.float32)  # type: ignore[arg-type]
+        else:
+            raise ValueError(f"Unknown policy {replace_nan_with!r}")
+
+    out[isnan] = fill[isnan]
+    return out
 
 
+def to_gray(
+    a: NDArray,
+    *,
+    channel_axis: int | None = -1,
+    normalize_ints: bool = True,
+    out_dtype: type[np.floating] = np.float32,
+    nan_policy: Literal["keep", "min", "max", "random"] = "keep",
+    rgb_weights: tuple[float, float, float] = (0.299, 0.587, 0.114),
+) -> NDArray[np.floating]:
+    """
+    Convert an image to 2D grayscale float array.
+
+    - If `a` is 2D: just cast/normalize and return.
+    - If `a` is 3D: assume RGB(A) on `channel_axis`. Alpha is ignored.
+    - If integer dtype and normalize_ints=True: scale to [0,1] using dtype max.
+    - NaNs: leave as-is ("keep") or fill via your existing strategy.
+
+    Returns a float32 (by default) HxW array.
+    """
+    x = np.asarray(a)
+
+    # Move channel axis to last for simplicity (only if present)
+    if channel_axis is not None:
+        if x.ndim < 2:
+            raise ValueError(f"Expected 2D/3D array, got shape {x.shape}")
+        if channel_axis < 0:
+            channel_axis = x.ndim + channel_axis
+        if x.ndim == 3 and channel_axis != x.ndim - 1:
+            x = np.moveaxis(x, channel_axis, -1)
+
+    # Scale integers to [0,1] if requested
+    if np.issubdtype(x.dtype, np.integer) and normalize_ints:
+        info = np.iinfo(x.dtype)
+        x = x.astype(out_dtype, copy=False) / float(info.max)
+    else:
+        x = x.astype(out_dtype, copy=False)
+
+    if x.ndim == 2:
+        g = x
+    elif x.ndim == 3:
+        C = x.shape[-1]
+        if C < 3:
+            raise ValueError(f"Expected >=3 channels for RGB, got {C}")
+        r, gch, b = x[..., 0], x[..., 1], x[..., 2]
+        wr, wg, wb = rgb_weights
+        g = wr * r + wg * gch + wb * b
+    else:
+        raise ValueError(f"Expected 2D/3D array, got shape {x.shape}")
+
+    if nan_policy != "keep":
+        g = replace_nan(g, nan_policy)
+
+    return g
+
+
+def convert_to_image(
+    image_data: NDArray,
+    *,
+    replace_nan_with: NAN_REPLACEMENT_STR | float = "max",
+    normalize: bool = False,
+    colormap: Optional[ALL_CMAPS] = None,
+    channel_axis: int | None = -1,
+    normalize_ints: bool = True,
+) -> NDArray[np.uint8]:
+    """
+    Convert 2D or 3D array to uint8 image.
+
+    - If colormap is provided: expects a 2D array; if 3D, we first gray it via channel average.
+    - NaNs are filled using `replace_nan_with` **before** normalization.
+    - Integers are scaled to [0,1] if `normalize_ints=True`.
+    - If `normalize=True` or data not already in [0,1], min-max normalize on finite values.
+    """
+    x = np.asarray(image_data)
+
+    # If 3D with colormap: reduce to gray for mapping
+    if colormap is not None and x.ndim == 3:
+        # quick, dependency-free grayscale for display: mean over channels
+        if channel_axis is not None and channel_axis != x.ndim - 1:
+            x = np.moveaxis(x, channel_axis, -1)
+        x = x.astype(np.float32, copy=False)
+        x = x.mean(axis=-1)
+
+    # Handle integer input scaling
+    if np.issubdtype(x.dtype, np.integer) and normalize_ints:
+        info = np.iinfo(x.dtype)
+        x = x.astype(np.float32) / float(info.max)
+    else:
+        x = x.astype(np.float32, copy=False)
+
+    # Replace NaNs first (works for 2D or 3D)
+    x = replace_nan(x, replace_nan_with)
+
+    # Normalize if requested or out of [0,1]
+    finite = np.isfinite(x)
+    if normalize or (x[finite].min(initial=0.0) < 0.0) or (x[finite].max(initial=1.0) > 1.0):
+        lo = x[finite].min()
+        hi = x[finite].max()
+        if hi > lo:
+            x = (x - lo) / (hi - lo)
+        else:
+            x = np.zeros_like(x, dtype=np.float32)  # constant image
+
+    if colormap is not None:
+        try:
+            import matplotlib.pyplot as plt
+        except Exception as e:
+            raise RuntimeError("Colormap requires matplotlib") from e
+        
+        if x.ndim != 2:
+            raise ValueError("colormap requires a 2D array after grayscale conversion.")
+        cmap = plt.get_cmap(colormap)
+        rgb = cmap(x)[..., :3]          # float in [0,1]
+        return (rgb * 255.0 + 0.5).astype(np.uint8)
+
+    # If 2D, expand to 1-channel; if 3D, assume channels last
+    if x.ndim == 2:
+        x = np.expand_dims(x, axis=-1)  # HxW×1
+
+    return (x * 255.0 + 0.5).astype(np.uint8)
 
 
 def calculate_dip_direction_and_angle(xyz: np.ndarray) -> np.ndarray:
