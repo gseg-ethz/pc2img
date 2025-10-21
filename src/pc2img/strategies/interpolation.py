@@ -15,6 +15,7 @@ from GSEGUtils.config import get_defaults, CacheDefaults
 from GSEGUtils.lazy_disk_cache import DiskBackedNDArray, LazyDiskCacheConfig, LazyDiskCacheKw, DiskBackedStore
 
 from .registry import INTERPOLATIONS, _StrategyClass, StrategyFactory
+from .utils import thin_points_by_pixel_density
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +82,43 @@ class CubicInterpolation(InterpolationStrategy):
 
 @INTERPOLATIONS.register("delaunay")
 class DelaunayInterpolation(InterpolationStrategy):
+    """
+    Interpolate via barycentric weights using a Delaunay triangulation.
 
-    def __init__(self, /, lazy_disk_cache_config: Optional[LazyDiskCacheConfig] = None) -> None:
+    Parameters
+    ----------
+    lazy_disk_cache_config:
+        Optional cache configuration for storing intermediate barycentric data.
+    enable_density_thinning:
+        When true, limit the number of input points per output pixel before
+        building the triangulation to guard against OOMs on dense tiles.
+    max_points_per_pixel:
+        Cap for ``enable_density_thinning``. The first N points encountered per
+        pixel are kept, the remainder dropped.
+    density_ratio_trigger:
+        Optional global guard controlling when thinning activates based on the
+        overall point/pixel ratio.
+    """
+
+    def __init__(
+        self,
+        /,
+        lazy_disk_cache_config: Optional[LazyDiskCacheConfig] = None,
+        *,
+        enable_density_thinning: bool = False,
+        max_points_per_pixel: int = 4,
+        density_ratio_trigger: float | None = 4.0,
+    ) -> None:
         self._lazy_disk_cache_config = lazy_disk_cache_config or LazyDiskCacheConfig()
         self._triangulation_precalc: dict[str, DiskBackedStore[DiskBackedNDArray]] = {}
+        self._density_thinning_enabled = enable_density_thinning
+        self._max_points_per_pixel = max_points_per_pixel
+        self._density_ratio_trigger = density_ratio_trigger
+        if self._density_thinning_enabled:
+            if self._max_points_per_pixel < 1:
+                raise ValueError("max_points_per_pixel must be >= 1 when density thinning is enabled")
+            if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
+                raise ValueError("density_ratio_trigger must be positive when provided")
         # self._triangulation_precalc: dict[int, DelaunayInterpolation.TriangulationData] = {}
 
     # @dataclass(frozen=True)
@@ -115,6 +149,29 @@ class DelaunayInterpolation(InterpolationStrategy):
             grid_y: NDArray,
             fill_value: float = np.nan
     ) -> NDArray:
+
+        if self._density_thinning_enabled and points2d.size:
+            height, width = grid_x.shape
+            thinned_points, keep_mask = thin_points_by_pixel_density(
+                points2d,
+                img_width=width,
+                img_height=height,
+                max_points_per_pixel=self._max_points_per_pixel,
+                ratio_trigger=self._density_ratio_trigger,
+            )
+            if keep_mask.size and not np.all(keep_mask):
+                if values.shape[0] != keep_mask.shape[0]:
+                    raise ValueError(
+                        "Values array length must match points2d when applying density thinning."
+                    )
+                values = values[keep_mask]
+                points2d = thinned_points
+                logger.debug(
+                    "Density thinning reduced projected points from %d to %d (max %d per pixel)",
+                    keep_mask.shape[0],
+                    points2d.shape[0],
+                    self._max_points_per_pixel,
+                )
 
         hash_str = self._hash_settings(points2d, grid_x, grid_y)
         if hash_str not in self._triangulation_precalc:
@@ -167,14 +224,20 @@ class DelaunayInterpolation(InterpolationStrategy):
             area = np.sqrt(radicand)
 
             max_edge = edges.max(axis=1)
-            return area, max_edge
+            min_edge = edges.min(axis=1)
+            aspect_ratio = max_edge / np.maximum(min_edge, np.finfo(float).eps)
+            return area, max_edge, aspect_ratio
 
-        area, max_edge = compute_metrics(tri_vertices)
+        area, max_edge, aspect_ratio = compute_metrics(tri_vertices)
 
         # area_thresh = np.median(area) + 3 * np.median(np.abs(area-np.median(area)))
         # max_edge_thresh = np.median(max_edge) + 3 * np.median(np.abs(max_edge-np.median(max_edge)))
-        area_thresh = np.median(area)*3
-        max_edge_thresh = np.median(max_edge)*3
+        area_thresh = np.median(area)*10
+        # max_edge_thresh = np.median(max_edge)*3
+        max_edge_thresh = None
+        median_ratio = np.median(aspect_ratio)
+        mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
+        aspect_ratio_thresh = median_ratio + 6 * mad_ratio if mad_ratio > 0 else median_ratio * 10
 
         # Find bad triangles
         tri_is_good = np.ones_like(area, dtype=bool)
@@ -182,6 +245,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             tri_is_good &= area < area_thresh
         if max_edge_thresh is not None:
             tri_is_good &= max_edge < max_edge_thresh
+        tri_is_good &= aspect_ratio <= aspect_ratio_thresh
 
         # Mask out query points whose triangle is bad
         mask &= tri_is_good[simplices]
@@ -195,7 +259,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             'qi,qi->q',
             values[verts[mask]],  # pick only valid rows
             bary[mask]
-        )
+        )        
         return result.reshape(grid_x.shape)
 
 
