@@ -9,6 +9,7 @@ from pchandler import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
 from pchandler.geometry.spherical import FoV
 from pchandler.geometry.coordinates import rhv2xyz
+from pchandler.geometry.transforms import _TransformArray
 from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
@@ -187,14 +188,12 @@ class PerspectiveProjection(ProjectionStrategy):
     def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         raise NotImplementedError("This function computes the projected coordinates in one shot.")
 
-    def __init__(
-            self,
-            projection_matrix: NDArray,
-            rotation_matrix: NDArray,
-    ) -> None:
+    def inverse_projection(self):
+        raise NotImplementedError("This function computes the inverse projection.")
+
+    def __init__(self, projection_matrix: NDArray|_TransformArray, rotation_matrix: NDArray|_TransformArray):
         self.projection_matrix = projection_matrix
         self.rotation_matrix = rotation_matrix
-
 
     def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
         """
@@ -212,4 +211,5 @@ class PerspectiveProjection(ProjectionStrategy):
         )
 
         return uv[mask, :], mask
+
 
