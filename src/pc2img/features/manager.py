@@ -87,3 +87,8 @@ class FeatureManager:
         for t in self._targets:
             results[t.name] = self._get(t.name)
         return results
+    
+
+    @property
+    def cache_store(self) -> DiskBackedImageStore:
+        return self._raster_cache

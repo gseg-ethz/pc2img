@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self
+from typing import Optional, Literal, Any, Generator, Callable, Self, cast
 from pathlib import Path
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import logging
+import hashlib
 
 import numpy as np
 from numpy.typing import DTypeLike, NDArray
@@ -11,9 +12,10 @@ from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, Cloug
 from scipy.spatial import Delaunay
 
 from GSEGUtils.config import get_defaults, CacheDefaults
-from GSEGUtils.lazy_disk_cache import DiskBackedNDArray
+from GSEGUtils.lazy_disk_cache import DiskBackedNDArray, LazyDiskCacheConfig, LazyDiskCacheKw, DiskBackedStore
 
 from .registry import INTERPOLATIONS, _StrategyClass, StrategyFactory
+from .utils import thin_points_by_pixel_density
 
 logger = logging.getLogger(__name__)
 
@@ -24,11 +26,11 @@ InterpolationName = Literal["linear", "nearest_neighbor", "cubic", "delaunay"]
 class InterpolationStrategy(ABC):
 
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., Self], None, None]:
+    def __get_validators__(cls) -> Generator[Callable[..., "InterpolationStrategy"], None, None]:
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: Any, _) -> Self:
+    def validate(cls, value: Any, _) -> "InterpolationStrategy":
         if isinstance(value, cls):
             return value
         if isinstance(value, str):
@@ -80,21 +82,63 @@ class CubicInterpolation(InterpolationStrategy):
 
 @INTERPOLATIONS.register("delaunay")
 class DelaunayInterpolation(InterpolationStrategy):
+    """
+    Interpolate via barycentric weights using a Delaunay triangulation.
 
-    @dataclass(frozen=True)
-    class TriangulationData:
-        bary: DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
-        verts: DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
-        simplices: DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
-        triangles: DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
+    Parameters
+    ----------
+    lazy_disk_cache_config:
+        Optional cache configuration for storing intermediate barycentric data.
+    enable_density_thinning:
+        When true, limit the number of input points per output pixel before
+        building the triangulation to guard against OOMs on dense tiles.
+    max_points_per_pixel:
+        Cap for ``enable_density_thinning``. The first N points encountered per
+        pixel are kept, the remainder dropped.
+    density_ratio_trigger:
+        Optional global guard controlling when thinning activates based on the
+        overall point/pixel ratio.
+    """
 
+    def __init__(
+        self,
+        /,
+        lazy_disk_cache_config: Optional[LazyDiskCacheConfig] = None,
+        *,
+        enable_density_thinning: bool = False,
+        max_points_per_pixel: int = 4,
+        density_ratio_trigger: float | None = 4.0,
+    ) -> None:
+        self._lazy_disk_cache_config = lazy_disk_cache_config or LazyDiskCacheConfig()
+        self._triangulation_precalc: dict[str, DiskBackedStore[DiskBackedNDArray]] = {}
+        self._density_thinning_enabled = enable_density_thinning
+        self._max_points_per_pixel = max_points_per_pixel
+        self._density_ratio_trigger = density_ratio_trigger
+        if self._density_thinning_enabled:
+            if self._max_points_per_pixel < 1:
+                raise ValueError("max_points_per_pixel must be >= 1 when density thinning is enabled")
+            if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
+                raise ValueError("density_ratio_trigger must be positive when provided")
+        # self._triangulation_precalc: dict[int, DelaunayInterpolation.TriangulationData] = {}
 
-    def __init__(self):
-        self._triangulation_precalc: dict[int, DelaunayInterpolation.TriangulationData] = {}
+    # @dataclass(frozen=True)
+    # class TriangulationData:
+    #     bary: DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
+    #     verts: DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
+    #     simplices: DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
+    #     triangles: DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
+
+        
 
     @staticmethod
-    def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y:NDArray) -> int:
-        return hash((hash(points2d.tobytes()), hash(grid_x.tobytes()), hash(grid_y.tobytes())))
+    def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y:NDArray) -> str:
+        m = hashlib.sha256()
+        m.update(points2d.tobytes())
+        m.update(grid_x.tobytes())
+        m.update(grid_y.tobytes())
+        return m.hexdigest()
+        # return hash((hash(points2d.tobytes()), hash(grid_x.tobytes()), hash(grid_y.tobytes())))
+    
 
 
     def interpolate(
@@ -106,20 +150,55 @@ class DelaunayInterpolation(InterpolationStrategy):
             fill_value: float = np.nan
     ) -> NDArray:
 
-        hash_id = self._hash_settings(points2d, grid_x, grid_y)
+        if self._density_thinning_enabled and points2d.size:
+            height, width = grid_x.shape
+            thinned_points, keep_mask = thin_points_by_pixel_density(
+                points2d,
+                img_width=width,
+                img_height=height,
+                max_points_per_pixel=self._max_points_per_pixel,
+                ratio_trigger=self._density_ratio_trigger,
+            )
+            if keep_mask.size and not np.all(keep_mask):
+                if values.shape[0] != keep_mask.shape[0]:
+                    raise ValueError(
+                        "Values array length must match points2d when applying density thinning."
+                    )
+                values = values[keep_mask]
+                points2d = thinned_points
+                logger.debug(
+                    "Density thinning reduced projected points from %d to %d (max %d per pixel)",
+                    keep_mask.shape[0],
+                    points2d.shape[0],
+                    self._max_points_per_pixel,
+                )
 
-        logger.debug(f"Starting interpolation with hash {hash_id}")
-        if hash_id not in self._triangulation_precalc:
-            self._precalc_traingulation(points2d, grid_x, grid_y, hash_id)
+        hash_str = self._hash_settings(points2d, grid_x, grid_y)
+        if hash_str not in self._triangulation_precalc:
+            self._triangulation_precalc[hash_str] = DiskBackedStore[DiskBackedNDArray](
+                config=self._lazy_disk_cache_config.extend_cache_path(hash_str),
+                factory=DiskBackedNDArray,
+                value_type=DiskBackedNDArray,
+            )
 
-        triangulation_data = self._triangulation_precalc[hash_id]
+        if "bary" not in self._triangulation_precalc[hash_str]:
+            logger.debug(f"Starting interpolation with hash {hash_str}")
+            simplices, verts, bary, triangles = self._calculate_triangulation(points2d, grid_x, grid_y)
+            self._triangulation_precalc[hash_str].add_data_to_store("triangles", triangles)
+            self._triangulation_precalc[hash_str].add_data_to_store("simplices", simplices)
+            self._triangulation_precalc[hash_str].add_data_to_store("verts", verts)  
+            self._triangulation_precalc[hash_str].add_data_to_store("bary", bary)
+        else:
+            simplices = np.asarray(self._triangulation_precalc[hash_str]["simplices"])
+            verts = np.asarray(self._triangulation_precalc[hash_str]["verts"])
+            bary = np.asarray(self._triangulation_precalc[hash_str]["bary"])
+            triangles = np.asarray(self._triangulation_precalc[hash_str]["triangles"])
+        self._triangulation_precalc[hash_str].offload(pickle_container=True)
+
 
         grid = np.vstack((grid_x.ravel(), grid_y.ravel())).T
 
-        simplices = np.asarray(triangulation_data.simplices)
-        verts = np.asarray(triangulation_data.verts)
-        bary = np.asarray(triangulation_data.bary)
-        triangles = np.asarray(triangulation_data.triangles)
+
 
         nQ = grid.shape[0]
         result = np.full(nQ, fill_value, dtype=float)
@@ -145,14 +224,20 @@ class DelaunayInterpolation(InterpolationStrategy):
             area = np.sqrt(radicand)
 
             max_edge = edges.max(axis=1)
-            return area, max_edge
+            min_edge = edges.min(axis=1)
+            aspect_ratio = max_edge / np.maximum(min_edge, np.finfo(float).eps)
+            return area, max_edge, aspect_ratio
 
-        area, max_edge = compute_metrics(tri_vertices)
+        area, max_edge, aspect_ratio = compute_metrics(tri_vertices)
 
         # area_thresh = np.median(area) + 3 * np.median(np.abs(area-np.median(area)))
         # max_edge_thresh = np.median(max_edge) + 3 * np.median(np.abs(max_edge-np.median(max_edge)))
-        area_thresh = np.median(area)*3
-        max_edge_thresh = np.median(max_edge)*3
+        area_thresh = np.median(area)*10
+        # max_edge_thresh = np.median(max_edge)*3
+        max_edge_thresh = None
+        median_ratio = np.median(aspect_ratio)
+        mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
+        aspect_ratio_thresh = median_ratio + 6 * mad_ratio if mad_ratio > 0 else median_ratio * 10
 
         # Find bad triangles
         tri_is_good = np.ones_like(area, dtype=bool)
@@ -160,6 +245,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             tri_is_good &= area < area_thresh
         if max_edge_thresh is not None:
             tri_is_good &= max_edge < max_edge_thresh
+        tri_is_good &= aspect_ratio <= aspect_ratio_thresh
 
         # Mask out query points whose triangle is bad
         mask &= tri_is_good[simplices]
@@ -173,17 +259,16 @@ class DelaunayInterpolation(InterpolationStrategy):
             'qi,qi->q',
             values[verts[mask]],  # pick only valid rows
             bary[mask]
-        )
+        )        
         return result.reshape(grid_x.shape)
 
 
-    def _precalc_traingulation(
+    def _calculate_triangulation(
             self,
             points2d: NDArray,
             grid_x: NDArray,
-            grid_y: NDArray,
-            hash_id: int
-    ) -> None:
+            grid_y: NDArray
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         logger.debug(f"Starting computation of Delaunay triangles for {len(points2d)} candidate points.")
         # 1) Build once
         tri = Delaunay(points2d)
@@ -201,15 +286,30 @@ class DelaunayInterpolation(InterpolationStrategy):
         bary[:, -1] = 1 - bary_partial.sum(axis=1)
         verts = tri.simplices[simplices.clip(0)]  # for outside, we’ll ignore these rows
 
+        return simplices, verts, bary, tri.simplices
 
-        self._triangulation_precalc[
-            hash_id
-        ] = DelaunayInterpolation.TriangulationData(
-            DiskBackedNDArray(bary),
-            DiskBackedNDArray(verts),
-            DiskBackedNDArray(simplices),
-            DiskBackedNDArray(tri.simplices),
-        )
+        # self._triangulation_precalc[hash_id].add_data_to_store("triangles", tri.simplices)
+        # self._triangulation_precalc[hash_id].add_data_to_store("simplices", simplices)
+        # self._triangulation_precalc[hash_id].add_data_to_store("verts", verts)  
+        # self._triangulation_precalc[hash_id].add_data_to_store("bary", bary)
+
+
+        # self._triangulation_precalc[
+        #     hash_id
+        # ] = DelaunayInterpolation.TriangulationData(
+        #     DiskBackedNDArray(
+        #         bary, **self._lazy_disk_cache_config.extend_cache_path("bary.pkl").as_kwargs()
+        #     ),
+        #     DiskBackedNDArray(
+        #         verts, **self._lazy_disk_cache_config.extend_cache_path("verts.pkl").as_kwargs()
+        #     ),
+        #     DiskBackedNDArray(
+        #         simplices, **self._lazy_disk_cache_config.extend_cache_path("simplices.pkl").as_kwargs()
+        #     ),
+        #     DiskBackedNDArray(
+        #         tri.simplices, **self._lazy_disk_cache_config.extend_cache_path("triangles.pkl").as_kwargs()
+        #     ),
+        # )
 
 
 

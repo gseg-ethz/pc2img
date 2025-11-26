@@ -160,6 +160,9 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             obj = self._data[feature]
             if obj is None:
                 continue
+            if not obj.enable_caching:
+                logger.debug("Skipping offload for %s because caching is disabled.", feature)
+                continue
             obj.offload()
 
     def offload_image_data_to_disk(self, features: Optional[str | list[str]] = None) -> None:

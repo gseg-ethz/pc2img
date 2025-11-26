@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self
+from typing import Optional, Literal, Any, Generator, Callable, Self, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -20,11 +20,11 @@ ProjectionName = Literal["spherical", "orthographic", "perspective"]
 
 class ProjectionStrategy(ABC):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., Self], None, None]:
+    def __get_validators__(cls) -> Generator[Callable[..., "ProjectionStrategy"], None, None]:
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: Any, _) -> Self:
+    def validate(cls, value: Any, _) -> "ProjectionStrategy":
         if isinstance(value, cls):
             return value
         if isinstance(value, str):
@@ -98,7 +98,6 @@ class SphericalProjection(ProjectionStrategy):
             self,
             *,
             field_of_view: Optional[FoV] = None,
-            **_: Any
     ) -> None:
         self._field_of_view = field_of_view
 
@@ -153,7 +152,6 @@ class OrthographicProjection(ProjectionStrategy):
             *,
             plane: Literal["xy", "yz", "xz"],
             roi_box: Optional[tuple[float, float, float, float]] = None,
-            **_: Any
     ) -> None:
         match plane:
             case 'xy':
