@@ -49,12 +49,12 @@ documentation = "https://google.com"
 doc = ["sphinx ~= 5.1"]
 dev = ["black ~= 22.10"]
 cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
-	"cudf-cu12 ~= 24.8",
-	"cuml-cu12 ~= 24.8",
+	"cudf-cu12 ~= 24.10",
+	"cuml-cu12 ~= 24.10",
 	"cupy-cuda12x ~= 13.0",
 ]
 cuda11 = [ # Check version numbers
-	"cudf-cu11 ~= 24.8",
-	"cuml-cu11 ~= 24.8",
+	"cudf-cu11 ~= 24.10",
+	"cuml-cu11 ~= 24.10",
 	"cupy-cuda11x ~= 13.0",
 ]
