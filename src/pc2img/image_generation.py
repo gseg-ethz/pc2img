@@ -6,7 +6,6 @@ from typing import Iterable, Optional
 import warnings
 
 
-from cuml.neighbors import NearestNeighbors
 import numpy as np
 from numpy.typing import NDArray
 from scipy.spatial import Delaunay
@@ -19,6 +18,31 @@ from .util import nanconv, gaussian_kernel
 
 
 logger = logging.getLogger(__name__.split(".")[0])
+
+
+# CPU-01 / CPU-02 / CPU-03: lazy cuml + sklearn fallback for bary_knn rasterization.
+# Module-level flag ensures the WARNING fires exactly once per process even though
+# `calculate_triangulation` may be called many times across scans. Tests reset this
+# flag via monkeypatch (Pitfall 9 in 03-RESEARCH.md).
+_cpu_fallback_warned: bool = False
+
+
+def _warn_bary_knn_cpu_fallback() -> None:
+    """Emit a single-fire PERFORMANCE WARNING when cuml is unavailable.
+
+    Called from inside the `'knn'` case of `calculate_triangulation` when the
+    `cuml.neighbors` import fails. The warning surfaces via the `pc2img` logger
+    (see line above); Plan 06 of Phase 3 will route this warning through the
+    tls2dseg CLI logger so it is visible to the end user per the CPU-03 contract.
+    """
+    global _cpu_fallback_warned
+    if not _cpu_fallback_warned:
+        logger.warning(
+            "PERFORMANCE: cuml.neighbors unavailable — using sklearn NearestNeighbors "
+            "for bary_knn rasterization. CPU path is functional but significantly slower. "
+            "Install RAPIDS/cuml for GPU acceleration. (This message fires once per process.)"
+        )
+        _cpu_fallback_warned = True
 
 
 class ImageGenerator(ABC):
@@ -69,6 +93,14 @@ class ImageGenerator(ABC):
 
         match method:
             case 'knn':
+                # CPU-01 / CPU-02: lazy cuml import + sklearn fallback. Keeps the
+                # module importable on machines without RAPIDS/cuml installed; the
+                # sklearn path is functionally equivalent (slower on large inputs).
+                try:
+                    from cuml.neighbors import NearestNeighbors
+                except ImportError:
+                    _warn_bary_knn_cpu_fallback()
+                    from sklearn.neighbors import NearestNeighbors
                 knn = NearestNeighbors(n_neighbors=3)
                 knn.fit(points)
                 distances, indices = knn.kneighbors(xi)
