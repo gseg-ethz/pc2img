@@ -4,13 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pc2img"
-description = "Short description of DeSpAn"
-requires-python = "~=3.12"
+description = "Software to convert point clouds to images with various image representations."
+requires-python = "~=3.12,<3.13"
 keywords = ["one", "two"]
-license = {text = "Proprietary"}
+license = {file = "LICENSE"}
 authors = [
-	{name = "Nicholas Meyer"},
-	{email = "meyernic@ethz.ch"},
+	{name = "Nicholas Meyer", email = "meyernic@ethz.ch"},
 ]
 dynamic = ["version", "readme"]
 classifiers = [
