@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.5](https://github.com/gseg-ethz/pc2img/compare/v0.10.4...v0.10.5) (2026-07-02)
+
+
+### 📚 Documentation
+
+* Create LICENSE ([f946268](https://github.com/gseg-ethz/pc2img/commit/f946268ed96ad64c4341734d4076150f03bc7ac3))
+
+
+### 🧹 Miscellaneous Chores
+
+* **license:** switch from MIT to BSD-3-Clause ([ade40f8](https://github.com/gseg-ethz/pc2img/commit/ade40f85a18729290d50e05ce5da0c2d98f45c20))
+* Merge branch 'main' of github.com:gseg-ethz/pc2img ([69224a9](https://github.com/gseg-ethz/pc2img/commit/69224a9644046386264d23dc568f9719b5a89da8))
+
 ## [0.10.4](https://github.com/gseg-ethz/pc2img/compare/v0.10.3...v0.10.4) (2025-04-15)
 
 
