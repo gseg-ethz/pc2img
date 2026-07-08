@@ -36,7 +36,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `develop-gsd` contains the richer `dev/*` architecture (`features/`, `image_cache/`, `strategies/`, `tiled_generator.py`) as the consolidated mainline.
   3. The stale `feature/update_to_pchandler-1.0.0` branch has a recorded salvage-or-retire decision and has been acted on.
   4. No divergent `dev/*` branch carries development work that is not reflected in `develop-gsd`.
-**Plans**: TBD
+**Plans**: 3 plans
+- [ ] 01-01-PLAN.md — Fold origin/dev/perspective_projection onto the phase-branch mainline (archive-tag, clean merge, prune local persp) [BRANCH-02]
+- [ ] 01-02-PLAN.md — Verify dev/v2 consolidation, prune fully-merged locals, amend PROJECT/REQUIREMENTS Out-of-Scope (D-02) [BRANCH-02]
+- [ ] 01-03-PLAN.md — Retire pchandler-1.0 local label + author the branch-inventory doc [BRANCH-01, BRANCH-03]
 
 ### Phase 2: Dependency Adaptation & Reproducible Environment
 **Goal**: pc2img imports and runs correctly against PCHandler 2.x + the current GSEGUtils release, with a correctly pinned, reproducible `uv` environment.
@@ -99,7 +102,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Branch Untangling & Mainline Consolidation | 0/TBD | Not started | - |
+| 1. Branch Untangling & Mainline Consolidation | 0/3 | Not started | - |
 | 2. Dependency Adaptation & Reproducible Environment | 0/TBD | Not started | - |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
