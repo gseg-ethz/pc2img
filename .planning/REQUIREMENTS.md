@@ -74,7 +74,7 @@ Explicitly excluded. Documented to prevent scope creep.
 | Feature | Reason |
 |---------|--------|
 | `develop/tomislav` branch consolidation | Explicitly excluded by project owner |
-| New projection / interpolation / feature algorithms | Milestone hardens & adapts existing capability, not new features |
+| New projection / interpolation / feature algorithms (except the folded `PerspectiveProjection`) | Milestone hardens & adapts existing capability, not new features. **Owner-approved exception (D-02):** `PerspectiveProjection`, folded onto the mainline in Phase 1, is in scope (WIP; math owned by Phase 4, coverage by Phase 5 per D-03). No other new algorithms are in scope. |
 | Unapproved edits to PCHandler / GSEGUtils | Changes to those repos require explicit human approval first |
 | UI / frontend surface | Backend/library only |
 | Monetization | Academic research library |

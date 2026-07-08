@@ -79,7 +79,7 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 ### Out of Scope
 
 - `develop/tomislav` branch — explicitly excluded from consolidation per project owner
-- New projection/interpolation/feature algorithms — this milestone hardens and adapts existing capability, not new features
+- New projection/interpolation/feature algorithms — this milestone hardens and adapts existing capability, not new features. **Exception (owner-approved, D-02):** the `PerspectiveProjection` strategy folded onto the mainline in Phase 1 is explicitly **in scope** — it rode in with the `dev/perspective_projection` fold and is WIP; its projection math is owned by Phase 4 (algorithmic-soundness) and its test coverage by Phase 5 (D-03). No *other* new algorithms are in scope.
 - Unapproved edits to PCHandler / GSEGUtils — changes to those repos require explicit human approval first
 - UI / frontend surface — backend/library only
 - Monetization — academic research library
