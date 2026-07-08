@@ -3,19 +3,22 @@ from typing import Optional, Literal, Any, Generator, Callable, Self, cast
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.spatial.transform import Rotation
 
 from pchandler import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
 from pchandler.geometry.spherical import FoV
 from pchandler.geometry.coordinates import rhv2xyz
+from pchandler.geometry.transforms import _TransformArray
+from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
 
 
-ProjectionName = Literal["spherical", "orthographic"]
+ProjectionName = Literal["spherical", "orthographic", "perspective"]
+
 
 class ProjectionStrategy(ABC):
-
     @classmethod
     def __get_validators__(cls) -> Generator[Callable[..., "ProjectionStrategy"], None, None]:
         yield cls.validate
@@ -110,7 +113,6 @@ class SphericalProjection(ProjectionStrategy):
         mins = np.array([fov.left, fov.top]).squeeze()
         maxs = np.array([fov.right, fov.bottom]).squeeze()
 
-
         return pcd.spher[mask, 1:], mask, mins, maxs
 
     def inverse_projection(self, range_img: NDArray, spherical_origin: Optional[NDArray] = None) -> tuple[NDArray, NDArray]:
@@ -177,3 +179,35 @@ class OrthographicProjection(ProjectionStrategy):
 
         # Todo: Update to pass min and max back!
         return pcd.xyz[mask, self._xyz_column_selection], mask
+
+
+@PROJECTIONS.register("perspective")
+class PerspectiveProjection(ProjectionStrategy):
+    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        raise NotImplementedError("This function computes the projected coordinates in one shot.")
+
+    def inverse_projection(self):
+        raise NotImplementedError("This function computes the inverse projection.")
+
+    def __init__(self, projection_matrix: NDArray|_TransformArray, rotation_matrix: NDArray|_TransformArray):
+        self.projection_matrix = projection_matrix
+        self.rotation_matrix = rotation_matrix
+
+    def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
+        """
+        Rotate the scan so that the projection direction
+
+        Returns:
+          - pts2d: array of pixel coordinates shape (M, 2)
+          - mask: original boolean mask shape (N,)
+        """
+        uv = (self.projection_matrix @ self.rotation_matrix) @ pcd
+        uv = uv.arr[:, :2] / uv.arr[:, 2].reshape(-1, 1)
+        mask = np.logical_and(
+            np.logical_and(uv[:, 0] >= 0, uv[:, 0] < resolution[0]),
+            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1])
+        )
+
+        return uv[mask, :], mask
+
+
