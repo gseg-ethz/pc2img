@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 1
-current_phase_name: Branch Untangling & Mainline Consolidation
+current_phase: 01
+current_phase_name: branch-untangling-mainline-consolidation
 status: executing
 stopped_at: Phase 1 context gathered
-last_updated: "2026-07-08T20:41:28.262Z"
+last_updated: "2026-07-08T22:18:44.759Z"
 last_activity: 2026-07-08
-last_activity_desc: Roadmap created (6 phases, 24 requirements mapped)
+last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 0
+  total_plans: 4
   completed_plans: 0
   percent: 0
 ---
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 1 — Branch Untangling & Mainline Consolidation
+**Current focus:** Phase 01 — branch-untangling-mainline-consolidation
 
 ## Current Position
 
-Phase: 1 of 6 (Branch Untangling & Mainline Consolidation)
-Plan: 0 of TBD in current phase
+Phase: 01 (branch-untangling-mainline-consolidation) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-08 — Roadmap created (6 phases, 24 requirements mapped)
+Last activity: 2026-07-08 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01 P01 | 3 | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -67,6 +68,7 @@ Recent decisions affecting current work:
 - CI/CD split: lightweight test-CI early (Phase 3), branch-protection/publication hardening pre-ship (Phase 6).
 - Known bugs tracked as explicit requirements, each with a proving test (Phase 5).
 - Quality pillar deepened to include mathematical/algorithmic soundness (Phase 4); QUAL-03 findings feed BUG-05.
+- [Phase 01]: Folded origin/dev/perspective_projection (authoritative remote) onto phase branch via --no-ff merge; archive tag preserves pre-fold tip 8f0fae9; local dev/perspective_projection pruned with self-guarding -d
 
 ### Pending Todos
 
@@ -86,6 +88,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T20:15:00.421Z
+Last session: 2026-07-08T22:18:09.884Z
 Stopped at: Phase 1 context gathered
 Resume file: .planning/phases/01-branch-untangling-mainline-consolidation/01-CONTEXT.md

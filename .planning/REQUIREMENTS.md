@@ -17,7 +17,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 ### Branch Untangling
 
 - [ ] **BRANCH-01**: A branch inventory documents which branches carry live development vs are dead (`develop/tomislav` excluded)
-- [ ] **BRANCH-02**: The richer `dev/*` architecture is consolidated into `develop-gsd` as the single forward-development mainline
+- [x] **BRANCH-02**: The richer `dev/*` architecture is consolidated into `develop-gsd` as the single forward-development mainline
 - [ ] **BRANCH-03**: The stale `feature/update_to_pchandler-1.0.0` branch is analyzed and dispositioned (salvage or retire)
 
 ### Code Quality & Algorithmic Soundness
@@ -90,7 +90,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEP-03 | Phase 2 | Pending |
 | DEP-04 | Phase 2 | Pending |
 | BRANCH-01 | Phase 1 | Pending |
-| BRANCH-02 | Phase 1 | Pending |
+| BRANCH-02 | Phase 1 | Complete |
 | BRANCH-03 | Phase 1 | Pending |
 | QUAL-01 | Phase 4 | Pending |
 | QUAL-02 | Phase 4 | Pending |
@@ -111,6 +111,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BC-01 | Phase 6 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 24 total (note: earlier "23 total" undercounted by one; there are 24 distinct IDs)
 - Mapped to phases: 24 ✓
 - Unmapped: 0
