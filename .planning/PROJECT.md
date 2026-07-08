@@ -38,6 +38,7 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - ✓ Lazy disk-backed image cache built on `GSEGUtils.LazyDiskCache` — existing
 - ✓ Parallel tiled generation over many tiles (joblib/loky) — existing
 - ✓ RRIM and multiscale-gradient feature families — existing
+- ✓ Branch untangling & mainline consolidation: `develop-gsd` established as the single forward mainline (richer `dev/*` architecture folded in, incl. the WIP `PerspectiveProjection`); every branch inventoried/dispositioned (`develop/tomislav` excluded); stale `feature/update_to_pchandler-1.0.0` retired — Validated in Phase 1 (BRANCH-01/02/03)
 
 ### Active
 
@@ -47,10 +48,6 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - [ ] Adapt pc2img to reworked PCHandler 2.x + GSEGUtils (semantic/runtime breaks, not just imports)
 - [ ] Resolve the `numpy` pin conflict and re-enable/pin `pchandler` + `GSEGUtils` in `pyproject.toml`
 - [ ] Standardize the dev environment on `uv`
-
-**Branch untangling**
-- [ ] Identify which branches carry live development vs are dead; fold the richer `dev/*` architecture into `develop-gsd`
-- [ ] Resolve the stale `feature/update_to_pchandler-1.0.0` branch (analysis + disposition)
 
 **Code Quality & Algorithmic Soundness**
 - [ ] Review for code hygiene / tech debt (dead code, duplicate `joblib` pin, placeholder metadata, duplicate `convert_to_image`, matplotlib extra, `make_generator` factory)
@@ -132,4 +129,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-08 after initialization*
+*Last updated: 2026-07-09 — Phase 1 (Branch Untangling & Mainline Consolidation) complete: develop-gsd is the consolidated mainline.*
