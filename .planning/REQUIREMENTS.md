@@ -85,36 +85,36 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | TBD | Pending |
-| DEP-02 | TBD | Pending |
-| DEP-03 | TBD | Pending |
-| DEP-04 | TBD | Pending |
-| BRANCH-01 | TBD | Pending |
-| BRANCH-02 | TBD | Pending |
-| BRANCH-03 | TBD | Pending |
-| QUAL-01 | TBD | Pending |
-| QUAL-02 | TBD | Pending |
-| QUAL-03 | TBD | Pending |
-| BUG-01 | TBD | Pending |
-| BUG-02 | TBD | Pending |
-| BUG-03 | TBD | Pending |
-| BUG-04 | TBD | Pending |
-| BUG-05 | TBD | Pending |
-| TEST-01 | TBD | Pending |
-| TEST-02 | TBD | Pending |
-| TEST-03 | TBD | Pending |
-| TEST-04 | TBD | Pending |
-| TEST-05 | TBD | Pending |
-| TEST-06 | TBD | Pending |
-| CICD-01 | TBD | Pending |
-| CICD-02 | TBD | Pending |
-| BC-01 | TBD | Pending |
+| DEP-01 | Phase 2 | Pending |
+| DEP-02 | Phase 2 | Pending |
+| DEP-03 | Phase 2 | Pending |
+| DEP-04 | Phase 2 | Pending |
+| BRANCH-01 | Phase 1 | Pending |
+| BRANCH-02 | Phase 1 | Pending |
+| BRANCH-03 | Phase 1 | Pending |
+| QUAL-01 | Phase 4 | Pending |
+| QUAL-02 | Phase 4 | Pending |
+| QUAL-03 | Phase 4 | Pending |
+| BUG-01 | Phase 5 | Pending |
+| BUG-02 | Phase 5 | Pending |
+| BUG-03 | Phase 5 | Pending |
+| BUG-04 | Phase 5 | Pending |
+| BUG-05 | Phase 5 | Pending |
+| TEST-01 | Phase 3 | Pending |
+| TEST-02 | Phase 3 | Pending |
+| TEST-03 | Phase 5 | Pending |
+| TEST-04 | Phase 5 | Pending |
+| TEST-05 | Phase 5 | Pending |
+| TEST-06 | Phase 5 | Pending |
+| CICD-01 | Phase 3 | Pending |
+| CICD-02 | Phase 6 | Pending |
+| BC-01 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 23 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 23 ⚠️
+- v1 requirements: 24 total (note: earlier "23 total" undercounted by one; there are 24 distinct IDs)
+- Mapped to phases: 24 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-07-08*
-*Last updated: 2026-07-08 after initial definition*
+*Last updated: 2026-07-08 after roadmap creation (traceability mapped)*
