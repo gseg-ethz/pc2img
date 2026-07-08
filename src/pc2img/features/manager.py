@@ -63,7 +63,6 @@ class FeatureManager:
         return base_features
 
 
-
     def submit(self, name: str, array: NDArray) -> None:
         self._raster_cache.add_image_to_store(name, array)
         # self._raster_cache[name] = array
