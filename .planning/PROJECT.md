@@ -100,6 +100,7 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - **Dependency edits**: changes to PCHandler / GSEGUtils require human approval — They are separate GSD-managed repos
 - **Branching**: work on `develop-gsd` + per-phase branches; `main` only at milestone ship, stripped of `.planning/` and agent-specific files — Keep the public branch clean of planning artifacts
 - **Publication standard**: branch protection + CI/CD match the PCHandler template — Consistency across GSEG libraries
+- **Commit messages**: conventional-commit scopes use traditional/functional scopes (e.g. `fix(projection):`, `test(features):`), never GSD planning-ID tags (no `(BUGS-05)`-style IDs in the parentheses) — Commits squash to `main` where `.planning/` is stripped, so planning-ID references in scopes would dangle
 
 ## Key Decisions
 
