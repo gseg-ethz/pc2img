@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The stale `feature/update_to_pchandler-1.0.0` branch has a recorded salvage-or-retire decision and has been acted on.
   4. No divergent `dev/*` branch carries development work that is not reflected in `develop-gsd`.
 
-**Plans**: 3 plans
+**Plans**: 4 plans
 **Wave 1**
 
 - [ ] 01-01-PLAN.md — Fold origin/dev/perspective_projection onto the phase-branch mainline (archive-tag, clean merge, prune local persp) [BRANCH-02]
@@ -52,6 +52,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 3** *(blocked on Wave 2 completion)*
 
 - [ ] 01-03-PLAN.md — Retire pchandler-1.0 local label + author the branch-inventory doc [BRANCH-01, BRANCH-03]
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 01-04-PLAN.md — Merge the completed phase branch forward into develop-gsd; prove SC2/SC4 on the mainline itself [BRANCH-02]
 
 ### Phase 2: Dependency Adaptation & Reproducible Environment
 
@@ -129,7 +133,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Branch Untangling & Mainline Consolidation | 0/3 | Not started | - |
+| 1. Branch Untangling & Mainline Consolidation | 0/4 | Not started | - |
 | 2. Dependency Adaptation & Reproducible Environment | 0/TBD | Not started | - |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
