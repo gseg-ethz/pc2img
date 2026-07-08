@@ -1,6 +1,9 @@
 # Actions
 src/**/_version.py
 
+# Third party (local dep source symlinks for GSD analysis — never committed)
+third_party/
+
 # BAK files
 **/*.bak
 
