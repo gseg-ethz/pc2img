@@ -51,7 +51,7 @@ created: 2026-07-08
 | SC2 | BRANCH-02 | `PerspectiveProjection` present on mainline after fold | `git grep -l PerspectiveProjection <fold-target> -- 'src/*'` matches `strategies/projection.py`; `"perspective"` present in the `PROJECTIONS` registry `Literal` |
 | SC2 | BRANCH-02 | no perspective commit left behind | `git rev-list --count <fold-target>..origin/dev/perspective_projection` → 0 |
 | SC4 | BRANCH-02 | every `dev/*` is an ancestor of the fold target | `git branch -a --no-merged <fold-target>` lists no `dev/*` ref (excluding tomislav/ship/bot refs) |
-| SC1 | BRANCH-01 | inventory doc exists and classifies every ref | file present under `.planning/phases/01-…/`; row count == ref count from `git for-each-ref` |
+| SC1 | BRANCH-01 | inventory doc exists and classifies every ref | file present under `.planning/phases/01-…/`; one row per non-symbolic branch/remote ref (13) — matching 01-03 Task 2's 13-name grep loop (excludes tags `v0*`/`v2.0.0a5`/`archive/*`, `stash`, and the symbolic `origin/HEAD`) |
 | SC3 | BRANCH-03 | branch dispositioned + acted on | `git merge-base --is-ancestor 54c7100 develop-gsd` → exit 0 (recorded); `git branch --list feature/update_to_pchandler-1.0.0` → empty (local label deleted) |
 | D-06 | (safety) | nothing lost on prune | `git tag --list 'archive/*'` shows the persp archive tag pointing at `8f0fae9` **before** any persp prune |
 
