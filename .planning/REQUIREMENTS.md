@@ -9,8 +9,8 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 
 ### Dependency Adaptation
 
-- [ ] **DEP-01**: pc2img runs against PCHandler 2.x with all semantic/runtime breaks resolved (FoVTree 2D `"<r>-<c>"` identifiers, world-frame `to_py4dgeo`, Csv/Las load behavior)
-- [ ] **DEP-02**: pc2img runs against the current GSEGUtils release (`lazy_disk_cache`, `config`, `base_types` usage), respecting the `gsegutils`/`GSEGUtils` casing gotcha
+- [x] **DEP-01**: pc2img runs against PCHandler 2.x with all semantic/runtime breaks resolved (FoVTree 2D `"<r>-<c>"` identifiers, world-frame `to_py4dgeo`, Csv/Las load behavior)
+- [x] **DEP-02**: pc2img runs against the current GSEGUtils release (`lazy_disk_cache`, `config`, `base_types` usage), respecting the `gsegutils`/`GSEGUtils` casing gotcha
 - [x] **DEP-03**: `pyproject.toml` re-enables and correctly pins `pchandler` + `GSEGUtils`, and resolves the numpy pin conflict (numpy 2.x)
 - [x] **DEP-04**: The dev environment is reproducibly set up with `uv` (documented; lockfile committed)
 
@@ -85,8 +85,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEP-01 | Phase 2 | Pending |
-| DEP-02 | Phase 2 | Pending |
+| DEP-01 | Phase 2 | Complete |
+| DEP-02 | Phase 2 | Complete |
 | DEP-03 | Phase 2 | Complete |
 | DEP-04 | Phase 2 | Complete |
 | BRANCH-01 | Phase 1 | Complete |

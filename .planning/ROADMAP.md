@@ -20,7 +20,7 @@ more correct, more installable, and closer to publishable.
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches (completed 2026-07-08)
-- [ ] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile
+- [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
 - [ ] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net
 - [ ] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings
 - [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
@@ -69,7 +69,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `pyproject.toml` declares and pins `pchandler` + `GSEGUtils` and resolves the numpy 2.x pin conflict; a clean install imports the package without local `third_party/` symlinks.
   4. A documented `uv` workflow reproduces the dev environment from a committed lockfile.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -81,7 +81,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 02-03-PLAN.md — Commit synthetic SC1 smoke script + fix scripts gitignore trap + pchandler-2x break-audit attestation [DEP-01, DEP-02]
+- [x] 02-03-PLAN.md — Commit synthetic SC1 smoke script + fix scripts gitignore trap + pchandler-2x break-audit attestation [DEP-01, DEP-02]
 
 ### Phase 3: Test & CI Foundation
 
@@ -146,7 +146,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
-| 2. Dependency Adaptation & Reproducible Environment | 2/3 | In Progress|  |
+| 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete   | 2026-07-09 |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
