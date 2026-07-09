@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches (completed 2026-07-08)
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
-- [ ] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net
+- [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [ ] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings
 - [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
@@ -94,7 +94,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Coverage measurement runs and a baseline percentage is recorded and reported.
   3. A CI workflow runs the test suite automatically on every pull request and reports pass/fail.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -106,7 +106,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-03-PLAN.md — Measure + record the coverage baseline (CONTRIBUTING) and add the lightweight PR CI workflow [TEST-02, CICD-01]
+- [x] 03-03-PLAN.md — Measure + record the coverage baseline (CONTRIBUTING) and add the lightweight PR CI workflow [TEST-02, CICD-01]
 
 ### Phase 4: Code Quality & Algorithmic Soundness Review
 
@@ -159,7 +159,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
-| 3. Test & CI Foundation | 2/3 | In Progress|  |
+| 3. Test & CI Foundation | 3/3 | Complete   | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
