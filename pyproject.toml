@@ -16,9 +16,8 @@ classifiers = [
 	"Programming Language :: Python :: 3"
 ]
 dependencies = [
-#	"pchandler[cuda12] ~= 1.0",
-#	"pchandler[cuda12] @ git+ssh://git@github.com/gseg-ethz/PCHandler.git@v2.0.0rc7",
-#	"GSEGUtils ~= 0.2",
+	"pchandler ~= 2.1",
+	"GSEGUtils ~= 0.5",
 	"joblib ~= 1.5",
 	"numpy ~= 2.0",
 	"imageio ~= 2.31",
@@ -56,13 +55,5 @@ dev = [
 	"pytest",
     "memory_profiler",
 ]
-cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
-	"cudf-cu12 == 25.4.*", "cuspatial-cu12 == 25.4.*", "cuproj-cu12 == 25.4.*",
-	"cuml-cu12 == 25.4.*", "dask-cudf-cu12 == 25.4.*",
-#	"cupy-cuda12x ~= 13.0",
-]
-cuda11 = [ # Check version numbers
-	"cudf-cu11 == 25.4.*",
-	"cuml-cu11 == 25.4.*",
-#	"cupy-cuda11x ~= 13.0",
-]
+cuda12 = ["pchandler[cuda12]"]
+cuda11 = ["pchandler[cuda11]"]
