@@ -123,6 +123,9 @@ ENV/
 # re-includes its contents (a re-included dir does not auto-re-include children).
 !/scripts/
 !/scripts/**
+# ...but never track Python bytecode caches under scripts/: the broad !/scripts/**
+# re-include above would otherwise un-ignore scripts/**/__pycache__/ (generated).
+scripts/**/__pycache__/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
