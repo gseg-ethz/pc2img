@@ -15,13 +15,13 @@ expected: |
   workflow to trigger, run to completion, and report a green pass/fail status
   check on the PR. The `CI / tests` check appears on the PR, installs from the
   frozen lock, runs the scoped suite (15 passed / 11 xfailed), the
-  --cov-fail-under=21 gate passes (~23% total), and the check reports success.
+  --cov-fail-under=35 gate passes (~37% total), and the check reports success.
 awaiting: user response
 
 ## Tests
 
 ### 1. Live first-PR CI run
-expected: Open a real pull request against develop-gsd (or main) and confirm the CI workflow triggers, runs to completion, and reports a green pass/fail status check on the PR. The `CI / tests` check appears, installs from the frozen lock, runs the scoped suite (15 passed / 11 xfailed), the `--cov-fail-under=21` gate passes (~23% total), and the check reports success.
+expected: Open a real pull request against develop-gsd (or main) and confirm the CI workflow triggers, runs to completion, and reports a green pass/fail status check on the PR. The `CI / tests` check appears, installs from the frozen lock, runs the scoped suite (15 passed / 11 xfailed), the `--cov-fail-under=35` gate passes (~37% total), and the check reports success.
 result: [pending]
 
 ## Summary
