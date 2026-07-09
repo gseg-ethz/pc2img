@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Dependency Adaptation & Reproducible Environment
-status: "Phase 1 shipped — PR #7"
+current_phase: 02
+current_phase_name: dependency-adaptation-reproducible-environment
+status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-09T05:31:48.278Z"
+last_updated: "2026-07-09T13:46:09.169Z"
 last_activity: 2026-07-09
-last_activity_desc: Phase 02 planning complete
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 6
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 5
   percent: 17
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 01 — branch-untangling-mainline-consolidation
+**Current focus:** Phase 02 — dependency-adaptation-reproducible-environment
 
 ## Current Position
 
-Phase: 2 — Dependency Adaptation & Reproducible Environment
-Plan: Not started
-Status: Phase 1 shipped — PR #7
-Last activity: 2026-07-09 — Phase 02 planning complete
+Phase: 02 (dependency-adaptation-reproducible-environment) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-07-09 — Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 12 | 2 tasks | 2 files |
 | Phase 01 P03 | 8min | 2 tasks | 1 files |
 | Phase 01 P04 | 2 | 2 tasks | 1 files |
+| Phase 02 P01 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -76,6 +77,7 @@ Recent decisions affecting current work:
 - [Phase 01 P03]: Retired local feature/update_to_pchandler-1.0.0 via self-guarding git branch -d (54c7100 is a full ancestor of develop-gsd; named-args registry intent already in-tree, nothing to salvage); no remote touched
 - [Phase 01 P03]: Authored 01-BRANCH-INVENTORY.md classifying all 13 phase-start refs; develop/tomislav EXCLUDED, all remote deletions staged for Phase 6 (D-05), archive tag recorded as D-06 safety net
 - [Phase 01 P04]: Merged the completed phase branch forward into develop-gsd via --no-ff (9b42cfb, two parents); SC2/SC4 re-proven on develop-gsd (develop-gsd..origin/dev/perspective_projection now 0, was 8 12); WIP math untouched (D-03), no remote touched (D-05)
+- [Phase 02]: Kept numpy ~= 2.0 loose, relying on pchandler transitive <2.4 cap (D-03); routed cuda extras through pchandler[cudaXX] (D-04); dev/doc to PEP 735 groups (D-08); pinned all ten RAPIDS names to explicit nvidia index (D-06)
 
 ### Pending Todos
 
@@ -95,6 +97,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T04:55:16.290Z
+Last session: 2026-07-09T13:45:23.572Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-dependency-adaptation-reproducible-environment/02-CONTEXT.md
