@@ -116,9 +116,16 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
+**Wave 1**
 
 - [ ] 03.1-01-PLAN.md — IP findings doc (shipped) + ADR recording the locked disposition (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 03.1-02-PLAN.md — top-level NOTICE + opt-in `rrim` extra + reconciled rrim.py docstring (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 03.1-03-PLAN.md — verify suite green + coverage floor unchanged, ETH/owner sign-off, resolve blocking todo (Wave 3)
 
 ### Phase 4: Code Quality & Algorithmic Soundness Review
