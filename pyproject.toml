@@ -49,11 +49,36 @@ documentation = "https://google.com"
 #DeSpAn = "DeSpAn.cli:main"
 
 [project.optional-dependencies]
-doc = ["sphinx ~= 5.1"]
-dev = [
-	"black ~= 23.10",
-	"pytest",
-    "memory_profiler",
-]
 cuda12 = ["pchandler[cuda12]"]
 cuda11 = ["pchandler[cuda11]"]
+
+# Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
+# `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
+[dependency-groups]
+dev = ["black ~= 23.10", "pytest", "memory_profiler"]
+doc = ["sphinx ~= 5.1"]
+
+# Explicit nvidia index for the RAPIDS packages pulled transitively via
+# pchandler[cudaXX] (D-06). explicit = true means this index is consulted ONLY for
+# names bound in [tool.uv.sources] below; everything else stays on PyPI, which
+# contains dependency-confusion on the RAPIDS names to the official index.
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
+
+# A2 caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
+# pchandler[cudaXX]. If the transitive source pins fail to bind at lock time,
+# Plan 02 invokes the documented fallback (name them directly in the cuda extras).
+# No entry may point at a local /scratch or third_party/ path (D-12, forbidden).
+[tool.uv.sources]
+cudf-cu12      = { index = "nvidia" }
+cuspatial-cu12 = { index = "nvidia" }
+cuproj-cu12    = { index = "nvidia" }
+cuml-cu12      = { index = "nvidia" }
+dask-cudf-cu12 = { index = "nvidia" }
+cudf-cu11      = { index = "nvidia" }
+cuspatial-cu11 = { index = "nvidia" }
+cuproj-cu11    = { index = "nvidia" }
+cuml-cu11      = { index = "nvidia" }
+dask-cudf-cu11 = { index = "nvidia" }
