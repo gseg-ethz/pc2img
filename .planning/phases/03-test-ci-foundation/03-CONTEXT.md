@@ -121,7 +121,7 @@ the Phase 4 soundness review); GPU tests + self-hosted GPU runner infra
   no GPU-specific code of its own (GPU paths are exercised transitively through
   pchandler; the `cuda11/cuda12` extras just pull `pchandler[cudaXX]`), and Phase 2
   already deferred GPU-path validation to **GPU-01 (v2)**. Phase 3 CI is CPU-only.
-- **D-13 (forward direction, deferred):** **When GPU testing does land (GPU-01,
+- **D-13 [informational] (forward direction, deferred):** **When GPU testing does land (GPU-01,
   v2), reuse pchandler's existing shared self-hosted GPU runner pool + labels +
   digest-pinned GHCR RAPIDS image** rather than standing up a dedicated pc2img
   runner/image. Captured now to steer v2; no action this phase.
