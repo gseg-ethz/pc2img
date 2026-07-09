@@ -11,10 +11,15 @@ Run with::
     uv run python scripts/smoke_pipeline.py
 
 Exit 0 (and a printed ``OK`` line) means the pipeline works against the locked
-pchandler/GSEGUtils env.
+pchandler/GSEGUtils env. The checks below are written to be sensitive: they
+raise ``RuntimeError`` (not bare ``assert``, so they survive ``python -O``),
+use a non-square resolution so a transposed-axes projection bug fails the shape
+check, bound the ``range`` raster to its physical band (rejecting a constant /
+pixel-coordinate / wrong-scalar raster that a ``> 0`` check would pass), and
+assert an on-disk cache artifact is actually written so the GSEGUtils
+disk-offload codec is genuinely exercised rather than silently skipped.
 """
 
-import logging
 import tempfile
 from pathlib import Path
 
@@ -27,7 +32,12 @@ from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 from pc2img.core import PointCloudImageGenerator
 from pc2img.strategies import SphericalProjection, DelaunayInterpolation
 
-logger = logging.getLogger(__name__.split(".")[0])
+
+def _check(condition: bool, message: str) -> None:
+    """Fail the smoke with a clear error. Unlike ``assert`` this is NOT stripped
+    under ``python -O``, so a broken pipeline can never print ``OK`` and exit 0."""
+    if not condition:
+        raise RuntimeError(message)
 
 
 def main() -> None:
@@ -51,16 +61,18 @@ def main() -> None:
         # uncoerced None-default public-API bug is a known follow-up deferred to
         # Phase 4/5 (RESEARCH Open Question 1); this is a workaround, not a fix.
         #
-        # NOTE: this explicit config does NOT govern both caches. DelaunayInterpolation()
-        # keeps its own default cache config (src/pc2img/strategies/interpolation.py),
-        # so the Delaunay step exercises the GSEGUtils DiskBackedStore surface through
-        # its own default cache while the generator's raster store uses the explicit
-        # config here. Both still exercise the GSEGUtils disk-cache path (SC2), just
-        # through two independent configs.
-        cfg = LazyDiskCacheConfig(cache_path=Path(td))
+        # enable_caching=True is required for the offload path to run: LazyDiskCacheConfig
+        # defaults enable_caching=False, and DiskBackedImageData.offload() no-ops when
+        # caching is disabled -- so cache_path alone writes nothing to disk. With caching
+        # enabled, the generator's raster store materializes the ``range`` raster as an
+        # on-disk artifact (range.dat), which is what runtime-exercises the GSEGUtils
+        # LazyDiskCache offload codec (SC2 / BC-GSEG-001). This explicit config governs the
+        # generator's raster store only; DelaunayInterpolation() keeps its own default
+        # cache config (caching off), so the Delaunay step does not itself write to disk.
+        cfg = LazyDiskCacheConfig(cache_path=Path(td), enable_caching=True)
         gen = PointCloudImageGenerator(
             pcd,
-            (200, 200),
+            (200, 260),  # non-square (width, height): shape check now catches a transposed projection
             SphericalProjection(field_of_view=pcd.fov),
             DelaunayInterpolation(),
             lazy_disk_cache_config=cfg,
@@ -69,19 +81,41 @@ def main() -> None:
 
         img = np.asarray(out["range"])
         finite_fraction = float(np.isfinite(img).mean())
+        raster_min = float(np.nanmin(img))
+        raster_max = float(np.nanmax(img))
 
-        assert img.shape == (200, 200), f"unexpected shape {img.shape}"
-        assert finite_fraction > 0.5, f"too few finite pixels: {finite_fraction}"
-        assert np.nanmin(img) > 0, "range must be a positive distance"
+        # On-disk artifacts prove the GSEGUtils offload codec actually ran (see comment
+        # above). With enable_caching=False this list is empty and the pipeline would
+        # otherwise "pass" without exercising the disk format at all (SC2 gap).
+        artifacts = sorted(p.name for p in Path(td).rglob("*") if p.is_file())
 
-        # Print the diagnostic (finite fraction + shape/min/max) so CI logs carry it,
-        # not just the pass/fail from the asserts.
+        # Shape: ImgRes is (width, height) -> numpy (rows=height, cols=width). A projection
+        # that swapped axes would yield (200, 260) and fail here.
+        _check(img.shape == (260, 200), f"unexpected shape {img.shape} (expected (260, 200))")
+        # Coverage: observed ~0.96; a regression that NaN-ed a large fraction of the hull
+        # interior must fail. 0.90 leaves headroom for interpolation jitter without being lax.
+        _check(finite_fraction > 0.90, f"too few finite pixels: {finite_fraction:.4f}")
+        # Physical band: the synthetic range is ~[8.7, 11.3]. These bounds reject a constant
+        # raster, a pixel-coordinate raster (~0..260), or a wrong scalar field -- all of which
+        # a bare ``nanmin > 0`` check would wave through. Observed: min=8.80, max=11.27.
+        _check(8.0 < raster_min < 9.5, f"range min out of band: {raster_min:.3f} (expected ~8.8)")
+        _check(10.5 < raster_max < 12.0, f"range max out of band: {raster_max:.3f} (expected ~11.3)")
+        # Offload proof: at least one cache artifact must have been written to disk.
+        _check(
+            len(artifacts) >= 1,
+            f"no on-disk cache artifact under {td} -- GSEGUtils offload codec was not exercised "
+            f"(is enable_caching=True?)",
+        )
+
+        # Print the diagnostic (finite fraction + shape/min/max + artifacts) so CI logs carry
+        # it, not just the pass/fail from the checks.
         print(
             "OK",
             f"shape={img.shape}",
             f"finite_fraction={finite_fraction:.3f}",
-            f"min={float(np.nanmin(img)):.3f}",
-            f"max={float(np.nanmax(img)):.3f}",
+            f"min={raster_min:.3f}",
+            f"max={raster_max:.3f}",
+            f"artifacts={artifacts}",
         )
 
 

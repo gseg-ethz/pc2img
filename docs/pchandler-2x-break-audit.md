@@ -59,12 +59,13 @@ attestation still holds.
   capitalized form correctly, and the `pyproject.toml` requirement keeps `GSEGUtils`
   capitalized (D-02). pip normalizes case for *resolution* regardless.
 - **No GSEGUtils BC required a pc2img source change.** BC-GSEG-001 (on-disk format
-  moved from pickle to `.npy` + `.meta.json`, refusing legacy `.pkl`) does not affect
-  pc2img: the library creates *fresh* `DiskBackedStore` caches at runtime (e.g. the
-  Delaunay triangulation cache), which materialize in the new format — there is no
-  legacy `.pkl` to migrate. BC-GSEG-002/003/005 are additive or behaviour-preserving
-  and are not on any pc2img call path. The DiskBackedStore/LazyDiskCache surface is
-  runtime-exercised by the Delaunay step in the SC1 smoke.
+  moved off legacy pickle, refusing legacy `.pkl`) does not affect pc2img: the library
+  creates *fresh* lazy disk caches at runtime, which materialize in the current format —
+  there is no legacy `.pkl` to migrate. BC-GSEG-002/003/005 are additive or
+  behaviour-preserving and are not on any pc2img call path. The
+  `LazyDiskCache`/offload surface is runtime-exercised by the SC1 smoke through the
+  generator's raster store — see "Runtime proof" below for exactly what is and is not
+  offloaded.
 
 ## Runtime proof (what IS exercised)
 
@@ -73,8 +74,18 @@ synthetic cloud runs the single-cloud spherical → Delaunay → `range` pipelin
 end-to-end against the locked pchandler 2.x + GSEGUtils env, exiting 0 with finite
 output. Importing the smoke pulls the full `pc2img` module graph (core → strategies →
 features → image_cache → tiled_generator), so every `pchandler.*` / `GSEGUtils.*`
-import resolves, and Delaunay exercises the GSEGUtils `DiskBackedStore` cache path
-(SC2).
+import resolves.
+
+The smoke runtime-exercises the GSEGUtils `LazyDiskCache` **offload codec** (SC2 /
+BC-GSEG-001), not just the import: it configures the generator's raster store with
+`LazyDiskCacheConfig(cache_path=…, enable_caching=True)` and asserts that at least one
+on-disk cache artifact (`range.dat`) is actually written — the offload no-ops when
+`enable_caching` is left at its `False` default, so this assertion is what makes the
+disk-format claim real rather than assumed. Scope note: only the generator's raster
+store offloads here; `DelaunayInterpolation()` keeps its own default cache config
+(caching off), so the Delaunay triangulation cache is *not* itself written to disk by
+this smoke. That is sufficient for SC2 — the current GSEGUtils on-disk offload format
+is exercised by a real pc2img call path.
 
 ## Known follow-ups (out of scope for Phase 2)
 
