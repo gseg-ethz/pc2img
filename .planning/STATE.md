@@ -5,9 +5,10 @@ milestone_name: milestone
 current_phase: 3
 current_phase_name: Test & CI Foundation
 status: "Phase 2 shipped — PR #8 (into develop-gsd)"
-stopped_at: Phase 2 context gathered
-last_updated: "2026-07-09T14:55:11.245Z"
+stopped_at: Phase 3 context gathered
+last_updated: "2026-07-09T17:33:10.007Z"
 last_activity: 2026-07-09
+last_activity_desc: "Completed quick task 260709-nvp: re-ignore scripts/ bytecode caches"
 progress:
   total_phases: 6
   completed_phases: 2
@@ -108,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T14:17:58.770Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-dependency-adaptation-reproducible-environment/02-CONTEXT.md
+Last session: 2026-07-09T17:33:09.991Z
+Stopped at: Phase 3 context gathered
+Resume file: .planning/phases/03-test-ci-foundation/03-CONTEXT.md
