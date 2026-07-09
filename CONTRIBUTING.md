@@ -63,22 +63,23 @@ The test suite is measured with branch coverage scoped to the `pc2img` package:
 uv run pytest --cov=pc2img --cov-branch --cov-report=term-missing
 ```
 
-**Measured baseline: 23%** (whole-package branch coverage, measured 2026-07-09 on the
-green suite of 15 passed / 11 xfailed). This is a deliberately modest number: the suite
-is a triaged Phase-3 foundation, not full coverage. In particular `src/pc2img/features/rrim.py`
-reports 0% because `tests/test_rrim_features.py` loads it under a throwaway module name, so
-its passing tests don't attribute to the tracked `rrim.py` line — that's a Phase-5 concern,
-not a Phase-3 gap, and it depresses the whole-package number.
+**Measured baseline: 37%** (whole-package branch coverage, measured 2026-07-09 on the
+green suite of 15 passed / 11 xfailed). This is still a modest number: the suite is a
+triaged Phase-3 foundation, not full coverage — large modules such as `tiled_generator.py`
+and `util.py` remain largely unexercised, pending Phase 5. (An earlier draft recorded 23%
+because `tests/test_rrim_features.py` loaded `rrim.py` under a throwaway module name, so its
+passing tests didn't attribute to the tracked file; the test now imports the real
+`pc2img.features.rrim`, and its coverage is counted.)
 
-**Enforced floor: `--cov-fail-under=21`.** CI (`.github/workflows/ci.yml`) runs the suite
-with `--cov-fail-under=21` on the command line — a couple of points below the measured
+**Enforced floor: `--cov-fail-under=35`.** CI (`.github/workflows/ci.yml`) runs the suite
+with `--cov-fail-under=35` on the command line — a couple of points below the measured
 baseline to absorb xfail coverage volatility (xfail'd tests execute up to their failure
 line, so their coverage contribution can shift). The gate lives on the CI command line, not
 in `pyproject.toml`, so local subset runs never enforce it.
 
 This floor is a **regression ratchet**: it fails CI if coverage drops, without pretending
 the suite is comprehensive. It is ratcheted upward in **Phase 5** as real coverage lands
-(bug-fix tests flip from xfail to pass, `rrim.py` gets attributed coverage).
+(bug-fix tests flip from xfail to pass, and the untested core modules get covered).
 
 ## After changing dependencies
 
