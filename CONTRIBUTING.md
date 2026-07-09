@@ -1,0 +1,83 @@
+# Contributing to pc2img
+
+This document covers the **developer bootstrap workflow**. It is intentionally
+dev-facing only — user-facing installation and usage documentation lives in
+`README.rst`, not here.
+
+pc2img uses [`uv`](https://docs.astral.sh/uv/) for environment management. The
+committed `uv.lock` is a universal, hash-pinned lockfile that reproduces the exact
+dependency set across platforms. `setuptools_scm` remains the build backend, so the
+package version is derived from git tags at build time (keep `.git` present).
+
+## Prerequisites
+
+- Python 3.12 (the project is pinned to `~=3.12,<3.13`).
+- `uv` (0.11+). Install from <https://docs.astral.sh/uv/getting-started/installation/>.
+
+## Bootstrap the environment
+
+```bash
+uv sync                 # create .venv, install runtime deps + the `dev` group,
+                        # and install pc2img itself (editable) so `uv run` can import it
+```
+
+`uv sync` with no flags installs the project, its runtime dependencies, **and the
+`dev` group** (uv special-cases `dev` as a default group). It reproduces the exact
+versions recorded in `uv.lock`.
+
+```bash
+uv sync --group doc     # additionally install the `doc` group (sphinx) for building docs
+```
+
+Both `dev` (black, pytest, memory_profiler) and `doc` (sphinx) are declared as
+[PEP 735](https://peps.python.org/pep-0735/) `[dependency-groups]`, so they never
+leak into the published wheel metadata and are never installed by
+`pip install pc2img`.
+
+## Everyday commands
+
+```bash
+uv run python scripts/smoke_pipeline.py   # SC1 smoke: run the single-cloud pipeline end-to-end
+uv run pytest                             # run the test suite (tests land in Phase 3)
+```
+
+`uv run <cmd>` executes inside the synced environment without needing to activate
+`.venv` manually. Because `uv sync` installs pc2img editable, `uv run` resolves
+`import pc2img` directly.
+
+> Note: `scripts/smoke_pipeline.py` is created in a later plan of this phase; until
+> then, `uv run pytest` has no tests to collect (the pytest framework is stood up in
+> Phase 3).
+
+## After changing dependencies
+
+Any edit to `pyproject.toml` dependencies (or the `[tool.uv]` index/source/conflict
+tables) must be followed by regenerating and committing the lock:
+
+```bash
+uv lock                 # regenerate uv.lock from pyproject.toml
+uv lock --check         # verify the committed lock is up to date with pyproject.toml
+git add uv.lock pyproject.toml && git commit   # commit the updated lock alongside the change
+```
+
+Locking the GPU (`cuda11`/`cuda12`) extras reaches `pypi.nvidia.com` for the RAPIDS
+`25.4.*` packages, so run `uv lock` with network access to that index. The two CUDA
+variants are declared as mutually exclusive via `[tool.uv] conflicts` (they pull
+conflicting `cuda-python` major versions); uv resolves each in a separate fork, so
+both stay hash-pinned in the universal lock. Pick the variant that matches your
+NVIDIA driver at install time: `pip install pc2img[cuda12]` or `pc2img[cuda11]`.
+
+## Gotchas
+
+- **`gsegutils` vs `GSEGUtils` casing.** The distribution name installed by
+  pip/uv is lowercase `gsegutils`; the importable package is capitalized
+  `GSEGUtils` (`import GSEGUtils`). pip/uv normalize case for *resolution*, so the
+  `pyproject.toml` requirement keeps the capitalized `GSEGUtils` form while
+  `importlib.metadata.version("gsegutils")` uses the lowercase distribution name.
+
+- **`third_party/` symlinks are optional dev aids, not the install mechanism.**
+  The `third_party/` directory (symlinks to sibling `pchandler`/`GSEGUtils`
+  checkouts) is **gitignored** and exists only for local source investigation.
+  pc2img resolves `pchandler` and `GSEGUtils` from public PyPI via the committed
+  `uv.lock` — never from local editable paths. Do **not** add
+  `[tool.uv.sources]` entries pointing at local `/scratch` or `third_party/` paths.
