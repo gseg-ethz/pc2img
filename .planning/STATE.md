@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: test-ci-foundation
 status: executing
-stopped_at: Phase 3 planned
-last_updated: "2026-07-09T19:03:57.377Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-07-09T19:28:44.653Z"
 last_activity: 2026-07-09
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
+  completed_plans: 9
   percent: 33
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 03 (test-ci-foundation) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-09 — Phase 03 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 10min | 3 tasks | 3 files |
 | Phase 02 P03 | 5min | 2 tasks | 4 files |
 | Phase 03 P01 | 2 | 2 tasks | 2 files |
+| Phase 03 P02 | 2min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Smoke passes an explicit LazyDiskCacheConfig; the uncoerced None-default cache-config bug is deferred to Phase 4/5 (pending todo)
 - [Phase 03 P01]: Pinned pytest to ~= 9.1 (D-14) alongside pytest-cov ~= 5.0 + coverage ~= 7.0 (D-07); did NOT downgrade to pchandler's stale pytest ~= 8.4
 - [Phase 03 P01]: Added branch-coverage [tool.coverage.*] config (D-05) but omitted fail_under from TOML and kept --cov out of addopts so subset runs never trip a floor; coverage gate lives on the CI CLI only (Plan 03)
+- [Phase ?]: [Phase 03 P02] Green-by-triage: deleted the two import-broken pre-refactor modules (D-02); parked the 11 live-verified failures as xfail(strict=False) with Phase-5 reasons (D-03); suite now 15 passed / 11 xfailed / 0 failed
+- [Phase ?]: [Phase 03 P02] tests/ was entirely untracked (planning git-rm assumption false); committed the 3 surviving test modules + unchanged src/pc2img/features/rrim.py so the green + CI premise holds on a fresh checkout (Rule-3 deviation)
 
 ### Pending Todos
 
@@ -112,6 +115,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T19:03:35.302Z
-Stopped at: Phase 3 planned — ready to execute
-Resume file: .planning/phases/03-test-ci-foundation/03-01-PLAN.md
+Last session: 2026-07-09T19:28:44.646Z
+Stopped at: Completed 03-02-PLAN.md
+Resume file: None
