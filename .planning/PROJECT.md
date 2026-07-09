@@ -125,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-09 — Phase 1 (Branch Untangling & Mainline Consolidation) complete: develop-gsd is the consolidated mainline.*
+*Last updated: 2026-07-09 — Phase 2 (Dependency Adaptation & Reproducible Environment) complete: pc2img imports and runs against pchandler 2.x + GSEGUtils from a committed universal uv.lock.*
