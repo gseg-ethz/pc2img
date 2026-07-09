@@ -38,7 +38,13 @@ created: 2026-07-09
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 2-01-01 | 01 | 1 | DEP-03 | — / — | N/A | audit | `uv pip show pchandler GSEGUtils` | ❌ W0 | ⬜ pending |
+| 2-01-01 | 01 | 1 | DEP-03 | T-02-01 | owner-verified PyPI pins; loose numpy | config-audit | `python -c "import tomllib; d=tomllib.load(open('pyproject.toml','rb')); ..."` (deps+cuda asserts) | ✅ pyproject.toml | ⬜ pending |
+| 2-01-02 | 01 | 1 | DEP-04 | T-02-02 | explicit nvidia index binds RAPIDS only | config-audit | `python -c "..."` (groups + `[[tool.uv.index]]` + `[tool.uv.sources]` asserts) | ✅ pyproject.toml | ⬜ pending |
+| 2-02-01 | 02 | 2 | DEP-04 (SC4) | T-02-04, T-02-05 | hash-pinned lock; official index only | lock round-trip | `uv lock --check && uv run python -c "import pc2img"` | ❌ W0 (uv.lock) | ⬜ pending |
+| 2-02-02 | 02 | 2 | DEP-03 (SC3) | T-02-06 | no local-path leak into resolution | clean-room install | clean-room `uv sync --frozen` + `import pc2img/pchandler/GSEGUtils` | ❌ W0 (uv.lock) | ⬜ pending |
+| 2-02-03 | 02 | 2 | DEP-04 (SC4) | — | dev-workflow doc only | doc-audit | `grep uv\ sync/uv\ lock/uv\ run/smoke_pipeline CONTRIBUTING.md` | ❌ W0 (CONTRIBUTING.md) | ⬜ pending |
+| 2-03-01 | 03 | 3 | DEP-01, DEP-02 (SC1/SC2) | T-02-07 | seeded synthetic input; no untrusted I/O | runtime smoke | `uv run python scripts/smoke_pipeline.py` (exit 0, `OK`) | ❌ W0 (scripts/smoke_pipeline.py) | ⬜ pending |
+| 2-03-02 | 03 | 3 | DEP-01, DEP-02 | T-02-08 | reproducible grep evidence | negative-audit | `! grep -rEn 'FoVTree\|to_py4dgeo\|...' src/pc2img/` + doc exists | ❌ W0 (docs/pchandler-2x-break-audit.md) | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 *Planner: fill this map from the plan tasks; anchor each row to a DEP-0x requirement and the SC1-SC4 observable proof in 02-RESEARCH.md §Validation Architecture.*

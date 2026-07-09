@@ -69,7 +69,19 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `pyproject.toml` declares and pins `pchandler` + `GSEGUtils` and resolves the numpy 2.x pin conflict; a clean install imports the package without local `third_party/` symlinks.
   4. A documented `uv` workflow reproduces the dev environment from a committed lockfile.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 02-01-PLAN.md — Re-enable + pin pchandler/GSEGUtils, rewire cuda extras to pchandler[cudaXX], PEP 735 groups + nvidia index [DEP-03, DEP-04]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 02-02-PLAN.md — Generate/commit universal uv.lock, clean-room install proof (SC3), CONTRIBUTING.md uv workflow [DEP-03, DEP-04]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 02-03-PLAN.md — Commit synthetic SC1 smoke script + fix scripts gitignore trap + pchandler-2x break-audit attestation [DEP-01, DEP-02]
 
 ### Phase 3: Test & CI Foundation
 
@@ -134,7 +146,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
-| 2. Dependency Adaptation & Reproducible Environment | 0/TBD | Not started | - |
+| 2. Dependency Adaptation & Reproducible Environment | 0/3 | Not started | - |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
