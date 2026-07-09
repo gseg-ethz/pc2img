@@ -108,6 +108,19 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] 03-03-PLAN.md — Measure + record the coverage baseline (CONTRIBUTING) and add the lightweight PR CI workflow [TEST-02, CICD-01]
 
+### Phase 03.1: RRIM (Red Relief Image) IP status clarification (INSERTED)
+
+**Goal:** Clear the blocking RRIM IP/publication gate by executing the locked keep-on-patent-expiry disposition (D-09..D-12) in-tree — shipped IP findings doc + NOTICE (expiry basis + AAS/Chiba/Yokoyama attribution + RRIM® trademark disclaimer), an ADR, an opt-in `rrim` extra with a reconciled docstring, an internal good-faith ETH/owner sign-off, and the blocking todo resolved — leaving the branch provably publication-safe so Phase 3's live-CI push can proceed.
+**Requirements**: none mapped (driven by CONTEXT decisions D-09..D-12)
+**Depends on:** Phase 3
+**Plans:** 3 plans
+
+Plans:
+
+- [ ] 03.1-01-PLAN.md — IP findings doc (shipped) + ADR recording the locked disposition (Wave 1)
+- [ ] 03.1-02-PLAN.md — top-level NOTICE + opt-in `rrim` extra + reconciled rrim.py docstring (Wave 2)
+- [ ] 03.1-03-PLAN.md — verify suite green + coverage floor unchanged, ETH/owner sign-off, resolve blocking todo (Wave 3)
+
 ### Phase 4: Code Quality & Algorithmic Soundness Review
 
 **Goal**: Code hygiene, software-design flaws, and mathematical/algorithmic soundness reviewed; fixes applied or findings logged, feeding concrete bug items into Phase 5.
