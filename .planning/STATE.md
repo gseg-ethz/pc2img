@@ -2,19 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 01
-current_phase_name: branch-untangling-mainline-consolidation
-status: executing
+current_phase: 2
+current_phase_name: Dependency Adaptation & Reproducible Environment
+status: "Phase 1 shipped — PR #7"
 stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-07-08T22:30:48.745Z"
-last_activity: 2026-07-08
-last_activity_desc: Phase 01 execution started
+last_updated: "2026-07-09T04:08:48.720Z"
+last_activity: 2026-07-09
 progress:
   total_phases: 6
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 2
-  percent: 0
+  completed_plans: 4
+  percent: 17
 ---
 
 # Project State
@@ -28,10 +27,10 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 ## Current Position
 
-Phase: 01 (branch-untangling-mainline-consolidation) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-07-08 — Phase 01 execution started
+Phase: 2 — Dependency Adaptation & Reproducible Environment
+Plan: Not started
+Status: Phase 1 shipped — PR #7
+Last activity: 2026-07-09
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -39,7 +38,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 0
+- Total plans completed: 4
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -47,7 +46,7 @@ Progress: [░░░░░░░░░░] 0%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| - | - | - | - |
+| 01 | 4 | - | - |
 
 **Recent Trend:**
 
@@ -58,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 3 | 3 tasks | 2 files |
 | Phase 01 P02 | 12 | 2 tasks | 2 files |
 | Phase 01 P03 | 8min | 2 tasks | 1 files |
+| Phase 01 P04 | 2 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -74,10 +74,11 @@ Recent decisions affecting current work:
 - [Phase 01 P02]: Asserted (no merge) origin/dev/v2 is fully contained in develop-gsd (8 commits ahead); pruned fully-merged local dev/v2 (via --unset-upstream then self-guarding -d, never -D) and feature/release-please; amended PROJECT.md + REQUIREMENTS.md Out-of-Scope to carve out folded PerspectiveProjection (D-02)
 - [Phase 01 P03]: Retired local feature/update_to_pchandler-1.0.0 via self-guarding git branch -d (54c7100 is a full ancestor of develop-gsd; named-args registry intent already in-tree, nothing to salvage); no remote touched
 - [Phase 01 P03]: Authored 01-BRANCH-INVENTORY.md classifying all 13 phase-start refs; develop/tomislav EXCLUDED, all remote deletions staged for Phase 6 (D-05), archive tag recorded as D-06 safety net
+- [Phase 01 P04]: Merged the completed phase branch forward into develop-gsd via --no-ff (9b42cfb, two parents); SC2/SC4 re-proven on develop-gsd (develop-gsd..origin/dev/perspective_projection now 0, was 8 12); WIP math untouched (D-03), no remote touched (D-05)
 
 ### Pending Todos
 
-None yet.
+- [Phase 4] Guard module-level private pchandler `_TransformArray` import in `projection.py:12` — a future pchandler drop/rename would break importing the whole projection module (spherical/orthographic included), not just perspective. Source: Phase 1 review IN-03. (`.planning/todos/pending/2026-07-09-guard-transformarray-module-import.md`, `resolves_phase: 4`)
 
 ### Blockers/Concerns
 
@@ -93,6 +94,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T22:30:40.134Z
+Last session: 2026-07-08T22:36:59.847Z
 Stopped at: Completed 01-03-PLAN.md
 Resume file: None

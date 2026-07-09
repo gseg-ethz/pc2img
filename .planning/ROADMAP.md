@@ -19,7 +19,7 @@ more correct, more installable, and closer to publishable.
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches
+- [x] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches (completed 2026-07-08)
 - [ ] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile
 - [ ] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net
 - [ ] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings
@@ -40,7 +40,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. The stale `feature/update_to_pchandler-1.0.0` branch has a recorded salvage-or-retire decision and has been acted on.
   4. No divergent `dev/*` branch carries development work that is not reflected in `develop-gsd`.
 
-**Plans**: 2/4 plans executed
+**Plans**: 4/4 plans complete
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Fold origin/dev/perspective_projection onto the phase-branch mainline (archive-tag, clean merge, prune local persp) [BRANCH-02]
@@ -51,11 +51,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-03-PLAN.md — Retire pchandler-1.0 local label + author the branch-inventory doc [BRANCH-01, BRANCH-03]
+- [x] 01-03-PLAN.md — Retire pchandler-1.0 local label + author the branch-inventory doc [BRANCH-01, BRANCH-03]
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-04-PLAN.md — Merge the completed phase branch forward into develop-gsd; prove SC2/SC4 on the mainline itself [BRANCH-02]
+- [x] 01-04-PLAN.md — Merge the completed phase branch forward into develop-gsd; prove SC2/SC4 on the mainline itself [BRANCH-02]
 
 ### Phase 2: Dependency Adaptation & Reproducible Environment
 
@@ -133,7 +133,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Branch Untangling & Mainline Consolidation | 2/4 | In Progress|  |
+| 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 0/TBD | Not started | - |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
