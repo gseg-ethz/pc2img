@@ -55,7 +55,7 @@ cuda11 = ["pchandler[cuda11]"]
 # Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
 # `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
 [dependency-groups]
-dev = ["black ~= 23.10", "pytest", "memory_profiler"]
+dev = ["black ~= 23.10", "pytest ~= 9.1", "memory_profiler", "pytest-cov ~= 5.0", "coverage ~= 7.0"]
 doc = ["sphinx ~= 5.1"]
 
 # cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
