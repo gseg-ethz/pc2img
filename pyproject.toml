@@ -58,6 +58,20 @@ cuda11 = ["pchandler[cuda11]"]
 dev = ["black ~= 23.10", "pytest", "memory_profiler"]
 doc = ["sphinx ~= 5.1"]
 
+# cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
+# cuda-python>=12.6.2,<13 while cudf-cu11 pulls cuda-python>=11.8.5,<12, so a
+# universal lock cannot co-satisfy both extras. Declaring them as conflicting lets
+# uv resolve each in a separate fork, keeping BOTH variants fully hash-pinned in
+# uv.lock (D-06). The cuda11-vs-cuda12 pick is deferred to install time
+# (`pip install pc2img[cuda12]` vs `[cuda11]`), driven by the user's NVIDIA driver.
+[tool.uv]
+conflicts = [
+    [
+        { extra = "cuda11" },
+        { extra = "cuda12" },
+    ],
+]
+
 # Explicit nvidia index for the RAPIDS packages pulled transitively via
 # pchandler[cudaXX] (D-06). explicit = true means this index is consulted ONLY for
 # names bound in [tool.uv.sources] below; everything else stays on PyPI, which
