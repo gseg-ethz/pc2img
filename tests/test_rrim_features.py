@@ -27,7 +27,16 @@ def _load_module(name: str, path: Path):
 
 
 def _load_rrim_modules():
-    if "pchandler" not in sys.modules:
+    # Only install a minimal `pchandler` stub when no real pchandler is
+    # importable. A real installation (dev + CI, where `uv sync --frozen`
+    # provides it) is left untouched and imported normally by the exec'd rrim
+    # modules below. Unconditionally inserting the stub would permanently shadow
+    # a real pchandler in sys.modules, which — under any non-alphabetical
+    # collection order — flips unrelated tests red (they'd bind the fake
+    # PointCloudData). Gating on find_spec removes that order dependency: when a
+    # real module exists there is nothing to shadow, and when none exists there
+    # is no other test that could be affected.
+    if "pchandler" not in sys.modules and importlib.util.find_spec("pchandler") is None:
         pchandler = types.ModuleType("pchandler")
 
         class PointCloudData:  # pragma: no cover - import stub only
