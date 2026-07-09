@@ -49,6 +49,37 @@ uv run pytest                             # run the test suite (tests land in Ph
 > then, `uv run pytest` has no tests to collect (the pytest framework is stood up in
 > Phase 3).
 
+Run `pytest` (or a scoped subset like `pytest tests/test_rrim_features.py`) — never
+`pytest .`, which re-collects the gitignored `third_party/` sibling symlinks. Coverage
+flags are intentionally **not** in `addopts`, so a bare or subset `pytest` run stays fast
+and never trips the coverage gate; opt into coverage explicitly with `--cov=pc2img` when
+you want a measurement.
+
+## Coverage baseline
+
+The test suite is measured with branch coverage scoped to the `pc2img` package:
+
+```bash
+uv run pytest --cov=pc2img --cov-branch --cov-report=term-missing
+```
+
+**Measured baseline: 23%** (whole-package branch coverage, measured 2026-07-09 on the
+green suite of 15 passed / 11 xfailed). This is a deliberately modest number: the suite
+is a triaged Phase-3 foundation, not full coverage. In particular `src/pc2img/features/rrim.py`
+reports 0% because `tests/test_rrim_features.py` loads it under a throwaway module name, so
+its passing tests don't attribute to the tracked `rrim.py` line — that's a Phase-5 concern,
+not a Phase-3 gap, and it depresses the whole-package number.
+
+**Enforced floor: `--cov-fail-under=21`.** CI (`.github/workflows/ci.yml`) runs the suite
+with `--cov-fail-under=21` on the command line — a couple of points below the measured
+baseline to absorb xfail coverage volatility (xfail'd tests execute up to their failure
+line, so their coverage contribution can shift). The gate lives on the CI command line, not
+in `pyproject.toml`, so local subset runs never enforce it.
+
+This floor is a **regression ratchet**: it fails CI if coverage drops, without pretending
+the suite is comprehensive. It is ratcheted upward in **Phase 5** as real coverage lands
+(bug-fix tests flip from xfail to pass, `rrim.py` gets attributed coverage).
+
 ## After changing dependencies
 
 Any edit to `pyproject.toml` dependencies (or the `[tool.uv]` index/source/conflict
