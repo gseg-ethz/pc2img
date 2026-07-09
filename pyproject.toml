@@ -96,3 +96,33 @@ cuspatial-cu11 = { index = "nvidia" }
 cuproj-cu11    = { index = "nvidia" }
 cuml-cu11      = { index = "nvidia" }
 dask-cudf-cu11 = { index = "nvidia" }
+
+# TEST-01: collect ONLY the project suite. third_party/ (gitignored symlinks to the
+# sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths
+# stops recursion into it — verified: bare `pytest` 1140 collected/7 errors →
+# scoped 26 collected/0 third_party errors.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Modern import machinery: no sys.path injection, avoids duplicate-basename
+# import-file-mismatch, and is the current pytest recommendation. Do NOT add any
+# --cov flag here — coverage stays on the CLI/CI invocation only (see coverage note).
+addopts = "--import-mode=importlib --strict-markers"
+xfail_strict = false   # D-03: an unexpected pass (XPASS) must NOT fail the suite
+
+# D-05: branch coverage of the whole pc2img package. pchandler has no
+# [tool.coverage.*] block (it passes --cov=pchandler on the CLI with branch off);
+# D-05 requires branch coverage, so this minimal block is a justified addition.
+[tool.coverage.run]
+branch = true
+source = ["pc2img"]
+omit = ["*/_version.py"]   # setuptools_scm-generated, not meaningful to cover
+
+# NOTE: fail_under is intentionally NOT set here — the coverage gate lives on the
+# CI command line only (Plan 03), so subset/local runs never trip a floor.
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]
