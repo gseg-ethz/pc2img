@@ -85,6 +85,14 @@ the Phase 4 soundness review); GPU tests + self-hosted GPU runner infra
   only `black`, `pytest`, `memory_profiler`). Report `term-missing` locally + an
   `xml` report in CI (Claude's discretion on exact report wiring). **Codecov is
   deferred to Phase 6** (needs a token/account; publication-hardening scope).
+- **D-14:** **Pin the test runner: add `pytest` (`~=9.1`) to the `dev` group**
+  alongside the D-07 `pytest-cov`/`coverage` additions, replacing the bare
+  unpinned `pytest` currently in the group. Rationale: pin the runner itself so
+  the local and CI test baselines resolve against a known pytest major, matching
+  D-07's "tooling matches pchandler" intent and D-09's reproducible-install
+  posture (`uv sync --frozen`). *Recorded during the Phase 3 `--reviews` replan
+  (2026-07-09) at the owner's decision, resolving the Codex review finding that
+  the `pytest ~= 9.1` pin in Plan 03-01 was previously unrecorded.*
 
 ### Ruff / lint timing
 - **D-08:** **Keep the `black → ruff` swap in Phase 4.** Phase 3 CI is
