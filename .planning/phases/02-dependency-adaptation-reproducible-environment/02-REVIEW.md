@@ -11,7 +11,25 @@ findings:
   warning: 4
   info: 2
   total: 7
-status: issues_found
+status: resolved
+resolved_at: 2026-07-09
+resolved_by: 9de62aa
+resolution: |
+  CR-01 + WR-01..04 fixed in commit 9de62aa (fix(scripts): make SC1 smoke
+  exercise GSEGUtils offload and tighten checks). The SC1 smoke now sets
+  enable_caching=True and asserts an on-disk cache artifact (range.dat) is
+  written (CR-01), replaces bare asserts with -O-safe RuntimeError checks
+  (WR-01), uses a non-square (200x260) resolution so a transposed projection
+  fails the shape check (WR-02), bounds the range raster to its physical band
+  ~[8.8, 11.3] rejecting constant/pixel-coord/wrong-scalar rasters (WR-03),
+  and tightens finite_fraction to > 0.90 vs the observed ~0.96 (WR-04). The
+  audit doc's runtime-proof + BC-GSEG-001 sections were corrected to describe
+  what is actually offloaded (generator raster store only; Delaunay cache is
+  not disk-written by the smoke). IN-01 (dead logger) removed. IN-02 (audit
+  doc `.load(` undercount) left as-is — verdict is unaffected and the phrasing
+  is defensible; not worth further churn.
+  Verified: smoke exits 0 normally and under `python -O`
+  (shape=(260, 200) finite=0.961 min=8.801 max=11.269 artifacts=['range.dat']).
 ---
 
 # Phase 2: Code Review Report
@@ -19,7 +37,7 @@ status: issues_found
 **Reviewed:** 2026-07-09T14:28:31Z
 **Depth:** deep
 **Files Reviewed:** 2
-**Status:** issues_found
+**Status:** resolved (fixes applied in 9de62aa; see frontmatter `resolution`)
 
 ## Summary
 
