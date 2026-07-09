@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 Phase: 3 — Test & CI Foundation
 Plan: Not started
 Status: Phase 2 shipped — PR #8 (into develop-gsd)
-Last activity: 2026-07-09
+Last activity: 2026-07-09 - Completed quick task 260709-nvp: re-ignore scripts/ bytecode caches
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -91,6 +91,12 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260709-nvp | Re-ignore Python bytecode caches under scripts/ (fix over-broad `!/scripts/**` negation) | 2026-07-09 | bec9950 | [260709-nvp-re-ignore-python-bytecode-caches-under-s](./quick/260709-nvp-re-ignore-python-bytecode-caches-under-s/) |
 
 ## Deferred Items
 
