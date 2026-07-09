@@ -341,15 +341,17 @@ The runtime-verified smoke construction is in **§Smoke Path** above. `pyproject
 
 **Everything else in this research was VERIFIED (runtime/PyPI/grep) or CITED (official docs / migration specs).**
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Fix the `None`-config coercion now, or defer?**
    - What we know: it's a real public-API bug on the default path, blocking any config-less caller.
    - What's unclear: whether the owner wants it fixed in Phase 2 (packaging) or Phase 4/5 (quality/bugs).
    - Recommendation: smoke passes an explicit config (no fix needed for SC1); log a pending todo for the default-path fix. Do not expand Phase 2 scope without owner sign-off.
+   - **RESOLVED:** deferred out of Phase 2. Plan 02-03 drives the smoke with an explicit `LazyDiskCacheConfig(cache_path=<tmpdir>)` (no fix needed for SC1) and records the default-path coercion bug as a Phase 4/5 pending todo. Scope unchanged.
 
 2. **BC-PCH-008 attestation depth** — is a grep-attest doc/assertion enough, or does the owner want the example `scripts/v2.0/03_tiled_image_gen.py` FoVTree usage validated too?
    - Recommendation: attest non-use in `src/`; optionally note the example script already matches the new `build_from_tiles` shape. Full tiled/FoVTree coverage is TEST-05 (Phase 5).
+   - **RESOLVED:** grep-attest is sufficient for Phase 2. Plan 02-03 T2 produces `docs/pchandler-2x-break-audit.md` attesting zero `FoVTree`/`to_py4dgeo`/Csv/Las call sites in `src/pc2img/`; exhaustive tiled/FoVTree coverage stays in TEST-05 (Phase 5).
 
 ## Environment Availability
 
