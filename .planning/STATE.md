@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Test & CI Foundation
-status: Phase 3 planned — 3 plans across 3 waves, ready to execute
+current_phase: 03
+current_phase_name: test-ci-foundation
+status: executing
 stopped_at: Phase 3 planned
-last_updated: "2026-07-09T18:51:54.293Z"
+last_updated: "2026-07-09T19:03:57.377Z"
 last_activity: 2026-07-09
-last_activity_desc: "Planned Phase 3 (Test & CI Foundation): research + Nyquist validation + plan-check passed"
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 6
   completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 10
+  completed_plans: 8
   percent: 33
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 02 — dependency-adaptation-reproducible-environment
+**Current focus:** Phase 03 — test-ci-foundation
 
 ## Current Position
 
-Phase: 3 — Test & CI Foundation
-Plan: Planned — 3 plans (03-01, 03-02, 03-03) across 3 waves, ready to execute
-Status: Phase 3 planned — plan-check passed (0 blockers)
-Last activity: 2026-07-09 - Planned Phase 3 (Test & CI Foundation): research + Nyquist validation + plan-check passed
+Phase: 03 (test-ci-foundation) — EXECUTING
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-07-09 — Phase 03 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 1min | 2 tasks | 1 files |
 | Phase 02 P02 | 10min | 3 tasks | 3 files |
 | Phase 02 P03 | 5min | 2 tasks | 4 files |
+| Phase 03 P01 | 2 | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02 P02]: Added [tool.uv] conflicts for cuda11/cuda12 (owner option a) so the universal uv.lock hash-pins both GPU stacks in separate forks; cuXX pick defers to install time. A2 transitive RAPIDS source binding confirmed green.
 - [Phase ?]: DEP-01/DEP-02 delivered as audit attestation + runtime smoke, not code fixes: all three named pchandler 2.x breaks (FoVTree, to_py4dgeo, Csv/Las) have zero call sites in src/pc2img/
 - [Phase ?]: Smoke passes an explicit LazyDiskCacheConfig; the uncoerced None-default cache-config bug is deferred to Phase 4/5 (pending todo)
+- [Phase 03 P01]: Pinned pytest to ~= 9.1 (D-14) alongside pytest-cov ~= 5.0 + coverage ~= 7.0 (D-07); did NOT downgrade to pchandler's stale pytest ~= 8.4
+- [Phase 03 P01]: Added branch-coverage [tool.coverage.*] config (D-05) but omitted fail_under from TOML and kept --cov out of addopts so subset runs never trip a floor; coverage gate lives on the CI CLI only (Plan 03)
 
 ### Pending Todos
 
@@ -109,6 +112,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T20:15:00.000Z
+Last session: 2026-07-09T19:03:35.302Z
 Stopped at: Phase 3 planned — ready to execute
 Resume file: .planning/phases/03-test-ci-foundation/03-01-PLAN.md
