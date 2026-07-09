@@ -39,15 +39,11 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - ✓ Parallel tiled generation over many tiles (joblib/loky) — existing
 - ✓ RRIM and multiscale-gradient feature families — existing
 - ✓ Branch untangling & mainline consolidation: `develop-gsd` established as the single forward mainline (richer `dev/*` architecture folded in, incl. the WIP `PerspectiveProjection`); every branch inventoried/dispositioned (`develop/tomislav` excluded); stale `feature/update_to_pchandler-1.0.0` retired — Validated in Phase 1 (BRANCH-01/02/03)
+- ✓ Dependency adaptation & reproducible environment: `pchandler` 2.x + `GSEGUtils` pinned in `pyproject.toml` with the numpy 2.x pin conflict resolved (cuda extras route through `pchandler[cudaXX]` with a `[tool.uv] conflicts` guard, dev/doc in PEP 735 groups); a committed universal `uv.lock` reproduces a clean-room install with no `third_party/` symlinks; the SC1 smoke (spherical → Delaunay → `range`) runs green against the locked env and the three named pchandler 2.x semantic breaks (FoVTree, `to_py4dgeo`, Csv/Las) are attested zero-call-site — Validated in Phase 2 (DEP-01/02/03/04)
 
 ### Active
 
 <!-- Milestone-1 scope. Hypotheses until shipped and validated. -->
-
-**Dependency adaptation**
-- [ ] Adapt pc2img to reworked PCHandler 2.x + GSEGUtils (semantic/runtime breaks, not just imports)
-- [ ] Resolve the `numpy` pin conflict and re-enable/pin `pchandler` + `GSEGUtils` in `pyproject.toml`
-- [ ] Standardize the dev environment on `uv`
 
 **Code Quality & Algorithmic Soundness**
 - [ ] Review for code hygiene / tech debt (dead code, duplicate `joblib` pin, placeholder metadata, duplicate `convert_to_image`, matplotlib extra, `make_generator` factory)
@@ -129,4 +125,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-09 — Phase 1 (Branch Untangling & Mainline Consolidation) complete: develop-gsd is the consolidated mainline.*
+*Last updated: 2026-07-09 — Phase 2 (Dependency Adaptation & Reproducible Environment) complete: pc2img imports and runs against pchandler 2.x + GSEGUtils from a committed universal uv.lock.*

@@ -116,6 +116,13 @@ ENV/
 [Ll]ib64
 [Ll]ocal
 [Ss]cripts
+# Re-include the tracked top-level scripts/ source dir (the generic [Ss]cripts
+# pattern above is a virtualenv-template rule meant for nested venv Scripts/ bin
+# dirs — it would otherwise silently un-commit new files under our scripts/ src
+# dir). Both negations are needed: !/scripts/ re-includes the dir, !/scripts/**
+# re-includes its contents (a re-included dir does not auto-re-include children).
+!/scripts/
+!/scripts/**
 pyvenv.cfg
 .venv
 pip-selfcheck.json

@@ -16,9 +16,8 @@ classifiers = [
 	"Programming Language :: Python :: 3"
 ]
 dependencies = [
-#	"pchandler[cuda12] ~= 1.0",
-#	"pchandler[cuda12] @ git+ssh://git@github.com/gseg-ethz/PCHandler.git@v2.0.0rc7",
-#	"GSEGUtils ~= 0.2",
+	"pchandler ~= 2.1",
+	"GSEGUtils ~= 0.5",
 	"joblib ~= 1.5",
 	"numpy ~= 2.0",
 	"imageio ~= 2.31",
@@ -50,19 +49,50 @@ documentation = "https://google.com"
 #DeSpAn = "DeSpAn.cli:main"
 
 [project.optional-dependencies]
+cuda12 = ["pchandler[cuda12]"]
+cuda11 = ["pchandler[cuda11]"]
+
+# Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
+# `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
+[dependency-groups]
+dev = ["black ~= 23.10", "pytest", "memory_profiler"]
 doc = ["sphinx ~= 5.1"]
-dev = [
-	"black ~= 23.10",
-	"pytest",
-    "memory_profiler",
+
+# cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
+# cuda-python>=12.6.2,<13 while cudf-cu11 pulls cuda-python>=11.8.5,<12, so a
+# universal lock cannot co-satisfy both extras. Declaring them as conflicting lets
+# uv resolve each in a separate fork, keeping BOTH variants fully hash-pinned in
+# uv.lock (D-06). The cuda11-vs-cuda12 pick is deferred to install time
+# (`pip install pc2img[cuda12]` vs `[cuda11]`), driven by the user's NVIDIA driver.
+[tool.uv]
+conflicts = [
+    [
+        { extra = "cuda11" },
+        { extra = "cuda12" },
+    ],
 ]
-cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
-	"cudf-cu12 == 25.4.*", "cuspatial-cu12 == 25.4.*", "cuproj-cu12 == 25.4.*",
-	"cuml-cu12 == 25.4.*", "dask-cudf-cu12 == 25.4.*",
-#	"cupy-cuda12x ~= 13.0",
-]
-cuda11 = [ # Check version numbers
-	"cudf-cu11 == 25.4.*",
-	"cuml-cu11 == 25.4.*",
-#	"cupy-cuda11x ~= 13.0",
-]
+
+# Explicit nvidia index for the RAPIDS packages pulled transitively via
+# pchandler[cudaXX] (D-06). explicit = true means this index is consulted ONLY for
+# names bound in [tool.uv.sources] below; everything else stays on PyPI, which
+# contains dependency-confusion on the RAPIDS names to the official index.
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
+
+# A2 caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
+# pchandler[cudaXX]. If the transitive source pins fail to bind at lock time,
+# Plan 02 invokes the documented fallback (name them directly in the cuda extras).
+# No entry may point at a local /scratch or third_party/ path (D-12, forbidden).
+[tool.uv.sources]
+cudf-cu12      = { index = "nvidia" }
+cuspatial-cu12 = { index = "nvidia" }
+cuproj-cu12    = { index = "nvidia" }
+cuml-cu12      = { index = "nvidia" }
+dask-cudf-cu12 = { index = "nvidia" }
+cudf-cu11      = { index = "nvidia" }
+cuspatial-cu11 = { index = "nvidia" }
+cuproj-cu11    = { index = "nvidia" }
+cuml-cu11      = { index = "nvidia" }
+dask-cudf-cu11 = { index = "nvidia" }
