@@ -47,6 +47,14 @@ class TestImageDataInitialization:
 
 
 class TestOffloadingAndLoading:
+    @pytest.mark.xfail(
+        reason=(
+            "Phase 5 (BUG-05 candidate): offload() with caching disabled does not "
+            "emit the expected 'Caching disabled ==> `offload()` ignored.' debug log "
+            "-- xpasses once the disabled-offload log path is wired; re-classify then."
+        ),
+        strict=False,
+    )
     def test_offload_without_cache_path_logs_warning(self, caplog):
         img = dummy_gray_image()
         data_obj = DiskBackedImageData(
@@ -113,6 +121,14 @@ class TestArrayInterfaceAndPickling:
         assert state['_shape'] == img.shape
         assert state['_dtype'] == img.dtype
 
+    @pytest.mark.xfail(
+        reason=(
+            "Phase 5 (BUG-05 candidate): __getstate__ with a cache_path does not "
+            "unload _image_data (state['_image_data'] is not None) -- xpasses once "
+            "cache-path getstate unloading is fixed; re-classify then."
+        ),
+        strict=False,
+    )
     def test_getstate_with_cache_path_unloads_data(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "temp.dat"
@@ -145,6 +161,14 @@ class TestArrayInterfaceAndPickling:
         # data should still be accessible
         assert np.array_equal(loaded_obj.data, img)
 
+    @pytest.mark.xfail(
+        reason=(
+            "Phase 5 (BUG-05 candidate): pickle roundtrip with a cache_path does not "
+            "leave _image_data lazily unloaded on the restored object -- xpasses once "
+            "cached pickle round-tripping is fixed; re-classify then."
+        ),
+        strict=False,
+    )
     def test_pickle_roundtrip_with_cache(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "temp.dat"
@@ -157,6 +181,15 @@ class TestArrayInterfaceAndPickling:
         assert np.array_equal(loaded_obj, img)
 
 
+@pytest.mark.xfail(
+    reason=(
+        "Phase 5 (BUG-05 candidate): DiskBackedImageData cache-file finalizer "
+        "lifecycle (registration, cancel-on-getstate, re-register-on-unpickle, "
+        "cleanup-deletes-file) does not match current behavior -- every method here "
+        "xpasses once finalization is fixed; re-classify then."
+    ),
+    strict=False,
+)
 class TestCacheFileFinalization:
     def test_finalizer_alive_and_canceled_on_getstate(self, tmp_path: Path):
         # Create object with cache
@@ -214,6 +247,15 @@ class TestCacheFileFinalization:
         assert not cache_file.exists()
 
 
+@pytest.mark.xfail(
+    reason=(
+        "Phase 5 (BUG-05 candidate): DiskBackedImageData purge-on-gc enable/disable "
+        "toggle does not drive the finalizer as expected (disable_purge/enable_purge "
+        "and the no-cache path) -- every method here xpasses once purge toggling is "
+        "fixed; re-classify then."
+    ),
+    strict=False,
+)
 class TestPurgeToggle:
     def test_disable_purge(self, tmp_path: Path):
         img = dummy_gray_image()

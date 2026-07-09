@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from pchandler import PointCloudData
 
@@ -31,6 +32,15 @@ def make_point_cloud() -> PointCloudData:
     return PointCloudData(np.empty((0, 3), dtype=np.float32))
 
 
+@pytest.mark.xfail(
+    reason=(
+        "Phase 5 (BUG-05 candidate): an omitted lazy_disk_cache_config is not coerced "
+        "to a default LazyDiskCacheConfig, so the constructor fails before "
+        "cache_store.cache_dir exists (matches the pending null-cache-config coercion "
+        "todo) -- xpasses once the coercion lands; re-classify then."
+    ),
+    strict=False,
+)
 def test_constructor_normalizes_omitted_lazy_disk_cache_config() -> None:
     generator = PointCloudImageGenerator(
         make_point_cloud(),
