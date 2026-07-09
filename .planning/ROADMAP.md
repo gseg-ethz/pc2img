@@ -146,7 +146,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
-| 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete   | 2026-07-09 |
+| 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 0/TBD | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
