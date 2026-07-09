@@ -1,67 +1,9 @@
 from __future__ import annotations
 
-import importlib.util
-import sys
-import types
-from pathlib import Path
-
 import numpy as np
 
-
-FEATURES_DIR = Path(__file__).resolve().parents[1] / "src" / "pc2img" / "features"
-TEST_ROOT_PACKAGE = "rrim_testpkg"
-TEST_FEATURES_PACKAGE = f"{TEST_ROOT_PACKAGE}.features"
-
-
-def _load_module(name: str, path: Path):
-    if name in sys.modules:
-        return sys.modules[name]
-
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Unable to load module {name!r} from {path}.")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def _load_rrim_modules():
-    # Only install a minimal `pchandler` stub when no real pchandler is
-    # importable. A real installation (dev + CI, where `uv sync --frozen`
-    # provides it) is left untouched and imported normally by the exec'd rrim
-    # modules below. Unconditionally inserting the stub would permanently shadow
-    # a real pchandler in sys.modules, which — under any non-alphabetical
-    # collection order — flips unrelated tests red (they'd bind the fake
-    # PointCloudData). Gating on find_spec removes that order dependency: when a
-    # real module exists there is nothing to shadow, and when none exists there
-    # is no other test that could be affected.
-    if "pchandler" not in sys.modules and importlib.util.find_spec("pchandler") is None:
-        pchandler = types.ModuleType("pchandler")
-
-        class PointCloudData:  # pragma: no cover - import stub only
-            pass
-
-        pchandler.PointCloudData = PointCloudData
-        sys.modules["pchandler"] = pchandler
-
-    if TEST_ROOT_PACKAGE not in sys.modules:
-        pkg = types.ModuleType(TEST_ROOT_PACKAGE)
-        pkg.__path__ = [str(FEATURES_DIR.parent)]
-        sys.modules[TEST_ROOT_PACKAGE] = pkg
-
-    if TEST_FEATURES_PACKAGE not in sys.modules:
-        pkg = types.ModuleType(TEST_FEATURES_PACKAGE)
-        pkg.__path__ = [str(FEATURES_DIR)]
-        sys.modules[TEST_FEATURES_PACKAGE] = pkg
-
-    core = _load_module(f"{TEST_FEATURES_PACKAGE}.core", FEATURES_DIR / "core.py")
-    registry = _load_module(f"{TEST_FEATURES_PACKAGE}.registry", FEATURES_DIR / "registry.py")
-    rrim = _load_module(f"{TEST_FEATURES_PACKAGE}.rrim", FEATURES_DIR / "rrim.py")
-    return core, registry, rrim
-
-
-_, registry_module, rrim_module = _load_rrim_modules()
+from pc2img.features import registry as registry_module
+from pc2img.features import rrim as rrim_module
 
 
 def test_compute_rrim_flat_plane_returns_neutral_gray() -> None:
