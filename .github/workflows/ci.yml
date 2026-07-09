@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop-gsd
+      - main
+
+# Least-privilege default token: this workflow only reads the repo (checkout +
+# install + test), never writes. Narrowing GITHUB_TOKEN to read-only means a fork
+# PR (or a compromised action) cannot use it to mutate the repo (T-03-04).
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is REQUIRED — _version.py is gitignored and setuptools_scm
+      # derives the version from git tags during the editable build in `uv sync`.
+      # A shallow checkout has no tags and the build degrades/fails.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v8.3.2
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # Install strictly from the committed hash-pinned lock: a lock-drift or
+      # substitution fails CI rather than resolving fresh (T-03-SC). The `dev`
+      # group installs by default, so pytest + pytest-cov + coverage are present.
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      # Coverage flags live here on the command line, never in addopts, so local
+      # subset runs stay fast. --cov-fail-under=21 matches the floor recorded in
+      # CONTRIBUTING.md (measured baseline 23% minus headroom).
+      - name: Run tests
+        run: >-
+          uv run --frozen pytest
+          --cov=pc2img --cov-branch
+          --cov-report=term-missing --cov-report=xml
+          --cov-fail-under=21
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
