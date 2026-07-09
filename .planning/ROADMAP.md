@@ -94,7 +94,19 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Coverage measurement runs and a baseline percentage is recorded and reported.
   3. A CI workflow runs the test suite automatically on every pull request and reports pass/fail.
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+**Wave 1**
+
+- [ ] 03-01-PLAN.md — Add pytest/coverage config tables + three dev-group test-tooling pins, regenerate uv.lock [TEST-01, TEST-02]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 03-02-PLAN.md — Reach a green scoped suite by triage: delete 2 import-broken modules, xfail the current failures [TEST-01]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 03-03-PLAN.md — Measure + record the coverage baseline (CONTRIBUTING) and add the lightweight PR CI workflow [TEST-02, CICD-01]
 
 ### Phase 4: Code Quality & Algorithmic Soundness Review
 
@@ -147,7 +159,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
-| 3. Test & CI Foundation | 0/TBD | Not started | - |
+| 3. Test & CI Foundation | 0/3 | Not started | - |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
