@@ -48,7 +48,7 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             with open(self._get_pickle_path(key), "rb") as f:
                 loaded_obj = cast(DiskBackedImageData, pickle.load(f))
         except FileNotFoundError:
-            raise KeyError(key)
+            raise KeyError(key) from None
 
         self._data[key] = loaded_obj
         return loaded_obj

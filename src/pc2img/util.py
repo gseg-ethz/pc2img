@@ -206,11 +206,11 @@ def nanconv(a: NDArray, k: NDArray, replace_nan: float | None = None) -> NDArray
     return c
 
 
-def gaussian_kernel(l=5, sig=1.0):
+def gaussian_kernel(side_length=5, sig=1.0):
     """
-    creates gaussian kernel with side length `l` and a sigma of `sig`
+    creates gaussian kernel with side length `side_length` and a sigma of `sig`
     """
-    ax = np.linspace(-(l - 1) / 2.0, (l - 1) / 2.0, l)
+    ax = np.linspace(-(side_length - 1) / 2.0, (side_length - 1) / 2.0, side_length)
     gauss = np.exp(-0.5 * np.square(ax) / np.square(sig))
     kernel = np.outer(gauss, gauss)
     return kernel / np.sum(kernel)

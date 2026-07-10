@@ -123,7 +123,7 @@ class _StrategyClass[T]:
         if isinstance(v, str):
             try:
                 return cls.registry.get_strategy(v)
-            except KeyError:
-                raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}")
+            except KeyError as err:
+                raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}") from err
 
         raise TypeError(f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key")
