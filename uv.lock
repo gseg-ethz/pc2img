@@ -1589,6 +1589,9 @@ cuda11 = [
 cuda12 = [
     { name = "pchandler", extra = ["cuda12"], marker = "extra == 'extra-6-pc2img-cuda12'" },
 ]
+viz = [
+    { name = "matplotlib" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -1606,8 +1609,8 @@ doc = [
 requires-dist = [
     { name = "gsegutils", specifier = "~=0.5" },
     { name = "imageio", specifier = "~=2.31" },
-    { name = "joblib", specifier = "~=1.3" },
     { name = "joblib", specifier = "~=1.5" },
+    { name = "matplotlib", marker = "extra == 'viz'", specifier = "~=3.9" },
     { name = "numpy", specifier = "~=2.0" },
     { name = "opencv-python", specifier = "~=4.0" },
     { name = "pchandler", specifier = "~=2.1" },
@@ -1619,7 +1622,7 @@ requires-dist = [
     { name = "tifffile", extras = ["all"], specifier = "~=2024.1" },
     { name = "typing-extensions", specifier = "~=4.9" },
 ]
-provides-extras = ["cuda12", "cuda11", "rrim"]
+provides-extras = ["cuda12", "cuda11", "rrim", "viz"]
 
 [package.metadata.requires-dev]
 dev = [

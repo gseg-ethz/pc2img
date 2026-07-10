@@ -21,7 +21,6 @@ dependencies = [
 	"joblib ~= 1.5",
 	"numpy ~= 2.0",
 	"imageio ~= 2.31",
-	"joblib ~= 1.3",
 	"Pillow ~= 10.0",
 	"pydantic ~= 2.11",
 	"scipy ~= 1.14",
@@ -62,6 +61,11 @@ cuda11 = ["pchandler[cuda11]"]
 # `import pc2img.features.rrim` runs the `@FEATURES.register` decorators that make
 # `generate(["rrim", ...])` resolve. The extra registers nothing on its own.
 rrim = []
+# `viz` is an OPTIONAL colormap extra: matplotlib is imported lazily inside
+# `util.py` (convert_to_image) only when a colormap is requested, and that path
+# already guards its absence (raises RuntimeError if matplotlib is missing). So
+# matplotlib stays an optional extra rather than a hard runtime dependency.
+viz = ["matplotlib ~= 3.9"]
 
 # Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
 # `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
@@ -107,6 +111,34 @@ cuspatial-cu11 = { index = "nvidia" }
 cuproj-cu11    = { index = "nvidia" }
 cuml-cu11      = { index = "nvidia" }
 dask-cudf-cu11 = { index = "nvidia" }
+
+[tool.ruff]
+line-length = 88            # D-11: black-equivalent, NOT the sibling 120
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+# Hygiene-focused families (QUAL-01). E/F/W = pycodestyle+pyflakes,
+# I = isort, B = bugbear, C90 = mccabe, UP = pyupgrade, NPY = numpy.
+# F401 (unused import) + F841 (unused local) + ERA001 (commented-out code)
+# are the rules that power the dead-code / unused-import sweep D-09 asks for.
+select = ["E", "F", "W", "I", "B", "C90", "UP", "NPY"]
+extend-select = ["ERA001"]   # flag commented-out code blocks (CONCERNS §"Large volume of commented-out dead code")
+ignore = ["E203"]            # match sibling; slice-colon spacing, black-compatible
+
+[tool.ruff.lint.per-file-ignores]
+# Barrel __init__.py re-export the public surface AND trigger import-time
+# strategy/feature registration as a side effect. F401 would flag the
+# re-exports as unused; E402 can appear where a module docstring must move.
+"src/pc2img/__init__.py" = ["F401"]
+"src/pc2img/features/__init__.py" = ["F401"]
+"src/pc2img/strategies/__init__.py" = ["F401"]
+"src/pc2img/image_cache/__init__.py" = ["F401"]
+"tests/**" = ["E712", "F841", "B024"]
+
+[tool.ruff.format]
+# Drop-in for black; 88-col already set above. quote-style/skip-magic-trailing
+# left at defaults = black-equivalent.
 
 # TEST-01: collect ONLY the project suite. third_party/ (gitignored symlinks to the
 # sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths
