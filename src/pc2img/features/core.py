@@ -1,6 +1,7 @@
-from abc import ABC, abstractmethod
 import re
-from typing import List, Dict, Any, Optional, TYPE_CHECKING
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
 import numpy as np
 from pchandler import PointCloudData
 
@@ -9,7 +10,7 @@ if TYPE_CHECKING:
 
 class BaseFeatureStrategy(ABC):
     """Produces a 1D array of length N (per point)."""
-    dependencies: List[str] = []
+    dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
 
     @abstractmethod
@@ -25,7 +26,7 @@ class DerivativeFeatureStrategy(ABC):
     Produces a 2D raster (H×W).
     Depends on one or more *raster* inputs, each already projected & interpolated.
     """
-    dependencies: List[str] = []
+    dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
 
     @abstractmethod

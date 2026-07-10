@@ -1,5 +1,4 @@
-from typing import Optional, Literal
-
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -30,7 +29,7 @@ ALL_CMAPS = Literal[
 NAN_REPLACEMENT_STR = Literal["max", "min", "random"]
 
 
-def nanconv(a: NDArray, k: NDArray, replace_nan: Optional[float] = None) -> NDArray:
+def nanconv(a: NDArray, k: NDArray, replace_nan: float | None = None) -> NDArray:
     on = np.ones(a.shape, dtype=a.dtype)
 
     n = np.isnan(a)
@@ -109,8 +108,6 @@ def replace_nan(
 
     # Per-channel stats for 3D, scalar for 2D
     if out.ndim == 3:
-        finite = np.isfinite(out)
-        ch_axis = -1
         mins = np.nanmin(out, axis=(0, 1))
         maxs = np.nanmax(out, axis=(0, 1))
         if isinstance(replace_nan_with, float):
@@ -128,7 +125,6 @@ def replace_nan(
             raise ValueError(f"Unknown policy {replace_nan_with!r}")
     else:
         # 2D
-        finite = np.isfinite(out)
         mn = np.nanmin(out)
         mx = np.nanmax(out)
         if isinstance(replace_nan_with, float):
@@ -206,7 +202,7 @@ def convert_to_image(
     *,
     replace_nan_with: NAN_REPLACEMENT_STR | float = "max",
     normalize: bool = False,
-    colormap: Optional[ALL_CMAPS] = None,
+    colormap: ALL_CMAPS | None = None,
     channel_axis: int | None = -1,
     normalize_ints: bool = True,
 ) -> NDArray[np.uint8]:
@@ -253,7 +249,7 @@ def convert_to_image(
             import matplotlib.pyplot as plt
         except Exception as e:
             raise RuntimeError("Colormap requires matplotlib") from e
-        
+
         if x.ndim != 2:
             raise ValueError("colormap requires a 2D array after grayscale conversion.")
         cmap = plt.get_cmap(colormap)
@@ -377,7 +373,7 @@ class OpticalFlowVisualization:
             flow_image[:, :, ch_idx] = np.floor(255 * col)
         return flow_image
 
-    def flow_to_image(self, flow_uv, clip_flow=None, convert_to_bgr=False, max_quantile: Optional[float] = None):
+    def flow_to_image(self, flow_uv, clip_flow=None, convert_to_bgr=False, max_quantile: float | None = None):
         """
         Expects a two dimensional flow image of shape.
 

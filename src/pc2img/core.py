@@ -1,17 +1,16 @@
-from pathlib import Path
-from typing import Optional, TypeVar, Any, overload, Mapping, NamedTuple, TypeAlias, TYPE_CHECKING, Annotated, cast
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, TypeAlias, cast
 
-from pydantic import ConfigDict, validate_call, BeforeValidator
 import numpy as np
-
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, LazyDiskCacheKw
-
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 from pchandler import PointCloudData
+from pydantic import BeforeValidator, ConfigDict, validate_call
 
-from pc2img.strategies.projection import ProjectionStrategy, ProjectionName
-from pc2img.strategies.interpolation import InterpolationStrategy, InterpolationName
 from pc2img.features.manager import FeatureManager
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
+from pc2img.strategies.interpolation import InterpolationName, InterpolationStrategy
+from pc2img.strategies.projection import ProjectionName, ProjectionStrategy
+
 
 # ImgRes: TypeAlias = tuple[int, int]
 class ImgRes(NamedTuple):
@@ -26,7 +25,7 @@ class ImgRes(NamedTuple):
 def coerce_img_res(x: ImgRes | tuple[int, int]) -> ImgRes:
     if isinstance(x, ImgRes):
         return x
-    if (isinstance(x, tuple) and len(x) == 2 
+    if (isinstance(x, tuple) and len(x) == 2
             and all(isinstance(v, int) for v in x)):
         return ImgRes(*x)
     raise TypeError("img_res must be ImgRes or (width:int, height:int)")
@@ -77,7 +76,7 @@ class PointCloudImageGenerator:
         self._proj = cast(ProjectionStrategy, proj)
         self._interp = cast(InterpolationStrategy, interp)
         self.feature_mgr = FeatureManager(
-            self._pcd, 
+            self._pcd,
             lazy_disk_cache_config=cast(LazyDiskCacheConfig, lazy_disk_cache_config)
         )
         self.projection_results = {}

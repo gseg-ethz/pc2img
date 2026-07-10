@@ -1,12 +1,13 @@
 import re
-from typing import Optional, Callable
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.ndimage import sobel, gaussian_filter, binary_dilation
+from scipy.ndimage import binary_dilation, gaussian_filter, sobel
 
 from .core import DerivativeFeatureStrategy
 from .registry import FEATURES
+
 
 @FEATURES.register
 class GradientFeature(DerivativeFeatureStrategy):
@@ -29,7 +30,7 @@ class GradientFeature(DerivativeFeatureStrategy):
         ax = 1 if self.axis == 'x' else 0
         grad = np.gradient(img, 100, axis=ax)
         return grad
-    
+
 @FEATURES.register
 class SobelFeature(DerivativeFeatureStrategy):
     """
@@ -59,7 +60,7 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         r"^normalized_(?P<base_feature>.+?)"r"(?:_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?))?$"
         )
 
-    def __init__(self, base_feature: str, low: Optional[str] = None, high: Optional[str] = None) -> None:
+    def __init__(self, base_feature: str, low: str | None = None, high: str | None = None) -> None:
         if low is None:
             low = "0"
         if high is None:
@@ -112,8 +113,8 @@ class HillshadeFeature(DerivativeFeatureStrategy):
         r"(?:_(?P<z_factor>\d+(?:\.\d+)?))?"
         r"$")
 
-    def __init__(self, base_feature: Optional[str] = None, azimuth: Optional[str] = None,
-                 altitude: Optional[str] = None, z_factor: Optional[str] = None) -> None:
+    def __init__(self, base_feature: str | None = None, azimuth: str | None = None,
+                 altitude: str | None = None, z_factor: str | None = None) -> None:
         if base_feature is None:
             base_feature = "range"
         if azimuth is None:
@@ -200,7 +201,7 @@ class SquareFeature(DerivativeFeatureStrategy):
     def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         return np.square(img)
-    
+
 @FEATURES.register
 class RootFeature(DerivativeFeatureStrategy):
     regex_pattern = re.compile(r"^sqrt_(?P<base_feature>.+?)$")

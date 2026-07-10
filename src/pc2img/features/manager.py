@@ -1,19 +1,13 @@
-from pathlib import Path
-from typing import Optional
 
 import numpy as np
-from numpy.typing import NDArray
-
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
-
+from numpy.typing import NDArray
 from pchandler import PointCloudData
 
-from pc2img.image_cache import DiskBackedImageData
-from pc2img.image_cache import DiskBackedImageStore
+from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
 
-
-from .registry import FEATURES, FeatureRegistry, FeatureSpec
 from .core import BaseFeatureStrategy
+from .registry import FEATURES, FeatureRegistry, FeatureSpec
 
 
 class FeatureManager:
@@ -87,7 +81,7 @@ class FeatureManager:
         for t in self._targets:
             results[t.name] = self._get(t.name)
         return results
-    
+
 
     @property
     def cache_store(self) -> DiskBackedImageStore:

@@ -12,20 +12,20 @@ __all__ = [
     # register when `pc2img.features.rrim` is imported explicitly.
 ]
 
-from .manager import FeatureManager
 from .base_features import RangeFeature, ScalarFieldFeature
 from .derivative_features import (
-    GradientFeature,
-    SobelFeature,
-    NormalizedFeature,
-    LogFeature,
-    HillshadeFeature,
     AverageFeature,
-    SumFeature,
-    SquareFeature,
-    RootFeature,
-    NormFeature,
     ClipPercentileFeature,
+    GradientFeature,
+    HillshadeFeature,
+    LogFeature,
     MultiScaleGradientFeature,
+    NormalizedFeature,
+    NormFeature,
     OcclusionAwareMultiScaleGradientFeature,
+    RootFeature,
+    SobelFeature,
+    SquareFeature,
+    SumFeature,
 )
+from .manager import FeatureManager

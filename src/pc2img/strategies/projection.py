@@ -1,17 +1,23 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self, cast, TYPE_CHECKING
+from collections.abc import Callable, Generator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+)
 
 import numpy as np
+from GSEGUtils.base_types import (
+    Array_Nx2_Float_T,
+    Vector_Bool_T,
+)
 from numpy.typing import NDArray
-from scipy.spatial.transform import Rotation
-
 from pchandler import PointCloudData
-from pchandler.filters import FoVFilter, BoxFilter
-from pchandler.geometry.spherical import FoV
+from pchandler.filters import BoxFilter, FoVFilter
 from pchandler.geometry.coordinates import rhv2xyz
-from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
+from pchandler.geometry.spherical import FoV
 
 if TYPE_CHECKING:
     # Private pchandler symbol used only in a static annotation on
@@ -21,19 +27,18 @@ if TYPE_CHECKING:
     # pchandler drops or renames the private symbol (T-04-D1).
     from pchandler.geometry.transforms import _TransformArray
 
-from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
-
+from .registry import PROJECTIONS, _StrategyClass
 
 ProjectionName = Literal["spherical", "orthographic", "perspective"]
 
 
 class ProjectionStrategy(ABC):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., "ProjectionStrategy"], None, None]:
+    def __get_validators__(cls) -> Generator[Callable[..., ProjectionStrategy], None, None]:
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: Any, _) -> "ProjectionStrategy":
+    def validate(cls, value: Any, _) -> ProjectionStrategy:
         if isinstance(value, cls):
             return value
         if isinstance(value, str):
@@ -106,12 +111,12 @@ class SphericalProjection(ProjectionStrategy):
     def __init__(
             self,
             *,
-            field_of_view: Optional[FoV] = None,
+            field_of_view: FoV | None = None,
     ) -> None:
         self._field_of_view = field_of_view
 
     @property
-    def fov(self) -> Optional[FoV]:
+    def fov(self) -> FoV | None:
         return self._field_of_view
 
     def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
@@ -124,7 +129,7 @@ class SphericalProjection(ProjectionStrategy):
 
         return pcd.spher[mask, 1:], mask, mins, maxs
 
-    def inverse_projection(self, range_img: NDArray, spherical_origin: Optional[NDArray] = None) -> tuple[NDArray, NDArray]:
+    def inverse_projection(self, range_img: NDArray, spherical_origin: NDArray | None = None) -> tuple[NDArray, NDArray]:
         px_vertical, px_horizontal = range_img.shape
         horizontal_range = np.linspace(
             self._field_of_view.left,
@@ -160,7 +165,7 @@ class OrthographicProjection(ProjectionStrategy):
             self,
             *,
             plane: Literal["xy", "yz", "xz"],
-            roi_box: Optional[tuple[float, float, float, float]] = None,
+            roi_box: tuple[float, float, float, float] | None = None,
     ) -> None:
         match plane:
             case 'xy':

@@ -1,8 +1,7 @@
-from abc import ABC
-from typing import Type, Dict, Any
 import re
 
 from .core import BaseFeatureStrategy, DerivativeFeatureStrategy
+
 
 class FeatureSpec:
     """
@@ -23,12 +22,12 @@ class FeatureSpec:
 class FeatureRegistry:
 
     def __init__(self):
-        self._map: Dict[re.Pattern[str], Type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
-        self._default_cls: Type[BaseFeatureStrategy] = None
+        self._map: dict[re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
+        self._default_cls: type[BaseFeatureStrategy] = None
 
     def register(self, cls=None, *, default: bool = False):
         # support both @reg and @reg(default=True)
-        def decorator(c: Type[BaseFeatureStrategy | DerivativeFeatureStrategy]):
+        def decorator(c: type[BaseFeatureStrategy | DerivativeFeatureStrategy]):
             pat = c.regex_pattern
             if pat in self._map:
                 raise RuntimeError(f"Pattern {pat.pattern} already registered")

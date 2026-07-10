@@ -1,20 +1,25 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self, cast
-from pathlib import Path
-from dataclasses import dataclass, asdict
-import logging
 import hashlib
+import logging
+from abc import ABC, abstractmethod
+from collections.abc import Callable, Generator
+from typing import Any, Literal
 
 import numpy as np
-from numpy.typing import DTypeLike, NDArray
-from numpy.lib.mixins import NDArrayOperatorsMixin
-from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator, CloughTocher2DInterpolator
+from GSEGUtils.config import CacheDefaults, get_defaults
+from GSEGUtils.lazy_disk_cache import (
+    DiskBackedNDArray,
+    DiskBackedStore,
+    LazyDiskCacheConfig,
+)
+from numpy.typing import NDArray
+from scipy.interpolate import (
+    CloughTocher2DInterpolator,
+    LinearNDInterpolator,
+    NearestNDInterpolator,
+)
 from scipy.spatial import Delaunay
 
-from GSEGUtils.config import get_defaults, CacheDefaults
-from GSEGUtils.lazy_disk_cache import DiskBackedNDArray, LazyDiskCacheConfig, LazyDiskCacheKw, DiskBackedStore
-
-from .registry import INTERPOLATIONS, _StrategyClass, StrategyFactory
+from .registry import INTERPOLATIONS, _StrategyClass
 from .utils import thin_points_by_pixel_density
 
 logger = logging.getLogger(__name__)
@@ -103,7 +108,7 @@ class DelaunayInterpolation(InterpolationStrategy):
     def __init__(
         self,
         /,
-        lazy_disk_cache_config: Optional[LazyDiskCacheConfig] = None,
+        lazy_disk_cache_config: LazyDiskCacheConfig | None = None,
         *,
         enable_density_thinning: bool = False,
         max_points_per_pixel: int = 4,
@@ -128,7 +133,7 @@ class DelaunayInterpolation(InterpolationStrategy):
     #     simplices: DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
     #     triangles: DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
 
-        
+
 
     @staticmethod
     def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y:NDArray) -> str:
@@ -138,7 +143,7 @@ class DelaunayInterpolation(InterpolationStrategy):
         m.update(grid_y.tobytes())
         return m.hexdigest()
         # return hash((hash(points2d.tobytes()), hash(grid_x.tobytes()), hash(grid_y.tobytes())))
-    
+
 
 
     def interpolate(
@@ -186,7 +191,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             simplices, verts, bary, triangles = self._calculate_triangulation(points2d, grid_x, grid_y)
             self._triangulation_precalc[hash_str].add_data_to_store("triangles", triangles)
             self._triangulation_precalc[hash_str].add_data_to_store("simplices", simplices)
-            self._triangulation_precalc[hash_str].add_data_to_store("verts", verts)  
+            self._triangulation_precalc[hash_str].add_data_to_store("verts", verts)
             self._triangulation_precalc[hash_str].add_data_to_store("bary", bary)
         else:
             simplices = np.asarray(self._triangulation_precalc[hash_str]["simplices"])
@@ -259,7 +264,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             'qi,qi->q',
             values[verts[mask]],  # pick only valid rows
             bary[mask]
-        )        
+        )
         return result.reshape(grid_x.shape)
 
 
@@ -290,7 +295,7 @@ class DelaunayInterpolation(InterpolationStrategy):
 
         # self._triangulation_precalc[hash_id].add_data_to_store("triangles", tri.simplices)
         # self._triangulation_precalc[hash_id].add_data_to_store("simplices", simplices)
-        # self._triangulation_precalc[hash_id].add_data_to_store("verts", verts)  
+        # self._triangulation_precalc[hash_id].add_data_to_store("verts", verts)
         # self._triangulation_precalc[hash_id].add_data_to_store("bary", bary)
 
 

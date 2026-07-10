@@ -2,8 +2,16 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import TypeVar, Generic, TYPE_CHECKING, Callable, ParamSpec, Any, Generator, Protocol, cast, TypeGuard, Optional
-
+from collections.abc import Callable, Generator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    ParamSpec,
+    Protocol,
+    TypeVar,
+    cast,
+)
 
 if TYPE_CHECKING:
     from .interpolation import InterpolationStrategy
@@ -58,7 +66,7 @@ class StrategyRegistry(Generic[T]):
         valid_kw, accepts_var_kw = self._ctor_meta[cls]
         if not accepts_var_kw:
             return cls(**kwargs)
-        
+
         filtered = {k: v for k, v in kwargs.items() if k in valid_kw}
         unexpected = set(kwargs) - set(filtered)
         if unexpected:
@@ -68,7 +76,7 @@ class StrategyRegistry(Generic[T]):
                 stacklevel=2,
             )
         return cls(**filtered)
-    
+
     # NEW: reverse lookup from instance or class to its registered key
     def key_of(self, obj: T | type[T]) -> str:
         cls: type[T] = cast(type[T], obj if inspect.isclass(obj) else type(obj))

@@ -1,18 +1,15 @@
-import tempfile
-from collections.abc import MutableMapping
 import logging
-from pathlib import Path
 import pickle
-from typing import Dict, Iterator, Optional, Union, Any, Unpack, cast
-
-import numpy as np
-from numpy.typing import NDArray
-from pydantic import validate_call, ConfigDict
+import tempfile
+from collections.abc import Iterator, MutableMapping
+from pathlib import Path
+from typing import Any, cast
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+from numpy.typing import NDArray
+from pydantic import ConfigDict, validate_call
 
 from .disk_backed_image_data import DiskBackedImageData
-
 
 logger = logging.getLogger(__name__.split(".")[0])
 
@@ -25,7 +22,7 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None:
 
-        self._data: Dict[str, Optional[DiskBackedImageData]] = {}
+        self._data: dict[str, DiskBackedImageData | None] = {}
         self._enable_caching = config.enable_caching
         if config.cache_path is None or config.cache_path.is_file():
             self._cache_dir = Path(tempfile.mkdtemp())
@@ -83,9 +80,9 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             img_name: str,
             img_data: NDArray,
             *,
-            enable_caching_override: Optional[bool] = None,
-            automatic_offloading_override: Optional[bool] = None,
-            purge_disk_on_gc_override: Optional[bool] = None,
+            enable_caching_override: bool | None = None,
+            automatic_offloading_override: bool | None = None,
+            purge_disk_on_gc_override: bool | None = None,
     ) -> None:
 
         self._data[img_name] = DiskBackedImageData(
@@ -119,11 +116,11 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
     #     self._data[feature] = DiskBackedImageData(image_data[feature], image_data_path, self._automatic_offloading)
 
     @property
-    def image_data(self) -> dict[str, Optional[DiskBackedImageData]]:
+    def image_data(self) -> dict[str, DiskBackedImageData | None]:
         return self._data
 
     @property
-    def cache_dir(self) -> Optional[Path]:
+    def cache_dir(self) -> Path | None:
         return self._cache_dir
 
 
@@ -146,9 +143,9 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
     def items(self) -> Iterator[tuple[str, DiskBackedImageData]]:
         return iter(self._data.items())
 
-    def offload(self, features: Optional[str | list[str]] = None) -> None:
+    def offload(self, features: str | list[str] | None = None) -> None:
         if self._cache_dir is None:
-            logger.warning(f"Without cache_dir, the offload function is ignored!")
+            logger.warning("Without cache_dir, the offload function is ignored!")
             return
 
         if features is None:
@@ -165,9 +162,9 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
                 continue
             obj.offload()
 
-    def offload_image_data_to_disk(self, features: Optional[str | list[str]] = None) -> None:
+    def offload_image_data_to_disk(self, features: str | list[str] | None = None) -> None:
         if self._cache_dir is None:
-            logger.warning(f"Without cache_dir, the pickle_image_data function is ignored!")
+            logger.warning("Without cache_dir, the pickle_image_data function is ignored!")
             return
 
         if features is None:

@@ -2,11 +2,9 @@ import re
 
 import numpy as np
 from numpy.typing import NDArray
-
 from pchandler import PointCloudData
 
 from .core import BaseFeatureStrategy
-
 from .registry import FEATURES
 
 

@@ -1,24 +1,33 @@
-from collections import namedtuple
-from pathlib import Path
-from typing import Optional, NamedTuple, Sequence, overload, TypeVar, Type, Mapping, Any, TypeAlias, cast, Self
-from joblib import Parallel, delayed, parallel_config
 import logging
-from functools import wraps
-import copy
-from dataclasses import dataclass, field, replace, fields
-
-from pydantic import validate_call, ConfigDict
-from pydantic.dataclasses import dataclass as pydantic_dataclass
+from collections import namedtuple
+from collections.abc import Mapping, Sequence
+from dataclasses import field, fields, replace
+from typing import (
+    Any,
+    NamedTuple,
+    Self,
+    TypeAlias,
+    cast,
+    overload,
+)
 
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
-
+from joblib import Parallel, delayed, parallel_config
 from pchandler import PointCloudData
+from pydantic import ConfigDict, validate_call
+from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 from pc2img import PointCloudImageGenerator
 from pc2img.core import ImgRes
 from pc2img.image_cache import DiskBackedImageData
-from pc2img.strategies import INTERPOLATIONS, InterpolationStrategy, InterpolationName, InterpolationStrategyClass
-from pc2img.strategies import PROJECTIONS, ProjectionStrategy, ProjectionName, ProjectionStrategyClass
+from pc2img.strategies import (
+    InterpolationName,
+    InterpolationStrategy,
+    InterpolationStrategyClass,
+    ProjectionName,
+    ProjectionStrategy,
+    ProjectionStrategyClass,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +61,7 @@ class TIGSettings:
 
     proj_kwargs: dict[str, Any] = field(default_factory=dict)
     interp_kwargs: dict[str, Any] = field(default_factory=dict)
-    lazy_disk_cache_config: Optional[LazyDiskCacheConfig] = None
+    lazy_disk_cache_config: LazyDiskCacheConfig | None = None
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def extend_cache_paths(self, new_folder: str) -> Self:
@@ -65,7 +74,7 @@ class TIGSettings:
             updates["lazy_disk_cache_config"] = self.lazy_disk_cache_config.extend_cache_path(new_folder)
 
         return replace(self, **updates)
-    
+
     def as_kwargs(self) -> dict[str, Any]:
         """Return a plain dict of fields, excluding those whose value is None."""
         out: dict[str, Any] = {}
@@ -87,8 +96,8 @@ class TiledPointCloudImageGenerator:
             proj_cls: ProjectionLike,
             interp_cls: InterpolationLike,
             *,
-            proj_kwargs: Optional[Mapping[str, Any]] = None,
-            interp_kwargs: Optional[Mapping[str, Any]] = None,
+            proj_kwargs: Mapping[str, Any] | None = None,
+            interp_kwargs: Mapping[str, Any] | None = None,
 
             lazy_disk_cache_config: Mapping[str,Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
@@ -103,8 +112,8 @@ class TiledPointCloudImageGenerator:
             interp_cls: InterpolationStrategyClass,
             *,
 
-            proj_kwargs: Optional[Mapping[str, Any]] = None,
-            interp_kwargs: Optional[Mapping[str, Any]] = None,
+            proj_kwargs: Mapping[str, Any] | None = None,
+            interp_kwargs: Mapping[str, Any] | None = None,
             lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ):
         self.pcd_tiles = pcd_tiles
@@ -149,7 +158,7 @@ class TiledPointCloudImageGenerator:
             tile_kwargs: Mapping[str, Any],
             features: list[str],
     ) -> tuple[str, PointCloudImageGenerator, dict[str, DiskBackedImageData]]:
-        
+
         interp_kwargs: dict[str, Any] = dict(self._interp_kwargs)
         proj_kwargs: dict[str, Any] = dict(self._proj_kwargs)
 

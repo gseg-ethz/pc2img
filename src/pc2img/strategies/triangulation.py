@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -12,7 +11,7 @@ class TriangulationStrategy(ABC):
         self,
         points: NDArray[np.float32],
         xi:    NDArray[np.float32],
-        batch_size: Optional[int] = None,
+        batch_size: int | None = None,
     ) -> tuple[
         tuple[NDArray[np.float32], ...],
         NDArray[np.int32],

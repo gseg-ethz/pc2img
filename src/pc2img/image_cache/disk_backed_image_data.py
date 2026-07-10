@@ -1,15 +1,14 @@
-from functools import partial
-import logging
-import uuid
 from collections.abc import Callable
-from pathlib import Path
-from typing import Optional, Any, Unpack
+from functools import partial
+from typing import Any, Unpack
 
 import numpy as np
-from numpy.typing import NDArray
+from GSEGUtils.lazy_disk_cache import (
+    LazyDiskCache,
+    LazyDiskCacheKw,
+)
 from numpy.lib.mixins import NDArrayOperatorsMixin
-
-from GSEGUtils.lazy_disk_cache import LazyDiskCache, LazyDiskCacheConfig, LazyDiskCacheKw
+from numpy.typing import NDArray
 
 from pc2img.util import convert_to_image
 
@@ -39,10 +38,7 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     @LazyDiskCache.ensure_loaded
     def to_uint8(
             self,
-            pre_processing_func: Optional[Callable[
-                [NDArray[np.floating[Any]]],
-                NDArray[np.uint8]]
-            ] = None) -> NDArray[np.uint8]:
+            pre_processing_func: Callable[[NDArray[np.floating[Any]]], NDArray[np.uint8]] | None = None) -> NDArray[np.uint8]:
 
         if pre_processing_func is None:
             pre_processing_func = partial(convert_to_image, replace_nan_with="max", normalize=False)
@@ -71,7 +67,7 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
 
     @LazyDiskCache.ensure_loaded
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
     #     # unwrap and handle 'out' exactly as before…
     #     # [your existing unwrapping + out=… code]
     #
