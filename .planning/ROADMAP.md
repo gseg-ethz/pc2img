@@ -140,7 +140,29 @@ Plans:
   3. A mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math is complete.
   4. Correctness issues surfaced by the soundness review are captured as concrete, testable bug items (BUG-05 inputs for Phase 5).
 
-**Plans**: TBD
+**Plans**: 7 plans
+
+**Wave 0**
+
+- [ ] 04-01-PLAN.md — Swap black→ruff in the dev group + author tests/test_hygiene.py smoke/metadata/lint gate [QUAL-01]
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 04-02-PLAN.md — pyproject full pass: [tool.ruff] config, joblib collapse, viz extra, metadata + human-verify gate for PyPI-facing URL/license, cuda note [QUAL-01]
+- [ ] 04-03-PLAN.md — Mechanical source FIX: repair/delete make_generator, guard _TransformArray, sync features __all__, delete dup convert_to_image [QUAL-01, QUAL-02]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-04-PLAN.md — ruff sweep: check --fix + deliberate ERA001 deletion + ruff format; keep registration + suite green [QUAL-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 04-05-PLAN.md — Design-track review (D1–D4) find→refute → 04-FINDINGS-design.md (4 anchors + pickle finding) [QUAL-02]
+- [ ] 04-06-PLAN.md — Math-track review (M1–M5) find→refute with numeric probes → 04-FINDINGS-math.md [QUAL-03]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 04-07-PLAN.md — Synthesis + phase gate: merge/dedupe/re-anchor into canonical 04-FINDINGS.md [QUAL-02, QUAL-03]
 
 ### Phase 5: Bug Fixes & Module Test Coverage
 
@@ -180,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
-| 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
+| 4. Code Quality & Algorithmic Soundness Review | 0/7 | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
