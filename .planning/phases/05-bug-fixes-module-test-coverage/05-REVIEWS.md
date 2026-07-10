@@ -28,7 +28,7 @@ The plan set is strong overall: it is source-file grouped, mostly dependency-awa
 
 ## Concerns
 
-- **HIGH:** Plan 05-02 does not define the new perspective API needed for M-03. `PerspectiveProjection.__init__` currently accepts only `projection_matrix` and `rotation_matrix` at [src/pc2img/strategies/projection.py:200](/scratch/31_pc2img/src/pc2img/strategies/projection.py:200), and `project()` uses `(projection_matrix @ rotation_matrix) @ pcd` at [src/pc2img/strategies/projection.py:216](/scratch/31_pc2img/src/pc2img/strategies/projection.py:216). The plan says “add camera-translation term” but does not say whether that is a new `translation` constructor arg, a required 4x4 extrinsic, or a changed meaning of `rotation_matrix`.
+- **HIGH — ✅ RESOLVED (commit 68fc048), NOT ACTIONABLE:** Plan 05-02 did not define the new perspective API needed for M-03. `PerspectiveProjection.__init__` currently accepts only `projection_matrix` and `rotation_matrix` at [src/pc2img/strategies/projection.py:200](/scratch/31_pc2img/src/pc2img/strategies/projection.py:200), and `project()` uses `(projection_matrix @ rotation_matrix) @ pcd` at [src/pc2img/strategies/projection.py:216](/scratch/31_pc2img/src/pc2img/strategies/projection.py:216). The plan said “add camera-translation term” without pinning the contract. **Resolution:** the decision is now locked in the `<perspective_api_contract>` block of `05-02-PLAN.md` — 3×3 rotation + keyword-only `translation` (default None→zeros), model `K·(R·X+t)` camera-frame convention, extrinsic-first implementation, orthonormality validation, and a hard TypeError on a 4×4 `rotation_matrix` (breaking, batched, no DeprecationWarning). The must-have, Task 1 proving tests (incl. M-03b), and Task 3 acceptance criteria all reference it. **Planner: do NOT re-litigate — verify the contract block is present in 05-02 and treat this finding as satisfied.**
 
 - **HIGH:** Plan 05-08 changes GSEGUtils but does not mention how pc2img CI will get that changed dependency. pc2img imports `GSEGUtils.lazy_disk_cache` from the installed dependency, and GSEGUtils currently does not export the hook at [/scratch/30_GSEGUtils/src/GSEGUtils/lazy_disk_cache/__init__.py:23](/scratch/30_GSEGUtils/src/GSEGUtils/lazy_disk_cache/__init__.py:23). If CI installs the locked released package, 05-09 will fail unless `pyproject.toml`/`uv.lock` or the dependency release/version route is updated.
 
@@ -40,7 +40,7 @@ The plan set is strong overall: it is source-file grouped, mostly dependency-awa
 
 ## Suggestions
 
-- Specify the `PerspectiveProjection` public contract before implementation: either `extrinsic_matrix`, `translation_vector`, or full `K @ [R|t]` matrix. Add the BC note if constructor parameters change.
+- ✅ DONE (68fc048): Specify the `PerspectiveProjection` public contract before implementation. Resolved as 3×3 rotation + keyword-only `translation` (not a combined `extrinsic_matrix` or `K @ [R|t]`); BC note added for the 4×4-rejection break. See `<perspective_api_contract>` in 05-02.
 
 - Add an explicit dependency step after 05-08: update pc2img’s dependency source/version or lockfile so CI imports the GSEGUtils hook. Otherwise 05-09 is only locally valid.
 
@@ -67,7 +67,7 @@ Only one reviewer (Codex) was invoked, so this section reflects Codex's grounded
 
 ### Agreed Concerns (highest priority)
 
-1. **HIGH — 05-02 perspective API undefined (M-03).** The plan says "add camera-translation term" but does not pin the public contract: new `translation` arg vs. required 4×4 extrinsic vs. changed `rotation_matrix` meaning. Decide the `PerspectiveProjection` signature before execution and add a BC note if constructor params change.
+1. **HIGH — ✅ RESOLVED (68fc048), NOT ACTIONABLE — 05-02 perspective API (M-03).** Was: plan said "add camera-translation term" without pinning the contract. Now locked in the `<perspective_api_contract>` block of 05-02: 3×3 rotation + keyword-only `translation`, model `K·(R·X+t)`, extrinsic-first, orthonormality validation, hard TypeError on a 4×4 `rotation_matrix` (breaking, batched, no DeprecationWarning), + D-17 BC note. **Planner: verify the contract is present in 05-02; do not re-open.**
 2. **HIGH — 05-08 → 05-09 cross-repo dependency delivery.** GSEGUtils does not currently export the reload-registration hook. If CI installs the locked released package, 05-09 fails. Add an explicit step to update pc2img's dependency source/version/lockfile after the GSEGUtils edit.
 3. **MEDIUM — 05-09 mis-scopes existing xfails.** The `test_disk_backed_image_data.py` xfails cover offload-logging / getstate / pickle / finalizer / purge behavior, not arithmetic. Reparenting to `DiskBackedNDArray` renames private state `_image_data`→`_data`, so these need deliberate rewrite/retirement, not blanket xfail removal.
 4. **MEDIUM — 05-07 `dependencies_for` design too thin.** A generic base cannot infer split-list dependencies for `AverageFeature`/`SumFeature`/`NormFeature`. Require per-class overridable classmethods or an explicit param-name mapping.
