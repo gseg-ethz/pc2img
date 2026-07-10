@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 04
 current_phase_name: code-quality-algorithmic-soundness-review
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-07-10T15:11:21.105Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-07-10T15:19:36.223Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 20
-  completed_plans: 15
+  completed_plans: 16
   percent: 57
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 04 (code-quality-algorithmic-soundness-review) — EXECUTING
-Plan: 3 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-07-10 — Phase 04 execution started
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03.1 P03 | 5min | 2 tasks | 2 files |
 | Phase 04 P01 | 3min | 2 tasks | 3 files |
 | Phase 04 P03 | 6min | 3 tasks | 4 files |
+| Phase 04 P02 | 3min | 4 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -103,6 +104,7 @@ Recent decisions affecting current work:
 - [Phase 03.1 P03]: Owner signed off on keep-on-patent-expiry RRIM disposition (D-10); IP gate CLEARED, branch publication-safe (D-07 resolve-then-push); blocking patent-review todo moved pending->completed via git mv (audit trail) only after the human sign-off gate passed
 - [Phase 04]: [Phase 04 P01] Swapped black->ruff ~= 0.15 in PEP 735 dev group (D-11 default; ruff format is black-equivalent), relocked uv.lock; authored tests/test_hygiene.py as the Wave 0 QUAL-01 gate (1 LIVE import-smoke pass + 3 xfail: keywords/viz/ruff-clean, split so 04-02/04-04 flip markers independently); no [tool.ruff] block yet (deferred to 04-02)
 - [Phase ?]: [Phase 04 P03] Deleted broken make_generator (zero callers) rather than repairing; guarded pchandler private _TransformArray under TYPE_CHECKING + __future__ annotations (resolves Phase-1 IN-03 / T-04-D1); synced features barrel __all__ to registered non-rrim set; deleted dead plt-referencing convert_to_image duplicate (QUAL-01/02)
+- [Phase 04]: [Phase 04 P02] Landed 88-col [tool.ruff] config (D-11; families E/F/W/I/B/C90/UP/NPY+ERA001, not sibling 120); barrel per-file-ignores exempt the four __init__.py from F401 so 04-04 ruff --fix keeps registration re-exports; collapsed joblib to one ~=1.5 pin; matplotlib->optional viz extra; de-placeholdered metadata; owner-confirmed BSD license classifier + github docs URL (T-04-M1)
 
 ### Pending Todos
 
@@ -132,6 +134,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T15:10:46.093Z
-Stopped at: Completed 04-01-PLAN.md
+Last session: 2026-07-10T15:19:36.215Z
+Stopped at: Completed 04-02-PLAN.md
 Resume file: None
