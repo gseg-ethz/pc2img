@@ -140,7 +140,7 @@ Plans:
   3. A mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math is complete.
   4. Correctness issues surfaced by the soundness review are captured as concrete, testable bug items (BUG-05 inputs for Phase 5).
 
-**Plans**: 5/7 plans executed
+**Plans**: 6/7 plans executed
 
 **Wave 0**
 
@@ -158,7 +158,7 @@ Plans:
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 04-05-PLAN.md — Design-track review (D1–D4) find→refute → 04-FINDINGS-design.md (4 anchors + pickle finding) [QUAL-02]
-- [ ] 04-06-PLAN.md — Math-track review (M1–M5) find→refute with numeric probes → 04-FINDINGS-math.md [QUAL-03]
+- [x] 04-06-PLAN.md — Math-track review (M1–M5) find→refute with numeric probes → 04-FINDINGS-math.md [QUAL-03]
 
 **Wave 4** *(blocked on Wave 3)*
 
@@ -202,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
-| 4. Code Quality & Algorithmic Soundness Review | 5/7 | In Progress|  |
+| 4. Code Quality & Algorithmic Soundness Review | 6/7 | In Progress|  |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
