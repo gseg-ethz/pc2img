@@ -25,7 +25,6 @@ T_co = TypeVar("T_co", covariant=True)
 logger = logging.getLogger(__name__)
 
 
-# class StrategyRegistry(Generic[T]):
 class StrategyRegistry[T]:
     def __init__(self) -> None:
         self._map: dict[str, type[T]] = {}

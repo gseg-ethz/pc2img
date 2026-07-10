@@ -65,8 +65,6 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         if high is None:
             high = "100"
 
-        # if not(0 <= float(low) < float(high) <= 100):
-
         self.base_feature = base_feature
         self.dependencies = [base_feature]
         self.low = float(low)

@@ -57,10 +57,6 @@ git_describe_command = "git describe --dirty --tags --long --match 'v[0-9]*.[0-9
 [project.urls]
 homepage = "https://gseg.igp.ethz.ch/"
 documentation = "https://github.com/gseg-ethz/pc2img"
-#repository = "https://gseg-ethz.github.com/DeSpAn"
-
-#[project.scripts]
-#DeSpAn = "DeSpAn.cli:main"
 
 [project.optional-dependencies]
 cuda12 = ["pchandler[cuda12]"]

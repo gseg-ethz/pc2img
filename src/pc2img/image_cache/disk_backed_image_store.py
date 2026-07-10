@@ -95,16 +95,6 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
             else self._purge_disk_on_gc,
         )
 
-    # def fetch_image(self, feature: str) -> None:
-    #     if image_data_cache_path and image_data_cache_path.is_file():
-    #         with open(image_data_cache_path, "rb") as f:
-    #
-    #     if isinstance(self._image_generator, ImageGeneratorFromPCD):
-    #         raise NotImplementedError
-    #
-    # def _create_image_from_pcd(self, feature: str, image_data_path: Optional[Path]) -> None:
-    #     if image_data is None:
-
     @property
     def image_data(self) -> dict[str, DiskBackedImageData | None]:
         return self._data
@@ -112,11 +102,6 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
     @property
     def cache_dir(self) -> Path | None:
         return self._cache_dir
-
-    # @property
-    # def identifier(self) -> str:
-    #
-    # def __repr__(self):
 
     def keys(self) -> list[str]:
         """

@@ -216,14 +216,6 @@ def gaussian_kernel(side_length=5, sig=1.0):
     return kernel / np.sum(kernel)
 
 
-# def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
-#     if replace_nan_with not in ["max", "min", "random"]:
-
-#     if nan_positions.ndim > 2:
-#     match replace_nan_with:
-#             if image_data.ndim == 3:
-
-
 def replace_nan(
     image_data: NDArray[np.floating] | NDArray[np.integer],
     replace_nan_with: NAN_REPLACEMENT_STR | float = "max",

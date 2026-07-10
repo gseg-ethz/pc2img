@@ -119,9 +119,6 @@ class DelaunayInterpolation(InterpolationStrategy):
             if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
                 raise ValueError("density_ratio_trigger must be positive when provided")
 
-    # @dataclass(frozen=True)
-    # class TriangulationData:
-
     @staticmethod
     def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y: NDArray) -> str:
         m = hashlib.sha256()
@@ -188,7 +185,6 @@ class DelaunayInterpolation(InterpolationStrategy):
         result = np.full(nQ, fill_value, dtype=float)
         mask = simplices >= 0
 
-        # if area_thresh is not None or max_edge_thresh is not None:
         # Compute triangle metrics once
         tri_vertices = points2d[triangles]  # shape (M, 3, 2)
 
@@ -266,44 +262,3 @@ class DelaunayInterpolation(InterpolationStrategy):
         verts = tri.simplices[simplices.clip(0)]  # for outside, we’ll ignore these rows
 
         return simplices, verts, bary, tri.simplices
-
-        # self._triangulation_precalc[
-        #     hash_id
-        # ] = DelaunayInterpolation.TriangulationData(
-        #     DiskBackedNDArray(
-        #         bary, **self._lazy_disk_cache_config.extend_cache_path("bary.pkl").as_kwargs()
-        #     ),
-        #     DiskBackedNDArray(
-        #         verts, **self._lazy_disk_cache_config.extend_cache_path("verts.pkl").as_kwargs()
-        #     ),
-        #     DiskBackedNDArray(
-        #         simplices, **self._lazy_disk_cache_config.extend_cache_path("simplices.pkl").as_kwargs()
-        #     ),
-        #     DiskBackedNDArray(
-        #         tri.simplices, **self._lazy_disk_cache_config.extend_cache_path("triangles.pkl").as_kwargs()
-        #     ),
-
-
-# class BarycentricInterpolation(InterpolationStrategy):
-#     def __init__(
-#         self,
-#     ):
-#
-#     def interpolate(
-#         self,
-#         values: np.ndarray,
-#         points2d: np.ndarray,
-#         grid_x: np.ndarray,
-#         grid_y: np.ndarray,
-#     ) -> np.ndarray:
-#         # 1) Build triangles only once
-#
-#         # 2) Compute barycentric weights & rasterize
-#         #    (pseudo-code; you’d fill in your own math here)
-#         for tri_idx in triangles:
-#             # compute mask & weights for this triangle
-#
-#
-# @INTERPOLATIONS.register("barycentric")
-# class BarycentricFactory:
-#     def __call__(self, *, use_incremental: bool = False) -> InterpolationStrategy:
