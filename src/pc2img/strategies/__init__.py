@@ -1,8 +1,17 @@
 __all__ = [
-    "ProjectionName", "ProjectionStrategy", "SphericalProjection", "OrthographicProjection",
-    "InterpolationName", "InterpolationStrategy", "DelaunayInterpolation", "NearestNeighborInterpolation",
+    "ProjectionName",
+    "ProjectionStrategy",
+    "SphericalProjection",
+    "OrthographicProjection",
+    "InterpolationName",
+    "InterpolationStrategy",
+    "DelaunayInterpolation",
+    "NearestNeighborInterpolation",
     "TriangulationStrategy",
-    "PROJECTIONS", "INTERPOLATIONS", "ProjectionStrategyClass", "InterpolationStrategyClass",
+    "PROJECTIONS",
+    "INTERPOLATIONS",
+    "ProjectionStrategyClass",
+    "InterpolationStrategyClass",
 ]
 
 from .interpolation import (

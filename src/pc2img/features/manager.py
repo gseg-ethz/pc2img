@@ -1,4 +1,3 @@
-
 import numpy as np
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 from numpy.typing import NDArray
@@ -12,10 +11,10 @@ from .registry import FEATURES, FeatureRegistry, FeatureSpec
 
 class FeatureManager:
     def __init__(
-            self,
-            pcd: PointCloudData,
-            *,
-            lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        self,
+        pcd: PointCloudData,
+        *,
+        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ):
         self.registry: FeatureRegistry = FEATURES
         self.pcd: PointCloudData = pcd
@@ -48,14 +47,13 @@ class FeatureManager:
         return list(self._raster_cache.keys())
 
     def get_base_features(self) -> dict[str, NDArray]:
-        '''Returns base features needed for request which are not yet `self._raster_cache`'''
+        """Returns base features needed for request which are not yet `self._raster_cache`"""
         base_features = {}
         for base_spec in self._base_features:
             inst = base_spec.cls(**base_spec.params)
             base_features[base_spec.name] = inst.compute(self.pcd, self._get)
 
         return base_features
-
 
     def submit(self, name: str, array: NDArray) -> None:
         self._raster_cache.add_image_to_store(name, array)
@@ -74,13 +72,11 @@ class FeatureManager:
 
         self.submit(name, result)
 
-
     def get_targets(self) -> dict[str, DiskBackedImageData]:
         results = {}
         for t in self._targets:
             results[t.name] = self._get(t.name)
         return results
-
 
     @property
     def cache_store(self) -> DiskBackedImageStore:

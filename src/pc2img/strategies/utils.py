@@ -69,4 +69,3 @@ def thin_points_by_pixel_density(
             slot_counts[bucket] = taken + 1
 
     return points2d[keep_mask], keep_mask
-

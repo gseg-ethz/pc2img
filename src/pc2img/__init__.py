@@ -1,5 +1,14 @@
 # pc2img/__init__.py
-__all__ = ["__version__", "PointCloudImageGenerator", "core", "util", "features", "image_cache", "strategies","core"]
+__all__ = [
+    "__version__",
+    "PointCloudImageGenerator",
+    "core",
+    "util",
+    "features",
+    "image_cache",
+    "strategies",
+    "core",
+]
 
 __author__ = "Nicholas Meyer"
 __email__ = "meyernic@ethz.ch"

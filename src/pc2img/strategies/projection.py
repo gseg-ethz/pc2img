@@ -34,7 +34,9 @@ ProjectionName = Literal["spherical", "orthographic", "perspective"]
 
 class ProjectionStrategy(ABC):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., ProjectionStrategy], None, None]:
+    def __get_validators__(
+        cls,
+    ) -> Generator[Callable[..., ProjectionStrategy], None, None]:
         yield cls.validate
 
     @classmethod
@@ -44,16 +46,15 @@ class ProjectionStrategy(ABC):
         if isinstance(value, str):
             return PROJECTIONS.create(value)
         if (
-                isinstance(value, tuple)
-                and len(value) == 2
-                and isinstance(value[0], str)
-                and isinstance(value[1], dict)
+            isinstance(value, tuple)
+            and len(value) == 2
+            and isinstance(value[0], str)
+            and isinstance(value[1], dict)
         ):
             key, kwargs = value
             return PROJECTIONS.create(key, **kwargs)
 
         raise TypeError(f"Cannot interpret {value!r} as a {cls.__name__} strategy")
-
 
     @abstractmethod
     def project_raw(
@@ -72,9 +73,7 @@ class ProjectionStrategy(ABC):
     def inverse_projection(self): ...
 
     def project(
-        self,
-        pcd: PointCloudData,
-        resolution: tuple[int, int]
+        self, pcd: PointCloudData, resolution: tuple[int, int]
     ) -> tuple[NDArray, NDArray]:
         """
         Normalize raw coords into [0,1]×[0,1] based on data extents,
@@ -107,9 +106,9 @@ class ProjectionStrategyClass(_StrategyClass[ProjectionStrategy]):
 @PROJECTIONS.register("spherical")
 class SphericalProjection(ProjectionStrategy):
     def __init__(
-            self,
-            *,
-            field_of_view: FoV | None = None,
+        self,
+        *,
+        field_of_view: FoV | None = None,
     ) -> None:
         self._field_of_view = field_of_view
 
@@ -117,9 +116,14 @@ class SphericalProjection(ProjectionStrategy):
     def fov(self) -> FoV | None:
         return self._field_of_view
 
-    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        mask = FoVFilter(fov=self._field_of_view).mask(pcd) if self._field_of_view is not None \
+    def project_raw(
+        self, pcd: PointCloudData
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        mask = (
+            FoVFilter(fov=self._field_of_view).mask(pcd)
+            if self._field_of_view is not None
             else np.ones((pcd.nbPoints,), dtype=bool)
+        )
 
         fov = self._field_of_view if self._field_of_view is not None else pcd.fov
         mins = np.array([fov.left, fov.top]).squeeze()
@@ -127,26 +131,36 @@ class SphericalProjection(ProjectionStrategy):
 
         return pcd.spher[mask, 1:], mask, mins, maxs
 
-    def inverse_projection(self, range_img: NDArray, spherical_origin: NDArray | None = None) -> tuple[NDArray, NDArray]:
+    def inverse_projection(
+        self, range_img: NDArray, spherical_origin: NDArray | None = None
+    ) -> tuple[NDArray, NDArray]:
         px_vertical, px_horizontal = range_img.shape
         horizontal_range = np.linspace(
             self._field_of_view.left,
             self._field_of_view.right,
-            num=px_horizontal, endpoint=True, dtype=np.float32
+            num=px_horizontal,
+            endpoint=True,
+            dtype=np.float32,
         )
         vertical_range = np.linspace(
             self._field_of_view.top,
             self._field_of_view.bottom,
-            num=px_vertical, endpoint=True, dtype=np.float32
+            num=px_vertical,
+            endpoint=True,
+            dtype=np.float32,
         )
 
-        vertical_mesh, horizontal_mesh = np.meshgrid(vertical_range, horizontal_range, indexing="ij")
+        vertical_mesh, horizontal_mesh = np.meshgrid(
+            vertical_range, horizontal_range, indexing="ij"
+        )
 
         range_data = range_img.flatten()
         vertical_angles = vertical_mesh.flatten()
         horizontal_angles = horizontal_mesh.flatten()
 
-        spherical_coordinates = np.vstack((range_data, horizontal_angles, vertical_angles)).T
+        spherical_coordinates = np.vstack(
+            (range_data, horizontal_angles, vertical_angles)
+        ).T
         mask = np.ones_like(range_data, dtype=bool)
         mask[np.isnan(range_data)] = False
 
@@ -154,24 +168,21 @@ class SphericalProjection(ProjectionStrategy):
         return xyz, mask
 
 
-
-
-
 @PROJECTIONS.register("orthographic")
 class OrthographicProjection(ProjectionStrategy):
     def __init__(
-            self,
-            *,
-            plane: Literal["xy", "yz", "xz"],
-            roi_box: tuple[float, float, float, float] | None = None,
+        self,
+        *,
+        plane: Literal["xy", "yz", "xz"],
+        roi_box: tuple[float, float, float, float] | None = None,
     ) -> None:
         match plane:
-            case 'xy':
-                self._xyz_column_selection = [0,1]
-            case 'yz':
-                self._xyz_column_selection = [1,2]
-            case 'xz':
-                self._xyz_column_selection = [0,2]
+            case "xy":
+                self._xyz_column_selection = [0, 1]
+            case "yz":
+                self._xyz_column_selection = [1, 2]
+            case "xz":
+                self._xyz_column_selection = [0, 2]
         self.plane = plane
         self._roi_box = roi_box
 
@@ -193,17 +204,27 @@ class OrthographicProjection(ProjectionStrategy):
 
 @PROJECTIONS.register("perspective")
 class PerspectiveProjection(ProjectionStrategy):
-    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        raise NotImplementedError("This function computes the projected coordinates in one shot.")
+    def project_raw(
+        self, pcd: PointCloudData
+    ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        raise NotImplementedError(
+            "This function computes the projected coordinates in one shot."
+        )
 
     def inverse_projection(self):
         raise NotImplementedError("This function computes the inverse projection.")
 
-    def __init__(self, projection_matrix: NDArray|_TransformArray, rotation_matrix: NDArray|_TransformArray):
+    def __init__(
+        self,
+        projection_matrix: NDArray | _TransformArray,
+        rotation_matrix: NDArray | _TransformArray,
+    ):
         self.projection_matrix = projection_matrix
         self.rotation_matrix = rotation_matrix
 
-    def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
+    def project(
+        self, pcd: PointCloudData, resolution: tuple[int, int]
+    ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
         """
         Rotate the scan so that the projection direction
 
@@ -215,9 +236,7 @@ class PerspectiveProjection(ProjectionStrategy):
         uv = uv.arr[:, :2] / uv.arr[:, 2].reshape(-1, 1)
         mask = np.logical_and(
             np.logical_and(uv[:, 0] >= 0, uv[:, 0] < resolution[0]),
-            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1])
+            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1]),
         )
 
         return uv[mask, :], mask
-
-

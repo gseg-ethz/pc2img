@@ -16,20 +16,19 @@ class GradientFeature(DerivativeFeatureStrategy):
     Dependencies: the base feature (will be treated as grid-level).
     """
 
-    regex_pattern = re.compile(
-        r"^gradient_(?P<axis>[xy])_(?P<base_feature>.+)$"
-        )
+    regex_pattern = re.compile(r"^gradient_(?P<axis>[xy])_(?P<base_feature>.+)$")
 
     def __init__(self, base_feature: str, axis: str) -> None:
         self.base_feature = base_feature
         self.axis = axis
         self.dependencies = [base_feature]
 
-    def compute(self,_, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
-        ax = 1 if self.axis == 'x' else 0
+        ax = 1 if self.axis == "x" else 0
         grad = np.gradient(img, 100, axis=ax)
         return grad
+
 
 @FEATURES.register
 class SobelFeature(DerivativeFeatureStrategy):
@@ -38,34 +37,35 @@ class SobelFeature(DerivativeFeatureStrategy):
     Dependencies: the base feature (will be treated as grid-level).
     """
 
-    regex_pattern = re.compile(
-        r"^sobel_(?P<axis>[xy])_(?P<base_feature>.+)$"
-        )
+    regex_pattern = re.compile(r"^sobel_(?P<axis>[xy])_(?P<base_feature>.+)$")
 
     def __init__(self, base_feature: str, axis: str) -> None:
         self.base_feature = base_feature
         self.axis = axis
         self.dependencies = [base_feature]
 
-    def compute(self,_, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
 
         img = fetch(self.base_feature)
-        ax = 1 if self.axis == 'x' else 0
+        ax = 1 if self.axis == "x" else 0
         sobel_img = sobel(img, axis=ax, mode="constant", cval=np.nan)
         return sobel_img
+
 
 @FEATURES.register
 class NormalizedFeature(DerivativeFeatureStrategy):
     regex_pattern = re.compile(
-        r"^normalized_(?P<base_feature>.+?)"r"(?:_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?))?$"
-        )
+        r"^normalized_(?P<base_feature>.+?)"
+        r"(?:_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?))?$"
+    )
 
-    def __init__(self, base_feature: str, low: str | None = None, high: str | None = None) -> None:
+    def __init__(
+        self, base_feature: str, low: str | None = None, high: str | None = None
+    ) -> None:
         if low is None:
             low = "0"
         if high is None:
             high = "100"
-
 
         # if not(0 <= float(low) < float(high) <= 100):
 
@@ -74,7 +74,7 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         self.low = float(low)
         self.high = float(high)
 
-    def compute(self,_, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         low_bound, high_bound = np.nanpercentile(img, [self.low, self.high])
 
@@ -83,36 +83,39 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         np.clip(img, 0, 1.0, out=img)
         return img
 
+
 @FEATURES.register
 class LogFeature(DerivativeFeatureStrategy):
-    regex_pattern = re.compile(
-        r"^log_(?P<base_feature>.+?)$"
-        )
+    regex_pattern = re.compile(r"^log_(?P<base_feature>.+?)$")
 
     def __init__(self, base_feature: str) -> None:
 
         self.base_feature = base_feature
         self.dependencies = [base_feature]
 
-
-    def compute(self,_, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         return np.log10(img)
 
 
 @FEATURES.register
 class HillshadeFeature(DerivativeFeatureStrategy):
-
     regex_pattern = re.compile(
         r"^hillshade"
         r"(?:_(?P<base_feature>.+?))?"
         r"(?:_(?P<azimuth>\d+(?:\.\d+)?))?"
         r"(?:_(?P<altitude>\d+(?:\.\d+)?))?"
         r"(?:_(?P<z_factor>\d+(?:\.\d+)?))?"
-        r"$")
+        r"$"
+    )
 
-    def __init__(self, base_feature: str | None = None, azimuth: str | None = None,
-                 altitude: str | None = None, z_factor: str | None = None) -> None:
+    def __init__(
+        self,
+        base_feature: str | None = None,
+        azimuth: str | None = None,
+        altitude: str | None = None,
+        z_factor: str | None = None,
+    ) -> None:
         if base_feature is None:
             base_feature = "range"
         if azimuth is None:
@@ -128,7 +131,7 @@ class HillshadeFeature(DerivativeFeatureStrategy):
         self.z_factor = float(z_factor)
         self.dependencies = [base_feature]
 
-    def compute(self, _,fetch) -> NDArray:
+    def compute(self, _, fetch) -> NDArray:
         values = fetch(self.base_feature)
 
         x, y = np.gradient(values * self.z_factor)
@@ -137,28 +140,33 @@ class HillshadeFeature(DerivativeFeatureStrategy):
         azimuth_rad = self.azimuth * np.pi / 180.0
         altitude_rad = self.altitude * np.pi / 180.0
 
-        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(
-            azimuth_rad - aspect)
+        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(
+            slope
+        ) * np.cos(azimuth_rad - aspect)
 
         return shaded
 
 
 @FEATURES.register
 class AverageFeature(DerivativeFeatureStrategy):
-    regex_pattern = re.compile(r"^average_[(](?P<average_features>[^,]+(?:,[^,]+)+)[)]$")
+    regex_pattern = re.compile(
+        r"^average_[(](?P<average_features>[^,]+(?:,[^,]+)+)[)]$"
+    )
 
     def __init__(self, average_features: str) -> None:
         self.average_features = type(self)._split_top_level(average_features)
         self.dependencies = self.average_features
 
-    def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.average_features]
         need_3dim = any(v.ndim == 3 for v in values)
 
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(v if v.ndim == 3 else np.repeat(v[:,:,np.newaxis], 3, axis=-1))
+                new_values.append(
+                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
+                )
             values = new_values
 
         stacked = np.stack(values, axis=-1)
@@ -173,18 +181,21 @@ class SumFeature(DerivativeFeatureStrategy):
         self.sum_features = type(self)._split_top_level(sum_features)
         self.dependencies = self.sum_features
 
-    def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.sum_features]
         need_3dim = any(v.ndim == 3 for v in values)
 
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(v if v.ndim == 3 else np.repeat(v[:,:,np.newaxis], 3, axis=-1))
+                new_values.append(
+                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
+                )
             values = new_values
 
         stacked = np.stack(values, axis=-1)
         return np.sum(stacked, axis=-1)
+
 
 @FEATURES.register
 class SquareFeature(DerivativeFeatureStrategy):
@@ -194,9 +205,10 @@ class SquareFeature(DerivativeFeatureStrategy):
         self.base_feature = base_feature
         self.dependencies = [base_feature]
 
-    def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         return np.square(img)
+
 
 @FEATURES.register
 class RootFeature(DerivativeFeatureStrategy):
@@ -206,28 +218,29 @@ class RootFeature(DerivativeFeatureStrategy):
         self.base_feature = base_feature
         self.dependencies = [base_feature]
 
-    def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         return np.sqrt(img)
 
+
 @FEATURES.register
 class NormFeature(DerivativeFeatureStrategy):
-    regex_pattern = re.compile(
-        r"^norm_[(](?P<norm_features>[^,]+(?:,[^,]+)+)[)]$"
-        )
+    regex_pattern = re.compile(r"^norm_[(](?P<norm_features>[^,]+(?:,[^,]+)+)[)]$")
 
     def __init__(self, norm_features: str) -> None:
         self.norm_features = type(self)._split_top_level(norm_features)
         self.dependencies = self.norm_features
 
-    def compute(self,_,fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.norm_features]
         need_3dim = any(v.ndim == 3 for v in values)
 
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(v if v.ndim == 3 else np.repeat(v[:,:,np.newaxis], 3, axis=-1))
+                new_values.append(
+                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
+                )
             values = new_values
 
         stacked = np.stack(values, axis=-1)
@@ -301,9 +314,11 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         self.dependencies = [base_feature]
         self.axis = axis.lower() if axis is not None else None
 
-        self.sigmas = [float(s) for s in sigmas.split('-')]
+        self.sigmas = [float(s) for s in sigmas.split("-")]
         if not self.sigmas:
-            raise ValueError("At least one sigma must be provided for multigrad feature.")
+            raise ValueError(
+                "At least one sigma must be provided for multigrad feature."
+            )
         if any(sigma <= 0 for sigma in self.sigmas):
             raise ValueError(f"All sigmas must be > 0, got {self.sigmas}.")
         if self.axis is not None and self.axis not in {"x", "y"}:
@@ -315,7 +330,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         self.include_components = True
 
         if options:
-            for token in options.split('_'):
+            for token in options.split("_"):
                 token_lower = token.lower()
                 if token_lower in self._FUSE_CHOICES:
                     self.fuse_mode = token_lower
@@ -325,11 +340,15 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
                     self.scale_normalize = True
                 elif token_lower == "mag":
                     if self.axis is not None:
-                        raise ValueError("Option 'mag' is incompatible with axis-specific multigrad outputs.")
+                        raise ValueError(
+                            "Option 'mag' is incompatible with axis-specific multigrad outputs."
+                        )
                     self.include_components = False
                 elif token_lower == "components":
                     if self.axis is not None:
-                        raise ValueError("Option 'components' is incompatible with axis-specific multigrad outputs.")
+                        raise ValueError(
+                            "Option 'components' is incompatible with axis-specific multigrad outputs."
+                        )
                     self.include_components = True
                 else:
                     raise ValueError(
@@ -348,7 +367,9 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         self._gaussian_mode = "reflect"
 
     @staticmethod
-    def _smooth_with_nan(image: NDArray[np.float32], sigma: float, mode: str, eps: float) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+    def _smooth_with_nan(
+        image: NDArray[np.float32], sigma: float, mode: str, eps: float
+    ) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
         mask = np.isfinite(image)
         if mask.all():
             smoothed = gaussian_filter(image, sigma=sigma, mode=mode)
@@ -383,7 +404,9 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         fuse_layers: list[NDArray[np.float32]] = []
 
         for sigma in self.sigmas:
-            smoothed, weights = self._smooth_with_nan(img, sigma, self._gaussian_mode, self._weight_eps)
+            smoothed, weights = self._smooth_with_nan(
+                img, sigma, self._gaussian_mode, self._weight_eps
+            )
             # Fill NaNs temporarily for gradient calculation.
             smoothed_finite = np.nan_to_num(smoothed, nan=0.0)
             grad_y, grad_x = np.gradient(smoothed_finite, edge_order=1)
@@ -417,7 +440,9 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
         if self.fuse_mode == "stack":
             if not stacked_channels:
-                raise RuntimeError("No channels computed for stacking; check configuration.")
+                raise RuntimeError(
+                    "No channels computed for stacking; check configuration."
+                )
             stacked = np.stack(stacked_channels, axis=-1)
             return stacked.astype(np.float32, copy=False)
 
@@ -478,9 +503,11 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         self.dependencies = [base_feature]
         self.axis = axis.lower() if axis is not None else None
 
-        self.sigmas = [float(s) for s in sigmas.split('-')]
+        self.sigmas = [float(s) for s in sigmas.split("-")]
         if not self.sigmas:
-            raise ValueError("At least one sigma must be provided for multigradocc feature.")
+            raise ValueError(
+                "At least one sigma must be provided for multigradocc feature."
+            )
         if any(sigma <= 0 for sigma in self.sigmas):
             raise ValueError(f"All sigmas must be > 0, got {self.sigmas}.")
         if self.axis is not None and self.axis not in {"x", "y"}:
@@ -498,7 +525,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         self.return_mask = False
 
         if options:
-            for token in options.split('_'):
+            for token in options.split("_"):
                 token_lower = token.lower()
                 if token_lower in self._FUSE_CHOICES:
                     self.fuse_mode = token_lower
@@ -566,11 +593,15 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         grad_y, grad_x = np.gradient(finite, edge_order=1)
         edge_strength = np.hypot(grad_x, grad_y).astype(np.float32, copy=False)
         if self.edge_sigma > 0:
-            edge_strength = gaussian_filter(edge_strength, sigma=self.edge_sigma, mode=self._gaussian_mode)
+            edge_strength = gaussian_filter(
+                edge_strength, sigma=self.edge_sigma, mode=self._gaussian_mode
+            )
         mask = edge_strength >= self.edge_threshold
         if self.edge_dilate > 0:
             structure = np.ones((3, 3), dtype=bool)
-            mask = binary_dilation(mask, structure=structure, iterations=self.edge_dilate)
+            mask = binary_dilation(
+                mask, structure=structure, iterations=self.edge_dilate
+            )
         mask |= ~np.isfinite(img)
         return mask
 

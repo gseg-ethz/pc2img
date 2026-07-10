@@ -25,6 +25,7 @@ T_co = TypeVar("T_co", covariant=True)
 
 logger = logging.getLogger(__name__)
 
+
 # class StrategyRegistry(Generic[T]):
 class StrategyRegistry(Generic[T]):
     def __init__(self) -> None:
@@ -53,6 +54,7 @@ class StrategyRegistry(Generic[T]):
                     accepts_var_kw = True
             self._ctor_meta[cast(type[T], cls)] = (valid_kw, accepts_var_kw)
             return cls
+
         return decorator
 
     def get_strategy(self, identifier: str) -> type[T]:
@@ -94,17 +96,19 @@ class StrategyRegistry(Generic[T]):
 PROJECTIONS: StrategyRegistry[ProjectionStrategy] = StrategyRegistry()
 INTERPOLATIONS: StrategyRegistry[InterpolationStrategy] = StrategyRegistry()
 
+
 class StrategyFactory(Protocol[P, T_co]):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T_co: ...
+
 
 class _StrategyClass(Generic[T]):
     """
     Subclass this, setting `registry` to your StrategyRegistry
     and `base_type` to the ABC class for that family.
     """
+
     registry: StrategyRegistry[T]
     base_type: type[T]
-
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable[..., type[T]], None, None]:
@@ -123,4 +127,6 @@ class _StrategyClass(Generic[T]):
             except KeyError:
                 raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}")
 
-        raise TypeError(f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key")
+        raise TypeError(
+            f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key"
+        )

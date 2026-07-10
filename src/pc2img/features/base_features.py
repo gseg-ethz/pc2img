@@ -22,6 +22,7 @@ class ScalarFieldFeature(BaseFeatureStrategy):
     A BaseFeatureStrategy that pulls any named scalar field off the point cloud.
     Usage: feature name should be "scalar_<field_name>"
     """
+
     regex_pattern = re.compile(r"^scalar_field_(?P<feature>.+)$")
 
     def __init__(self, feature: str):
@@ -31,4 +32,6 @@ class ScalarFieldFeature(BaseFeatureStrategy):
         try:
             return np.asarray(pcd.scalar_fields[self.feature])
         except KeyError as e:
-            raise ValueError(f"Scalar field '{self.feature}' not found on PointCloudData.") from e
+            raise ValueError(
+                f"Scalar field '{self.feature}' not found on PointCloudData."
+            ) from e

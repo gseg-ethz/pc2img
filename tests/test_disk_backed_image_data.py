@@ -25,7 +25,7 @@ class TestImageDataInitialization:
             enable_caching=False,
             cache_path=None,
             automatic_offloading=False,
-            purge_disk_on_gc=False
+            purge_disk_on_gc=False,
         )
         assert np.array_equal(data_obj.data, img)
         assert not data_obj.cache_enabled
@@ -57,11 +57,7 @@ class TestOffloadingAndLoading:
     )
     def test_offload_without_cache_path_logs_warning(self, caplog):
         img = dummy_gray_image()
-        data_obj = DiskBackedImageData(
-            img,
-            enable_caching=False,
-            cache_path=None
-        )
+        data_obj = DiskBackedImageData(img, enable_caching=False, cache_path=None)
         caplog.set_level("DEBUG")
         data_obj.offload()
         assert "Caching disabled ==> `offload()` ignored." in caplog.text
@@ -72,10 +68,7 @@ class TestOffloadingAndLoading:
         img = dummy_rgb_image()
         cache_file = tmp_path / "img.dat"
         data_obj = DiskBackedImageData(
-            img,
-            enable_caching=True,
-            cache_path=cache_file,
-            automatic_offloading=False
+            img, enable_caching=True, cache_path=cache_file, automatic_offloading=False
         )
 
         # Offload manually
@@ -97,7 +90,9 @@ class TestOffloadingAndLoading:
     def test_automatic_offloading_flag(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "gray.dat"
-        data_obj = DiskBackedImageData(img, enable_caching=True, cache_path=cache_file, automatic_offloading=True)
+        data_obj = DiskBackedImageData(
+            img, enable_caching=True, cache_path=cache_file, automatic_offloading=True
+        )
         # Should have offloaded at init
         assert data_obj.offloaded
         assert data_obj.automatic_offloading
@@ -116,10 +111,10 @@ class TestArrayInterfaceAndPickling:
         data_obj = DiskBackedImageData(img)
         state = data_obj.__getstate__()
         # Without cache_path, _image_data should remain intact
-        assert state['_image_data'] is not None
-        assert isinstance(state['_image_data'], np.ndarray)
-        assert state['_shape'] == img.shape
-        assert state['_dtype'] == img.dtype
+        assert state["_image_data"] is not None
+        assert isinstance(state["_image_data"], np.ndarray)
+        assert state["_shape"] == img.shape
+        assert state["_dtype"] == img.dtype
 
     @pytest.mark.xfail(
         reason=(
@@ -135,10 +130,10 @@ class TestArrayInterfaceAndPickling:
         data_obj = DiskBackedImageData(img, cache_path=cache_file)
         state = data_obj.__getstate__()
         # With cache_path, _image_data should be unloaded
-        assert state['_image_data'] is None
-        assert state['_cache_path'] == cache_file
-        assert state['_shape'] == img.shape
-        assert state['_dtype'] == img.dtype
+        assert state["_image_data"] is None
+        assert state["_cache_path"] == cache_file
+        assert state["_shape"] == img.shape
+        assert state["_dtype"] == img.dtype
 
     def test_setstate_restores_attributes(self):
         img = dummy_rgb_image()
@@ -197,7 +192,7 @@ class TestCacheFileFinalization:
         cache_file = tmp_path / "cache.dat"
         data_obj = DiskBackedImageData(img, cache_file)
         # Finalizer should be registered
-        assert hasattr(data_obj, '_finalizer')
+        assert hasattr(data_obj, "_finalizer")
         assert data_obj._finalizer.alive
 
         # Calling getstate should cancel the finalizer
@@ -214,7 +209,7 @@ class TestCacheFileFinalization:
         # Unpickle
         loaded_obj = pickle.loads(serialized)
         # New instance should have a live finalizer
-        assert hasattr(loaded_obj, '_finalizer')
+        assert hasattr(loaded_obj, "_finalizer")
         assert loaded_obj._finalizer.alive
 
     def test_cache_file_persistence_after_original_deletion(self, tmp_path: Path):
@@ -260,9 +255,11 @@ class TestPurgeToggle:
     def test_disable_purge(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "cache.dat"
-        data_obj = DiskBackedImageData(img, cache_file, automatic_offloading=True, purge_disk_on_gc=True)
+        data_obj = DiskBackedImageData(
+            img, cache_file, automatic_offloading=True, purge_disk_on_gc=True
+        )
         # Finalizer initially alive
-        assert hasattr(data_obj, '_finalizer')
+        assert hasattr(data_obj, "_finalizer")
         assert data_obj._finalizer.alive
         # Disable purge
         data_obj.disable_purge()
@@ -275,7 +272,9 @@ class TestPurgeToggle:
     def test_enable_purge(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "cache.dat"
-        data_obj = DiskBackedImageData(img, cache_file, automatic_offloading=True, purge_disk_on_gc=True)
+        data_obj = DiskBackedImageData(
+            img, cache_file, automatic_offloading=True, purge_disk_on_gc=True
+        )
         # Disable then enable
         data_obj.disable_purge()
         assert not data_obj._purge_on_delete
@@ -290,8 +289,8 @@ class TestPurgeToggle:
         img = dummy_gray_image()
         data_obj = DiskBackedImageData(img)
         # No cache_path, so no _finalizer attribute
-        assert not hasattr(data_obj, '_finalizer')
+        assert not hasattr(data_obj, "_finalizer")
         # enable_purge should not error
         data_obj.enable_purge()
         # Still no _finalizer
-        assert not hasattr(data_obj, '_finalizer')
+        assert not hasattr(data_obj, "_finalizer")
