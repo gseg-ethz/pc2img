@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, TypeAlias, cast
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, cast
 
 import numpy as np
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
@@ -46,8 +46,8 @@ def coerce_lazy_cfg(
 # --- Typing trick: show loose types to type-checkers, use converters at runtime ---
 
 if TYPE_CHECKING:
-    ProjectionStrategyLike: TypeAlias = ProjectionStrategy | ProjectionName | tuple[ProjectionName, Mapping[str, Any]]
-    InterpolationStrategyLike: TypeAlias = (
+    type ProjectionStrategyLike = ProjectionStrategy | ProjectionName | tuple[ProjectionName, Mapping[str, Any]]
+    type InterpolationStrategyLike = (
         InterpolationStrategy | InterpolationName | tuple[InterpolationName, Mapping[str, Any]]
     )
     ImgResLike = ImgRes | tuple[int, int]

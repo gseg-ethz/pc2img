@@ -6,7 +6,6 @@ from collections.abc import Callable, Generator
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     ParamSpec,
     Protocol,
     TypeVar,
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 # class StrategyRegistry(Generic[T]):
-class StrategyRegistry(Generic[T]):
+class StrategyRegistry[T]:
     def __init__(self) -> None:
         self._map: dict[str, type[T]] = {}
         self._ctor_meta: dict[type[T], tuple[set[str], bool]] = {}
@@ -101,7 +100,7 @@ class StrategyFactory(Protocol[P, T_co]):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T_co: ...
 
 
-class _StrategyClass(Generic[T]):
+class _StrategyClass[T]:
     """
     Subclass this, setting `registry` to your StrategyRegistry
     and `base_type` to the ABC class for that family.

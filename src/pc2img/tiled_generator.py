@@ -6,7 +6,6 @@ from typing import (
     Any,
     NamedTuple,
     Self,
-    TypeAlias,
     cast,
     overload,
 )
@@ -44,8 +43,8 @@ ImageKey = namedtuple("ImageKey", ["tile_id", "feature"])
 #     ProjectionName,
 #     "InterpClassT",
 #     InterpolationName,
-ProjectionLike: TypeAlias = ProjectionName | type[ProjectionStrategy]
-InterpolationLike: TypeAlias = InterpolationName | type[InterpolationStrategy]
+type ProjectionLike = ProjectionName | type[ProjectionStrategy]
+type InterpolationLike = InterpolationName | type[InterpolationStrategy]
 
 
 @pydantic_dataclass(frozen=True)
