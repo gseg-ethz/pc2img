@@ -653,8 +653,17 @@ All three questions were resolved downstream during planning; annotations are ap
    - What's unclear: whether callers pre-bake `t` into the matrices (undocumented `@ pcd` contract).
    - Recommendation: the proving test constructs an explicit non-origin camera + behind-camera
      mirror point; document the `_TransformArray.__matmul__` contract while fixing M-04.
-   - **RESOLVED** via the proving-test approach (explicit non-origin camera + behind-camera mirror
-     point pins the `@ pcd` contract empirically). Implemented in plan **05-02**.
+   - **RESOLVED (superseded)** — the "pin the `@ pcd` contract empirically via the proving test"
+     recommendation was superseded during the 05-REVIEWS cross-AI follow-up (Codex HIGH concern #1),
+     which found it deferred the *public API shape* to whoever authored the test. The pre-bake
+     question is now closed by design, not empirics: `PerspectiveProjection` takes a **3×3 rotation +
+     explicit keyword-only `translation`**; a 4×4 in the rotation slot is a hard TypeError, so `t` can
+     no longer be pre-baked at all. Model `K·(R·X+t)`, camera-frame convention. Contract examined the
+     real matmul chain — `_TransformArray.__matmul__` composes only same-shaped matrices
+     (`transforms.py:62`) and `pcd.__rmatmul__` accepts a 4×4 only as pure affine
+     (`coordinates.py:194-198`) — and a grep confirmed **zero on-disk callers** of the 4×4 path. See
+     the authoritative **`<perspective_api_contract>` block in plan 05-02** (signature, validation,
+     extrinsic-first implementation, BC stance). This note is historical; 05-02 is the source of truth.
 
 ## Sources
 
