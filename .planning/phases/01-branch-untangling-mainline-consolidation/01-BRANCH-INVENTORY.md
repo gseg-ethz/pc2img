@@ -111,6 +111,13 @@ in Plan 01-02; the two `origin/release-please*` remotes are untouched.
 
 ## Remote deletions staged for Phase 6 ship (D-05)
 
+> **Scope clarification (2026-07-10):** this staged list is **former/legacy branch refs only**
+> — the pre-existing non-GSD remotes inventoried at Phase 1 start plus the `main` reconciliation.
+> It does **NOT** include GSD per-phase workflow branches (`gsd/phase-*`, `gsd/quick-*`), which
+> follow normal GSD ship hygiene and have their remote heads deleted on PR merge (e.g.
+> `gsd/phase-03.1-…` was deleted when PR #10 merged on 2026-07-10). D-05 gates only the legacy
+> cleanup below, not routine phase-branch teardown.
+
 No remote refs were deleted this phase. The following are **staged for Phase 6 ship** (executed
 alongside the `main` cleanup, not now):
 

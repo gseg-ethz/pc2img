@@ -70,6 +70,16 @@ deletions for ship.
   at milestone ship (Phase 6), alongside the `main` cleanup. Rationale: avoid
   destructive, outward-facing GitHub actions mid-milestone; keep refs available
   in case a later phase needs the history.
+  - **Scope clarification (2026-07-10):** D-05 governs **only the former/legacy
+    branch refs inventoried at Phase 1 start** — the remotes listed under
+    "Remote deletions staged for Phase 6 ship" in `01-BRANCH-INVENTORY.md`
+    (`origin/dev/v2`, `origin/dev/perspective_projection`, the `origin/main`
+    reconciliation, and the release-please bot remotes). It does **NOT** cover
+    GSD per-phase workflow branches (`gsd/phase-*`, `gsd/quick-*`) created during
+    normal execution: those follow standard GSD ship hygiene — their remote heads
+    are deleted on PR merge (as done for `gsd/phase-03.1-…` when PR #10 merged),
+    with no Phase 6 gate. Only the legacy-ref cleanup and the `main` reconciliation
+    remain staged for Phase 6.
 - **D-06:** For anything dispositioned dead but potentially salvage-worthy
   (notably `origin/dev/perspective_projection` once folded, and any branch
   flagged during review), create an **archive tag** before pruning so nothing is
