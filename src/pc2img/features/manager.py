@@ -59,7 +59,6 @@ class FeatureManager:
 
     def submit(self, name: str, array: NDArray) -> None:
         self._raster_cache.add_image_to_store(name, array)
-        # self._raster_cache[name] = array
 
     def _get(self, name: str) -> DiskBackedImageData:
         if name in self._raster_cache:

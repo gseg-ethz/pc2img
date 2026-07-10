@@ -66,10 +66,8 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         if high is None:
             high = "100"
 
-        # low = float(low)
 
         # if not(0 <= float(low) < float(high) <= 100):
-        #     raise ValueError(f"low={low} and high={high} must be between 0 and 100 and low must be smalller than high")
 
         self.base_feature = base_feature
         self.dependencies = [base_feature]
@@ -150,7 +148,6 @@ class AverageFeature(DerivativeFeatureStrategy):
     regex_pattern = re.compile(r"^average_[(](?P<average_features>[^,]+(?:,[^,]+)+)[)]$")
 
     def __init__(self, average_features: str) -> None:
-        # self.average_features = average_features.split(',')
         self.average_features = type(self)._split_top_level(average_features)
         self.dependencies = self.average_features
 
@@ -173,7 +170,6 @@ class SumFeature(DerivativeFeatureStrategy):
     regex_pattern = re.compile(r"^sum_[(](?P<sum_features>[^,]+(?:,[^,]+)+)[)]$")
 
     def __init__(self, sum_features: str) -> None:
-        # self.sum_features = sum_features.split(',')
         self.sum_features = type(self)._split_top_level(sum_features)
         self.dependencies = self.sum_features
 
@@ -221,7 +217,6 @@ class NormFeature(DerivativeFeatureStrategy):
         )
 
     def __init__(self, norm_features: str) -> None:
-        # self.norm_features = norm_features.split(',')
         self.norm_features = type(self)._split_top_level(norm_features)
         self.dependencies = self.norm_features
 

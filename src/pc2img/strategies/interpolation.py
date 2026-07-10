@@ -124,14 +124,9 @@ class DelaunayInterpolation(InterpolationStrategy):
                 raise ValueError("max_points_per_pixel must be >= 1 when density thinning is enabled")
             if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
                 raise ValueError("density_ratio_trigger must be positive when provided")
-        # self._triangulation_precalc: dict[int, DelaunayInterpolation.TriangulationData] = {}
 
     # @dataclass(frozen=True)
     # class TriangulationData:
-    #     bary: DiskBackedNDArray  # shape=(N, 3): Per-query point weights of bary centric interpolation
-    #     verts: DiskBackedNDArray  # shape=(N, 3): Per-query point indices of the three vertices
-    #     simplices: DiskBackedNDArray  # shape=(N,): Per-query point indices of the delaunay triangle
-    #     triangles: DiskBackedNDArray  # shape=(M, 3): Per-triangle indices of the vertices
 
 
 
@@ -142,7 +137,6 @@ class DelaunayInterpolation(InterpolationStrategy):
         m.update(grid_x.tobytes())
         m.update(grid_y.tobytes())
         return m.hexdigest()
-        # return hash((hash(points2d.tobytes()), hash(grid_x.tobytes()), hash(grid_y.tobytes())))
 
 
 
@@ -209,8 +203,6 @@ class DelaunayInterpolation(InterpolationStrategy):
         result = np.full(nQ, fill_value, dtype=float)
         mask = (simplices >= 0)
 
-        # area_thresh = 6
-        # max_edge_thresh = 10
 
         # if area_thresh is not None or max_edge_thresh is not None:
         # Compute triangle metrics once
@@ -235,10 +227,7 @@ class DelaunayInterpolation(InterpolationStrategy):
 
         area, max_edge, aspect_ratio = compute_metrics(tri_vertices)
 
-        # area_thresh = np.median(area) + 3 * np.median(np.abs(area-np.median(area)))
-        # max_edge_thresh = np.median(max_edge) + 3 * np.median(np.abs(max_edge-np.median(max_edge)))
         area_thresh = np.median(area)*10
-        # max_edge_thresh = np.median(max_edge)*3
         max_edge_thresh = None
         median_ratio = np.median(aspect_ratio)
         mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
@@ -293,10 +282,6 @@ class DelaunayInterpolation(InterpolationStrategy):
 
         return simplices, verts, bary, tri.simplices
 
-        # self._triangulation_precalc[hash_id].add_data_to_store("triangles", tri.simplices)
-        # self._triangulation_precalc[hash_id].add_data_to_store("simplices", simplices)
-        # self._triangulation_precalc[hash_id].add_data_to_store("verts", verts)
-        # self._triangulation_precalc[hash_id].add_data_to_store("bary", bary)
 
 
         # self._triangulation_precalc[
@@ -314,16 +299,13 @@ class DelaunayInterpolation(InterpolationStrategy):
         #     DiskBackedNDArray(
         #         tri.simplices, **self._lazy_disk_cache_config.extend_cache_path("triangles.pkl").as_kwargs()
         #     ),
-        # )
 
 
 
 # class BarycentricInterpolation(InterpolationStrategy):
 #     def __init__(
 #         self,
-#         triangulator: TriangulationStrategy = DelaunayTriangulation(),
 #     ):
-#         self._tri = triangulator
 #
 #     def interpolate(
 #         self,
@@ -333,23 +315,13 @@ class DelaunayInterpolation(InterpolationStrategy):
 #         grid_y: np.ndarray,
 #     ) -> np.ndarray:
 #         # 1) Build triangles only once
-#         triangles = self._tri.triangulate(points2d)
 #
 #         # 2) Compute barycentric weights & rasterize
 #         #    (pseudo-code; you’d fill in your own math here)
-#         coords = np.vstack([grid_x.ravel(), grid_y.ravel()]).T
-#         img_flat = np.zeros(coords.shape[0])
 #         for tri_idx in triangles:
-#             verts = points2d[tri_idx]
-#             vals  = values[tri_idx]
 #             # compute mask & weights for this triangle
-#             w = barycentric_weights(verts, coords)  # shape (M,)
-#             img_flat += w * vals[None, :]
-#         return img_flat.reshape(grid_x.shape)
 #
 #
 # @INTERPOLATIONS.register("barycentric")
 # class BarycentricFactory:
 #     def __call__(self, *, use_incremental: bool = False) -> InterpolationStrategy:
-#         tri = IncrementalTriangulation() if use_incremental else DelaunayTriangulation()
-#         return BarycentricInterpolation(triangulator=tri)

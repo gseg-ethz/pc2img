@@ -94,26 +94,14 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
         )
 
     # def fetch_image(self, feature: str) -> None:
-    #     image_data_cache_path = self._get_pickle_path(feature) if self._cache_dir else None
     #     if image_data_cache_path and image_data_cache_path.is_file():
     #         with open(image_data_cache_path, "rb") as f:
-    #             self._data[feature] = pickle.load(f)
-    #         logger.debug(f"Loaded ImageData for {feature=} from {image_data_cache_path}")
-    #         return
     #
     #     if isinstance(self._image_generator, ImageGeneratorFromPCD):
-    #         self._create_image_from_pcd(feature, image_data_cache_path)
-    #     else:
-    #         logger.error("Not implemented")
     #         raise NotImplementedError
     #
     # def _create_image_from_pcd(self, feature: str, image_data_path: Optional[Path]) -> None:
-    #     image_generator: ImageGeneratorFromPCD = self._image_generator
-    #     image_data: dict[str, NDArray[np.generic]] = image_generator.project_and_rasterize(feature)
     #     if image_data is None:
-    #         logger.warning(f"PointCloudData has no scalar feature {feature} available.")
-    #         return
-    #     self._data[feature] = DiskBackedImageData(image_data[feature], image_data_path, self._automatic_offloading)
 
     @property
     def image_data(self) -> dict[str, DiskBackedImageData | None]:
@@ -126,10 +114,8 @@ class DiskBackedImageStore(MutableMapping[str, DiskBackedImageData]):
 
     # @property
     # def identifier(self) -> str:
-    #     return self._image_generator.identifier
     #
     # def __repr__(self):
-    #     return f"Factory for {self.identifier} with available images for {list(self._data.keys())}"
 
     def keys(self) -> list[str]:
         """

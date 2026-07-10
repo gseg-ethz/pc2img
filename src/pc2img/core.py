@@ -12,7 +12,6 @@ from pc2img.strategies.interpolation import InterpolationName, InterpolationStra
 from pc2img.strategies.projection import ProjectionName, ProjectionStrategy
 
 
-# ImgRes: TypeAlias = tuple[int, int]
 class ImgRes(NamedTuple):
     width: int
     height: int

@@ -36,20 +36,13 @@ class PointCloudTile(NamedTuple):
     tile_pcd: PointCloudData
     tile_kwargs: Mapping[str, Any]
 
-# PointCloudTile = namedtuple("PointCloudTile", ["tile_id", "tile_pcd", "tile_kwargs"])
 
 ImageKey = namedtuple("ImageKey", ["tile_id", "feature"])
 
-# ProjClassT = TypeAlias(
 #     "ProjClassT",
 #     ProjectionName,
-#     Type[ProjectionStrategy],
-# )
-# InterpClassT = TypeAlias(
 #     "InterpClassT",
 #     InterpolationName,
-#     Type[InterpolationStrategy],
-# )
 ProjectionLike: TypeAlias = ProjectionName | type[ProjectionStrategy]
 InterpolationLike: TypeAlias = InterpolationName | type[InterpolationStrategy]
 
@@ -172,6 +165,5 @@ class TiledPointCloudImageGenerator:
             lazy_disk_cache_config=self._lazy_disk_cache_config.extend_cache_path(tile_id),
             img_res=self._img_res,
         )
-        # image_gen = self.image_generators[tile_id]
         tile_images = image_gen.generate(features)
         return tile_id, image_gen, tile_images

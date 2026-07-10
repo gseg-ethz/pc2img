@@ -56,28 +56,11 @@ def gaussian_kernel(l=5, sig=1.):
 
 # def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
 #     if replace_nan_with not in ["max", "min", "random"]:
-#         raise ValueError("replace_nan_with must be one of 'max', 'min', 'random'")
 
-#     image_data = image_data.copy()
-#     image_min = np.nanmin(image_data)
-#     image_max = np.nanmax(image_data)
-#     nan_positions = np.isnan(image_data)
 #     if nan_positions.ndim > 2:
-#         nan_positions = np.any(nan_positions, axis=2)
 #     match replace_nan_with:
-#         case "max":
-#             np.nan_to_num(image_data, copy=False, nan=image_max)
-#         case "min":
-#             np.nan_to_num(image_data, copy=False, nan=image_min)
-#         case "random":
-#             rng = np.random.default_rng()
-#             random = rng.uniform(image_min, image_max, size=image_data.shape[:2])
 #             if image_data.ndim == 3:
-#                 random = np.stack(image_data.shape[-1] * (random,), axis=-1)
-#                 nan_positions = np.stack(image_data.shape[-1] * (nan_positions,), axis=-1)
-#             image_data[nan_positions] = random[nan_positions]
 
-#     return image_data
 
 def replace_nan(
     image_data: NDArray[np.floating] | NDArray[np.integer],
@@ -278,7 +261,6 @@ def calculate_dip_direction_and_angle(xyz: np.ndarray) -> np.ndarray:
     # Calculate dip directions
     # Azimuth of the projection of the vector onto the XY plane
     dip_directions = np.arctan2(norm_vectors[:, 1], norm_vectors[:, 0])
-    # dip_directions[dip_directions < 0] += 360  # Ensure directions are between 0 and 360 degrees
 
     return np.column_stack((dip_angles, dip_directions))
 
@@ -391,13 +373,10 @@ class OpticalFlowVisualization:
 
         if clip_flow is not None:
             flow_uv = np.clip(flow_uv, 0, clip_flow)
-        # u = flow_uv[:,:,0]
-        # v = flow_uv[:,:,1]
         rad = np.linalg.norm(flow_uv, axis=2, keepdims=True)
         uv_unit = flow_uv / (rad + epsilon)
 
         rad_max = np.max(rad) if max_quantile is None else np.quantile(rad, max_quantile)
-        # rad_max = np.max(rad)
         rad_norm_to_max = rad / rad_max
         rad_norm_to_max[rad_norm_to_max > 1.0] = 1.0
 

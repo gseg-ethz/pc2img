@@ -60,10 +60,6 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     #     Returns None if there was no original cache_path.
     #     """
     #     if not self.cache_path:
-    #         return None
-    #     base = self.cache_path.with_suffix("").name
-    #     new_name = f"{base}_{uuid.uuid4().hex}{self._MEMMAP_SUFFIX}"
-    #     return self.cache_path.parent / new_name
 
     @LazyDiskCache.ensure_loaded
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
@@ -72,27 +68,17 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     #     # [your existing unwrapping + out=… code]
     #
     #     # call the ufunc on raw arrays
-    #     result = getattr(ufunc, method)(*raw_inputs, **kwargs, **out_kwargs)
     #
     #     # in-place case
     #     if out_kwargs:
-    #         return outs if len(outs) > 1 else outs[0]
     #
     #     # copy-on-write: give derivative its own cache file
-    #     new_cache = self._derive_cache_path()
     #
     #     def wrap(arr):
     #         return DiskBackedImageData(
     #             arr,
-    #             cache_path=new_cache,
-    #             automatic_offloading=self.automatic_offloading,
-    #             purge_on_delete=True,
-    #         )
     #
     #     if isinstance(result, tuple):
-    #         return tuple(wrap(r) for r in result)
-    #     else:
-    #         return wrap(result)
 
     def _describe_buffer(self):
         return self._shape, self._dtype, self._image_data

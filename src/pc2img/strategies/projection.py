@@ -87,8 +87,6 @@ class ProjectionStrategy(ABC):
         coords_raw, mask, mins, maxs = self.project_raw(pcd)
         w, h = resolution
         # normalize per-dimension
-        # mins = coords_raw.min(axis=0)
-        # maxs = coords_raw.max(axis=0)
         span = maxs - mins
         # avoid division by zero
         span[span == 0] = 1
@@ -174,8 +172,6 @@ class OrthographicProjection(ProjectionStrategy):
                 self._xyz_column_selection = [1,2]
             case 'xz':
                 self._xyz_column_selection = [0,2]
-            # case _:  # Not needed if the configuration is guaranteed via a Pydantic Model or similar
-            #     raise ValueError(f"plane must be 'xy' or 'yz' or 'xz'")
         self.plane = plane
         self._roi_box = roi_box
 
