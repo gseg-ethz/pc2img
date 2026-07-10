@@ -6,14 +6,28 @@ build-backend = "setuptools.build_meta"
 name = "pc2img"
 description = "Software to convert point clouds to images with various image representations."
 requires-python = "~=3.12,<3.13"
-keywords = ["one", "two"]
+keywords = [
+	"LiDAR",
+	"point cloud",
+	"range image",
+	"raster",
+	"geospatial",
+	"remote sensing",
+	"DEM",
+	"RRIM",
+]
 license = {file = "LICENSE"}
 authors = [
 	{name = "Nicholas Meyer", email = "meyernic@ethz.ch"},
 ]
 dynamic = ["version", "readme"]
 classifiers = [
-	"Programming Language :: Python :: 3"
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Science/Research",
+	"Programming Language :: Python :: 3.12",
+	"Typing :: Typed",
+	"Topic :: Scientific/Engineering :: Image Processing",
+	"Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
 	"pchandler ~= 2.1",
