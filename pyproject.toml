@@ -24,6 +24,7 @@ dynamic = ["version", "readme"]
 classifiers = [
 	"Development Status :: 3 - Alpha",
 	"Intended Audience :: Science/Research",
+	"License :: OSI Approved :: BSD License",
 	"Programming Language :: Python :: 3.12",
 	"Typing :: Typed",
 	"Topic :: Scientific/Engineering :: Image Processing",
@@ -55,7 +56,7 @@ git_describe_command = "git describe --dirty --tags --long --match 'v[0-9]*.[0-9
 
 [project.urls]
 homepage = "https://gseg.igp.ethz.ch/"
-documentation = "https://google.com"
+documentation = "https://github.com/gseg-ethz/pc2img"
 #repository = "https://gseg-ethz.github.com/DeSpAn"
 
 #[project.scripts]
