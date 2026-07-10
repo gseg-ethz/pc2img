@@ -113,7 +113,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Goal:** Clear the blocking RRIM IP/publication gate by executing the locked keep-on-patent-expiry disposition (D-09..D-12) in-tree — shipped IP findings doc + NOTICE (expiry basis + AAS/Chiba/Yokoyama attribution + RRIM® trademark disclaimer), an ADR, an opt-in `rrim` extra with a reconciled docstring, an internal good-faith ETH/owner sign-off, and the blocking todo resolved — leaving the branch provably publication-safe so Phase 3's live-CI push can proceed.
 **Requirements**: none mapped (driven by CONTEXT decisions D-09..D-12)
 **Depends on:** Phase 3
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -126,7 +126,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03.1-03-PLAN.md — verify suite green + coverage floor unchanged, ETH/owner sign-off, resolve blocking todo (Wave 3)
+- [x] 03.1-03-PLAN.md — verify suite green + coverage floor unchanged, ETH/owner sign-off, resolve blocking todo (Wave 3)
 
 ### Phase 4: Code Quality & Algorithmic Soundness Review
 

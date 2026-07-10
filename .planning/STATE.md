@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 03.1
 current_phase_name: rrim-red-relief-image-ip-status-clarification
-status: executing
+status: verifying
 stopped_at: Phase 03.1 context gathered
-last_updated: "2026-07-10T04:15:47.037Z"
+last_updated: "2026-07-10T04:31:40.854Z"
 last_activity: 2026-07-10
 last_activity_desc: Phase 03.1 execution started
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 43
+  completed_plans: 13
+  percent: 57
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 
 Phase: 03.1 (rrim-red-relief-image-ip-status-clarification) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-10 — Phase 03.1 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -68,6 +68,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 2min | 2 tasks | 2 files |
 | Phase 03.1 P01 | 20min | 2 tasks | 2 files |
 | Phase 03.1 P02 | 2min | 2 tasks | 4 files |
+| Phase 03.1 P03 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03 P02] tests/ was entirely untracked (planning git-rm assumption false); committed the 3 surviving test modules + unchanged src/pc2img/features/rrim.py so the green + CI premise holds on a fresh checkout (Rule-3 deviation)
 - [Phase ?]: [Phase 03.1 P01] RRIM disposition locked: keep rrim.py on patent-expiry basis; core AAS patent family expired all jurisdictions (US 7,764,282 B2 et al.), no license required; verbatim claim-1 walk of active patents JP 5281518 + US 11,836,856 shows flat-RGB rrim.py reads on neither
 - [Phase ?]: [Phase 03.1 P02] Shipped top-level NOTICE as the RRIM distribution-safety artifact (patent-expiry basis + AAS/Chiba/Yokoyama attribution + trademark disclaimer); added opt-in rrim=[] signposting extra (registers nothing — only import pc2img.features.rrim registers) and re-locked uv.lock; docstrings reconciled to opt-in contract; wheel .dist-info legal-file inclusion deferred to Phase 6 (D-09/D-11/D-12)
+- [Phase 03.1 P03]: Owner signed off on keep-on-patent-expiry RRIM disposition (D-10); IP gate CLEARED, branch publication-safe (D-07 resolve-then-push); blocking patent-review todo moved pending->completed via git mv (audit trail) only after the human sign-off gate passed
 
 ### Pending Todos
 
@@ -124,6 +126,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T04:15:09.554Z
+Last session: 2026-07-10T04:31:06.909Z
 Stopped at: Phase 03.1 context gathered
 Resume file: .planning/phases/03.1-rrim-red-relief-image-ip-status-clarification/03.1-CONTEXT.md
