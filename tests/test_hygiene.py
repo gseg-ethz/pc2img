@@ -7,18 +7,18 @@ automated target that exists before the work starts (Nyquist Wave 0):
    so the barrel side effects (strategy/feature registration) keep firing. Every
    later hygiene edit (ruff sweep, ``__all__`` sync, metadata cleanup) must keep
    this green.
-2. ``test_pyproject_keywords_not_placeholder`` — xfail until 04-02 lands the
-   pyproject metadata cleanup (keywords are still the ``["one", "two"]``
-   placeholder). Asserts the *shape* (not the placeholder, non-empty), not the
-   owner-chosen values, so a legitimate metadata choice does not re-break the test.
-3. ``test_pyproject_viz_extra_exists`` — xfail until 04-02 adds the ``viz`` extra.
+2. ``test_pyproject_keywords_not_placeholder`` — LIVE since 04-02 landed the
+   pyproject metadata cleanup. Asserts the *shape* (not the ``["one", "two"]``
+   placeholder, non-empty), not the owner-chosen values.
+3. ``test_pyproject_viz_extra_exists`` — LIVE since 04-02 added the ``viz`` extra.
    Asserts the *key* exists, not its contents.
-4. ``test_ruff_check_src_is_clean`` — xfail until 04-04 lands the ruff sweep.
-   Shells ``ruff check src/`` and asserts a clean exit.
+4. ``test_ruff_check_src_is_clean`` — LIVE since 04-04 landed the ruff sweep.
+   Shells ``ruff check src/`` over the *hygiene-fixable* rule subset (ignoring the
+   E402/C901/B008 findings deferred to Phase 5 per D-02, which stay visible in a
+   bare ``ruff check`` as breadcrumbs) and asserts a clean exit, plus that
+   ``ruff format --check`` reports no reformatting.
 
-The xfail markers use ``strict=False`` so Wave 0 collection stays green under
-``--strict-markers``; the executor of 04-02/04-04 flips the relevant marker off
-once that check xpasses strictly.
+All four checks are now normal passing tests.
 """
 
 from __future__ import annotations
@@ -62,12 +62,8 @@ def test_all_submodules_import() -> None:
         assert module is not None, f"{module_name} imported as None"
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="green after 04-02 pyproject metadata cleanup",
-)
 def test_pyproject_keywords_not_placeholder() -> None:
-    """XFAIL until 04-02: keywords are non-placeholder and non-empty.
+    """LIVE (since 04-02): keywords are non-placeholder and non-empty.
 
     Assert the *shape* (not the ``["one", "two"]`` placeholder, non-empty), not the
     exact owner-chosen values, so a legitimate metadata choice does not fail here.
@@ -77,12 +73,8 @@ def test_pyproject_keywords_not_placeholder() -> None:
     assert keywords, "keywords must be a non-empty list"
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="green after 04-02 pyproject metadata cleanup",
-)
 def test_pyproject_viz_extra_exists() -> None:
-    """XFAIL until 04-02: a ``project.optional-dependencies.viz`` extra exists.
+    """LIVE (since 04-02): a ``project.optional-dependencies.viz`` extra exists.
 
     Assert the *key*, not its contents, so the owner's extra definition is free.
     """
@@ -90,22 +82,38 @@ def test_pyproject_viz_extra_exists() -> None:
     assert "viz" in optional_deps, "expected a project.optional-dependencies.viz extra"
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="green after 04-04 ruff sweep",
-)
+# The E402/C901/B008 findings are deferred to Phase 5 per D-02 (rrim import
+# ordering -> BUG-04; cyclomatic complexity; mutable-default seed E). They stay
+# visible in a bare ``ruff check`` as Phase-5 breadcrumbs, so the gate scopes to
+# the hygiene-fixable subset by ignoring exactly those three families.
+_DEFERRED_RULES = "E402,C901,B008"
+
+
 def test_ruff_check_src_is_clean() -> None:
-    """XFAIL until 04-04: ``ruff check src/`` exits clean (no lint findings)."""
+    """LIVE (since 04-04): the hygiene-fixable ruff subset is clean and the tree is formatted.
+
+    Shells ``ruff check src/ --ignore E402,C901,B008`` (the deferred Phase-5
+    families are excluded, not fixed) and ``ruff format --check src/ tests/``.
+    """
     ruff = Path(sys.executable).with_name("ruff")
     ruff_cmd = str(ruff) if ruff.exists() else shutil.which("ruff")
     if ruff_cmd is None:
         pytest.skip("ruff not found on PATH or next to the interpreter")
 
-    result = subprocess.run(
-        [ruff_cmd, "check", "src/"],
+    check = subprocess.run(
+        [ruff_cmd, "check", "src/", "--ignore", _DEFERRED_RULES],
         cwd=_REPO_ROOT,
         capture_output=True,
         text=True,
         check=False,
     )
-    assert result.returncode == 0, f"ruff check src/ reported findings:\n{result.stdout}"
+    assert check.returncode == 0, f"ruff check src/ reported findings:\n{check.stdout}"
+
+    fmt = subprocess.run(
+        [ruff_cmd, "format", "--check", "src/", "tests/"],
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert fmt.returncode == 0, f"ruff format --check reported reformatting:\n{fmt.stdout}"
