@@ -140,7 +140,7 @@ Plans:
   3. A mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math is complete.
   4. Correctness issues surfaced by the soundness review are captured as concrete, testable bug items (BUG-05 inputs for Phase 5).
 
-**Plans**: 1/7 plans executed
+**Plans**: 2/7 plans executed
 
 **Wave 0**
 
@@ -149,7 +149,7 @@ Plans:
 **Wave 1** *(blocked on Wave 0)*
 
 - [ ] 04-02-PLAN.md — pyproject full pass: [tool.ruff] config, joblib collapse, viz extra, metadata + human-verify gate for PyPI-facing URL/license, cuda note [QUAL-01]
-- [ ] 04-03-PLAN.md — Mechanical source FIX: repair/delete make_generator, guard _TransformArray, sync features __all__, delete dup convert_to_image [QUAL-01, QUAL-02]
+- [x] 04-03-PLAN.md — Mechanical source FIX: repair/delete make_generator, guard _TransformArray, sync features __all__, delete dup convert_to_image [QUAL-01, QUAL-02]
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -202,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
-| 4. Code Quality & Algorithmic Soundness Review | 1/7 | In Progress|  |
+| 4. Code Quality & Algorithmic Soundness Review | 2/7 | In Progress|  |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
