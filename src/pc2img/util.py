@@ -55,33 +55,6 @@ def gaussian_kernel(l=5, sig=1.):
     kernel = np.outer(gauss, gauss)
     return kernel / np.sum(kernel)
 
-def convert_to_image(image_data: NDArray[np.floating], replace_nan_with: NAN_REPLACEMENT_STR = "max", normalize: bool = False,
-                     colormap: Optional[ALL_CMAPS] = None) -> NDArray[np.uint8]:
-    if replace_nan_with not in ["max", "min", "random"]:
-        raise ValueError("replace_nan must be one of 'max', 'min', 'random'")
-
-    if image_data.ndim != 2 and colormap:
-        raise ValueError("Can't use colormap with more than 1 channel'")
-
-    nan_positions = np.isnan(image_data)
-    image_data = replace_nan(image_data, replace_nan_with)
-
-    image_min = np.min(image_data)
-    image_max = np.max(image_data)
-    if normalize or np.min(image_data) < 0.0 or np.max(image_data) > 1.0:
-        image_data = (image_data - image_min) / (image_max - image_min)
-
-    if colormap is not None:
-        # Extract cmap from matplotlib; cmap returns an RGBA image in float [0, 1]; drop the alpha channel
-        cmap = plt.get_cmap(colormap)
-        colored_image_data = cmap(image_data)[..., :3]
-
-        # Replace original nan_positions with non-colormap data (grey random)
-        image_data = np.dstack(3*(image_data,))
-        image_data[~nan_positions,:] = colored_image_data[~nan_positions,:]
-
-    return (255.0 * image_data).astype(np.uint8)
-
 # def replace_nan(image_data: NDArray[np.floating], replace_nan_with: str = "max") -> NDArray[np.floating]:
 #     if replace_nan_with not in ["max", "min", "random"]:
 #         raise ValueError("replace_nan_with must be one of 'max', 'min', 'random'")
