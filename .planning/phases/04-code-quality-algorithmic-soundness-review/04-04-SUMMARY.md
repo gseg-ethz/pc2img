@@ -133,4 +133,21 @@ correctness / refactor territory → each needs a proving test in Phase 5). Feed
 
 Ran ruff LOCALLY to apply fixes and format the tree. No blocking ruff lint gate was wired into
 any CI workflow — CI enforcement stays deferred to Phase 6.
+
+## Post-verification correction (2026-07-10)
+
+Forward-only correction to the "What was built" / "Deliberate ERA001 dead-code deletion" claim
+above. Commit `18cf7e7` did **not** fully remove the commented `TriangulationData` dataclass or
+the `BarycentricInterpolation` / `BarycentricFactory` class. ERA001 only flags lines that parse
+as complete statements, so it left behind the orphaned header fragments (`# @dataclass(frozen=True)`,
+`# class TriangulationData:`, `# class BarycentricInterpolation(...)`, `# @INTERPOLATIONS.register("barycentric")`,
+`# class BarycentricFactory:`) plus the commented `_triangulation_precalc[...] = DiskBackedNDArray(...)`
+cache block and several other partial-statement fragments across 6 source files (~37 lines total).
+04-VERIFICATION.md flagged this as the SC1 partial gap.
+
+Those residual fragments were fully deleted in gap-closure commit `4192da5`
+(`refactor(hygiene): delete commented-out dead code ERA001 could not flag`), which also removed
+stale `#repository=...DeSpAn` / `#[project.scripts]` foreign-template leftovers in `pyproject.toml`.
+Suite remained 19 passed / 11 xfailed / 0 xpassed; ruff format + hygiene gate still clean.
+
 ## Self-Check: PASSED
