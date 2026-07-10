@@ -630,22 +630,31 @@ security sign-off.
 | A4 | pchandler `FoV.construct_without_bounds_check` allows building a `crosses_pi` (left>right) FoV for the M-05 proving test | D-15 | Low — `crosses_pi` explicitly supports `left>right`; if the regular ctor bounds-checks, use `construct_without_bounds_check` (verified present at fov.py:368) |
 | A5 | Owner will approve Option A (GSEGUtils public class-registration) as a lightweight in-session change, OR accept Option B's private-global coupling | D-05 | **Medium — this is the gating decision.** Must be resolved at plan time; wrong assumption blocks Wave B |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three questions were resolved downstream during planning; annotations are appended forward-only
+(original question text preserved).
 
 1. **D-05 gate: Option A (GSEGUtils change) vs Option B (import-time private registration)?**
    - What we know: the closed allow-list is a hard blocker; both options work technically.
    - What's unclear: owner's tolerance for a GSEGUtils edit (gated) vs private-API coupling.
    - Recommendation: raise at plan time as an explicit owner decision; default to Option A
      (principled, owner authors GSEGUtils) unless the owner wants zero cross-repo churn.
+   - **RESOLVED → Option A** (owner-locked as D-05: GSEGUtils gains a public
+     `register_lazy_disk_cache_class` hook). Implemented in plan **05-08**.
 
 2. **WRAPPER vs REPLACE for `DiskBackedImageStore`** (Claude's discretion).
    - Recommendation: WRAPPER (minimal BC surface, preserves the public barrel). See D-05.
+   - **RESOLVED → WRAPPER** (Claude's-discretion call taken as recommended). Implemented in plan
+     **05-09**.
 
 3. **Perspective M-02/M-03 empirical resolution** (FINDINGS escalation).
    - What we know: the missing `Z_c>0` guard and absent `t` term are unambiguous from source.
    - What's unclear: whether callers pre-bake `t` into the matrices (undocumented `@ pcd` contract).
    - Recommendation: the proving test constructs an explicit non-origin camera + behind-camera
      mirror point; document the `_TransformArray.__matmul__` contract while fixing M-04.
+   - **RESOLVED** via the proving-test approach (explicit non-origin camera + behind-camera mirror
+     point pins the `@ pcd` contract empirically). Implemented in plan **05-02**.
 
 ## Sources
 
