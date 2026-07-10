@@ -1,0 +1,62 @@
+pc2img — NOTICE
+===============
+
+pc2img is licensed under the BSD 3-Clause License (see the LICENSE file);
+Copyright (c) 2022–2026 ETH Zurich, Institute of Geodesy and Photogrammetry,
+Geosensors and Engineering Geodesy. This NOTICE records third-party attribution
+and the intellectual-property basis for the RRIM feature that ships with pc2img.
+
+RRIM feature — patent-expiry basis
+----------------------------------
+
+The RRIM feature (`src/pc2img/features/rrim.py`) is an independent, image-space
+implementation of the red-relief-image visualization technique of Chiba et al.
+(Asia Air Survey Co., Ltd.). It is NOT derived from, and does not copy, any Asia
+Air Survey source code or product.
+
+The core "Visualizing system, method, and program" patent family that claims the
+technique — mapping terrain to a slope-reddened, openness-brightened 2-D image —
+has EXPIRED in every jurisdiction in which it was granted:
+
+    United States   US 7,764,282 B2   Expired (adjusted expiration 2025-10-05)
+    Japan           JP 3670274        Expired
+    China           CN 1711568B       Expired
+    Taiwan          TW I285852        Expired
+
+Because the core patent family has expired, the claimed invention has entered the
+public domain on term expiry. It may be practiced and redistributed by anyone,
+and NO license from Asia Air Survey is required to ship pc2img's RRIM feature.
+
+(Note: the correct core US patent is US 7,764,282 B2. US 7,264,282 is an
+unrelated patent and must not be cited here.)
+
+Attribution
+-----------
+
+- The red-relief-image technique is credited to Tatsuro Chiba and Asia Air Survey
+  Co., Ltd. (アジア航測株式会社), first priority date 2002-11-05.
+- The topographic-openness measures used for the brightness component are the
+  independent academic method of Yokoyama, R., Shirasawa, M., & Pike, R. J.
+  (2002), "Visualizing Topography by Openness: A New Application of Image
+  Processing to Digital Elevation Models," Photogrammetric Engineering & Remote
+  Sensing 68(3): 257–265. Topographic openness is independent prior art and is
+  not proprietary to Asia Air Survey.
+
+Trademark disclaimer
+--------------------
+
+"RRIM" and "Red Relief Image Map" may be trademarks (RRIM®) of Asia Air Survey
+Co., Ltd. A trademark is a distinct right that patent expiry does not release.
+pc2img uses these terms descriptively (nominative use) to name an independent
+implementation of the published red-relief technique of Chiba et al. pc2img is
+NOT endorsed by, affiliated with, or sponsored by Asia Air Survey Co., Ltd., and
+does not present itself as "RRIM®".
+
+Full basis
+----------
+
+The full patent-status review, including the correct patent numbers, the
+verbatim claim-1 non-infringement reads for the two still-active Asia Air Survey
+patents (JP 5281518, US 11,836,856), and the openness prior-art citation, is
+recorded in `docs/ip/rrim-ip-findings.md`. That document is a good-faith
+engineering assessment and is not legal advice.
