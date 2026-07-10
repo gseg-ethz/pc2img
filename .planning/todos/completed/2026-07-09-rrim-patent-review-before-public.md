@@ -60,17 +60,18 @@ any public remote or merged onto a public `main`.
   is loaded only by its test via filesystem path — worth confirming its intended
   public API status as part of the same review.
 
-## Status — awaiting sign-off (PENDING)
+## Status — RESOLVED (completed 2026-07-10)
 
-Disposition prepared by **Phase 03.1** (RRIM IP-status clarification): **keep on
-the patent-expiry basis** — the core RRIM patent family (incl. US 7,764,282 B2,
-adjusted expiry 2025-10-05) is expired, so the technique is public-domain-on-expiry.
-The disposition is **executed**: findings doc (`docs/ip/rrim-ip-findings.md`), ADR,
-top-level `NOTICE`, and the opt-in `rrim` extra are in place, and the CI-equivalent
-frozen, coverage-gated suite passes (floor 35 unchanged).
+**Resolved by Phase 03.1** (RRIM IP-status clarification): **disposition = keep on
+the patent-expiry basis**, owner-signed. The core RRIM patent family (incl.
+US 7,764,282 B2, adjusted expiry 2025-10-05) is expired, so the technique is
+public-domain-on-expiry. The disposition is **executed**: findings doc
+(`docs/ip/rrim-ip-findings.md`), ADR, top-level `NOTICE`, and the opt-in `rrim`
+extra are in place, and the CI-equivalent frozen, coverage-gated suite passes
+(floor 35 unchanged).
 
-**Resolution is PENDING** the owner/ETH good-faith sign-off gate (Phase 03.1 plan
-03, Task 2). This todo stays in `pending/` and is moved to `completed/` (via file
-move, not deletion) with a resolution note **only after** the owner approves at that
-checkpoint. See `docs/ip/rrim-eth-signoff.md` (sign-off record, pending owner
-confirmation).
+The owner/ETH good-faith sign-off gate (Phase 03.1 plan 03, Task 2) **passed** —
+the owner approved on 2026-07-10 and the sign-off is recorded in
+`docs/ip/rrim-eth-signoff.md`. The **IP gate is cleared** and the branch is
+**publication-safe**; Phase 3's live-CI push can proceed (D-07, resolve-then-push).
+See `docs/ip/rrim-ip-findings.md` + `NOTICE`.

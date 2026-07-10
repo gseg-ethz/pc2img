@@ -3,7 +3,7 @@
 **Prepared:** 2026-07-10
 **Subject:** Publication-safety sign-off for `src/pc2img/features/rrim.py` — an
 image-space implementation of the red-relief-image visualization technique.
-**Status:** PENDING owner/ETH confirmation.
+**Status:** Approved / signed off (owner confirmation recorded 2026-07-10).
 
 > **Disclaimer — this is not legal advice.** This record documents an internal,
 > good-faith engineering sign-off by the pc2img maintainers / ETH Zurich. It is
@@ -71,17 +71,16 @@ attribution is the top-level **`NOTICE`**. This sign-off record attests both.
 
 ## 4. Owner / ETH sign-off block
 
-> This block is left **PENDING**. It is completed only when the responsible owner
-> and/or ETH tech-transfer confirms acceptance of the patent-expiry basis as the
-> publication-safety grounds (D-10). On acceptance, filling this block clears the
+> This block records the responsible owner's acceptance of the patent-expiry
+> basis as the publication-safety grounds (D-10). Filling this block clears the
 > IP gate so Phase 3's live-CI push can proceed (D-07, resolve-then-push).
 
-| Field    | Value     |
-|----------|-----------|
-| Name     | _pending_ |
-| Role     | _pending_ |
-| Date     | _pending_ |
-| Approved | _pending_ |
+| Field    | Value                                          |
+|----------|------------------------------------------------|
+| Name     | Nicholas Meyer                                 |
+| Role     | Owner / maintainer, ETH Zurich GSEG group      |
+| Date     | 2026-07-10                                      |
+| Approved | approved                                        |
 
 **Sign-off statement (to be affirmed on approval):** I have reviewed the good-faith
 patent-status assessment in `docs/ip/rrim-ip-findings.md` and the shipped `NOTICE`,
