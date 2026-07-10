@@ -140,11 +140,11 @@ Plans:
   3. A mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math is complete.
   4. Correctness issues surfaced by the soundness review are captured as concrete, testable bug items (BUG-05 inputs for Phase 5).
 
-**Plans**: 7 plans
+**Plans**: 1/7 plans executed
 
 **Wave 0**
 
-- [ ] 04-01-PLAN.md — Swap black→ruff in the dev group + author tests/test_hygiene.py smoke/metadata/lint gate [QUAL-01]
+- [x] 04-01-PLAN.md — Swap black→ruff in the dev group + author tests/test_hygiene.py smoke/metadata/lint gate [QUAL-01]
 
 **Wave 1** *(blocked on Wave 0)*
 
@@ -202,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
-| 4. Code Quality & Algorithmic Soundness Review | 0/7 | Not started | - |
+| 4. Code Quality & Algorithmic Soundness Review | 1/7 | In Progress|  |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |

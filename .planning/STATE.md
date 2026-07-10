@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Code Quality & Algorithmic Soundness Review
+current_phase: 04
+current_phase_name: code-quality-algorithmic-soundness-review
 status: executing
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-10T14:03:58.852Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-10T15:06:12.036Z"
 last_activity: 2026-07-10
-last_activity_desc: Phase 03 + 03.1 complete, transitioned to Phase 4
+last_activity_desc: Phase 04 execution started
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 20
+  completed_plans: 14
   percent: 57
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 03.1 — rrim-red-relief-image-ip-status-clarification
+**Current focus:** Phase 04 — code-quality-algorithmic-soundness-review
 
 ## Current Position
 
-Phase: 4 — Code Quality & Algorithmic Soundness Review
-Plan: Not started
+Phase: 04 (code-quality-algorithmic-soundness-review) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-07-10 — Phase 03 + 03.1 complete, transitioned to Phase 4
+Last activity: 2026-07-10 — Phase 04 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -71,6 +71,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03.1 P01 | 20min | 2 tasks | 2 files |
 | Phase 03.1 P02 | 2min | 2 tasks | 4 files |
 | Phase 03.1 P03 | 5min | 2 tasks | 2 files |
+| Phase 04 P01 | 3min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03.1 P01] RRIM disposition locked: keep rrim.py on patent-expiry basis; core AAS patent family expired all jurisdictions (US 7,764,282 B2 et al.), no license required; verbatim claim-1 walk of active patents JP 5281518 + US 11,836,856 shows flat-RGB rrim.py reads on neither
 - [Phase ?]: [Phase 03.1 P02] Shipped top-level NOTICE as the RRIM distribution-safety artifact (patent-expiry basis + AAS/Chiba/Yokoyama attribution + trademark disclaimer); added opt-in rrim=[] signposting extra (registers nothing — only import pc2img.features.rrim registers) and re-locked uv.lock; docstrings reconciled to opt-in contract; wheel .dist-info legal-file inclusion deferred to Phase 6 (D-09/D-11/D-12)
 - [Phase 03.1 P03]: Owner signed off on keep-on-patent-expiry RRIM disposition (D-10); IP gate CLEARED, branch publication-safe (D-07 resolve-then-push); blocking patent-review todo moved pending->completed via git mv (audit trail) only after the human sign-off gate passed
+- [Phase 04]: [Phase 04 P01] Swapped black->ruff ~= 0.15 in PEP 735 dev group (D-11 default; ruff format is black-equivalent), relocked uv.lock; authored tests/test_hygiene.py as the Wave 0 QUAL-01 gate (1 LIVE import-smoke pass + 3 xfail: keywords/viz/ruff-clean, split so 04-02/04-04 flip markers independently); no [tool.ruff] block yet (deferred to 04-02)
 
 ### Pending Todos
 
@@ -128,6 +130,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T13:22:24.860Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-code-quality-algorithmic-soundness-review/04-CONTEXT.md
+Last session: 2026-07-10T15:06:12.028Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None
