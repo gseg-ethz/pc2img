@@ -67,9 +67,7 @@ class TestOffloadingAndLoading:
         caplog.set_level("DEBUG")
         img = dummy_rgb_image()
         cache_file = tmp_path / "img.dat"
-        data_obj = DiskBackedImageData(
-            img, enable_caching=True, cache_path=cache_file, automatic_offloading=False
-        )
+        data_obj = DiskBackedImageData(img, enable_caching=True, cache_path=cache_file, automatic_offloading=False)
 
         # Offload manually
         data_obj.offload()
@@ -90,9 +88,7 @@ class TestOffloadingAndLoading:
     def test_automatic_offloading_flag(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "gray.dat"
-        data_obj = DiskBackedImageData(
-            img, enable_caching=True, cache_path=cache_file, automatic_offloading=True
-        )
+        data_obj = DiskBackedImageData(img, enable_caching=True, cache_path=cache_file, automatic_offloading=True)
         # Should have offloaded at init
         assert data_obj.offloaded
         assert data_obj.automatic_offloading
@@ -255,9 +251,7 @@ class TestPurgeToggle:
     def test_disable_purge(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "cache.dat"
-        data_obj = DiskBackedImageData(
-            img, cache_file, automatic_offloading=True, purge_disk_on_gc=True
-        )
+        data_obj = DiskBackedImageData(img, cache_file, automatic_offloading=True, purge_disk_on_gc=True)
         # Finalizer initially alive
         assert hasattr(data_obj, "_finalizer")
         assert data_obj._finalizer.alive
@@ -272,9 +266,7 @@ class TestPurgeToggle:
     def test_enable_purge(self, tmp_path: Path):
         img = dummy_gray_image()
         cache_file = tmp_path / "cache.dat"
-        data_obj = DiskBackedImageData(
-            img, cache_file, automatic_offloading=True, purge_disk_on_gc=True
-        )
+        data_obj = DiskBackedImageData(img, cache_file, automatic_offloading=True, purge_disk_on_gc=True)
         # Disable then enable
         data_obj.disable_purge()
         assert not data_obj._purge_on_delete

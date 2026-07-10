@@ -56,17 +56,13 @@ def test_rrim_feature_registry_outputs_rgb_and_components() -> None:
 
     rrim_spec = features.match("rrim")
     rrim_feature = rrim_spec.cls(**rrim_spec.params)
-    pack_name = next(
-        dep for dep in rrim_feature.dependencies if dep.startswith("rrim_pack_(")
-    )
+    pack_name = next(dep for dep in rrim_feature.dependencies if dep.startswith("rrim_pack_("))
 
     pack_spec = features.match(pack_name)
     pack_feature = pack_spec.cls(**pack_spec.params)
     pack = pack_feature.compute(None, lambda name: raster)
 
-    rrim_rgb = rrim_feature.compute(
-        None, lambda name: raster if name == "range" else pack
-    )
+    rrim_rgb = rrim_feature.compute(None, lambda name: raster if name == "range" else pack)
     assert rrim_rgb.shape == raster.shape + (3,)
 
     component_spec = features.match("rrim_component_(structure,range,r16,d8)")

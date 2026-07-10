@@ -42,21 +42,14 @@ class InterpolationStrategy(ABC):
             return value
         if isinstance(value, str):
             return INTERPOLATIONS.create(value)
-        if (
-            isinstance(value, tuple)
-            and len(value) == 2
-            and isinstance(value[0], str)
-            and isinstance(value[1], dict)
-        ):
+        if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], str) and isinstance(value[1], dict):
             key, kwargs = value
             return INTERPOLATIONS.create(key, **kwargs)
 
         raise TypeError(f"Cannot interpret {value!r} as a {cls.__name__} strategy")
 
     @abstractmethod
-    def interpolate(
-        self, values: NDArray, points2d: NDArray, grid_x: NDArray, grid_y: NDArray
-    ) -> NDArray:
+    def interpolate(self, values: NDArray, points2d: NDArray, grid_x: NDArray, grid_y: NDArray) -> NDArray:
         """Interpolate point-values onto a grid."""
 
 
@@ -122,13 +115,8 @@ class DelaunayInterpolation(InterpolationStrategy):
         self._density_ratio_trigger = density_ratio_trigger
         if self._density_thinning_enabled:
             if self._max_points_per_pixel < 1:
-                raise ValueError(
-                    "max_points_per_pixel must be >= 1 when density thinning is enabled"
-                )
-            if (
-                self._density_ratio_trigger is not None
-                and self._density_ratio_trigger <= 0
-            ):
+                raise ValueError("max_points_per_pixel must be >= 1 when density thinning is enabled")
+            if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
                 raise ValueError("density_ratio_trigger must be positive when provided")
 
     # @dataclass(frozen=True)
@@ -162,9 +150,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             )
             if keep_mask.size and not np.all(keep_mask):
                 if values.shape[0] != keep_mask.shape[0]:
-                    raise ValueError(
-                        "Values array length must match points2d when applying density thinning."
-                    )
+                    raise ValueError("Values array length must match points2d when applying density thinning.")
                 values = values[keep_mask]
                 points2d = thinned_points
                 logger.debug(
@@ -184,15 +170,9 @@ class DelaunayInterpolation(InterpolationStrategy):
 
         if "bary" not in self._triangulation_precalc[hash_str]:
             logger.debug(f"Starting interpolation with hash {hash_str}")
-            simplices, verts, bary, triangles = self._calculate_triangulation(
-                points2d, grid_x, grid_y
-            )
-            self._triangulation_precalc[hash_str].add_data_to_store(
-                "triangles", triangles
-            )
-            self._triangulation_precalc[hash_str].add_data_to_store(
-                "simplices", simplices
-            )
+            simplices, verts, bary, triangles = self._calculate_triangulation(points2d, grid_x, grid_y)
+            self._triangulation_precalc[hash_str].add_data_to_store("triangles", triangles)
+            self._triangulation_precalc[hash_str].add_data_to_store("simplices", simplices)
             self._triangulation_precalc[hash_str].add_data_to_store("verts", verts)
             self._triangulation_precalc[hash_str].add_data_to_store("bary", bary)
         else:
@@ -242,9 +222,7 @@ class DelaunayInterpolation(InterpolationStrategy):
         max_edge_thresh = None
         median_ratio = np.median(aspect_ratio)
         mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
-        aspect_ratio_thresh = (
-            median_ratio + 6 * mad_ratio if mad_ratio > 0 else median_ratio * 10
-        )
+        aspect_ratio_thresh = median_ratio + 6 * mad_ratio if mad_ratio > 0 else median_ratio * 10
 
         # Find bad triangles
         tri_is_good = np.ones_like(area, dtype=bool)
@@ -270,16 +248,12 @@ class DelaunayInterpolation(InterpolationStrategy):
     def _calculate_triangulation(
         self, points2d: NDArray, grid_x: NDArray, grid_y: NDArray
     ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        logger.debug(
-            f"Starting computation of Delaunay triangles for {len(points2d)} candidate points."
-        )
+        logger.debug(f"Starting computation of Delaunay triangles for {len(points2d)} candidate points.")
         # 1) Build once
         tri = Delaunay(points2d)
         ndim = points2d.shape[1]
 
-        logger.debug(
-            f"Assigning triangles for {len(grid_x) * len(grid_y.T)} query points."
-        )
+        logger.debug(f"Assigning triangles for {len(grid_x) * len(grid_y.T)} query points.")
         # 2) Precompute geometry for your grid
         grid = np.vstack((grid_x.ravel(), grid_y.ravel())).T
         simplices = tri.find_simplex(grid)  # (n_query,) holds -1 for “outside”

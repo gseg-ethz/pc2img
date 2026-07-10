@@ -128,7 +128,7 @@ cuml-cu11      = { index = "nvidia" }
 dask-cudf-cu11 = { index = "nvidia" }
 
 [tool.ruff]
-line-length = 88            # D-11: black-equivalent, NOT the sibling 120
+line-length = 120          # matches sibling PCHandler/GSEGUtils template; reverses D-11 (owner-approved, Phase 04-04)
 target-version = "py312"
 src = ["src"]
 
@@ -152,8 +152,8 @@ ignore = ["E203"]            # match sibling; slice-colon spacing, black-compati
 "tests/**" = ["E712", "F841", "B024"]
 
 [tool.ruff.format]
-# Drop-in for black; 88-col already set above. quote-style/skip-magic-trailing
-# left at defaults = black-equivalent.
+# Drop-in for black; inherits the 120 line-length set above. quote-style/
+# skip-magic-trailing left at defaults.
 
 # TEST-01: collect ONLY the project suite. third_party/ (gitignored symlinks to the
 # sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths

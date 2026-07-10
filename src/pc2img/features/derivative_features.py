@@ -59,9 +59,7 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         r"(?:_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?))?$"
     )
 
-    def __init__(
-        self, base_feature: str, low: str | None = None, high: str | None = None
-    ) -> None:
+    def __init__(self, base_feature: str, low: str | None = None, high: str | None = None) -> None:
         if low is None:
             low = "0"
         if high is None:
@@ -140,18 +138,16 @@ class HillshadeFeature(DerivativeFeatureStrategy):
         azimuth_rad = self.azimuth * np.pi / 180.0
         altitude_rad = self.altitude * np.pi / 180.0
 
-        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(
-            slope
-        ) * np.cos(azimuth_rad - aspect)
+        shaded = np.sin(altitude_rad) * np.sin(slope) + np.cos(altitude_rad) * np.cos(slope) * np.cos(
+            azimuth_rad - aspect
+        )
 
         return shaded
 
 
 @FEATURES.register
 class AverageFeature(DerivativeFeatureStrategy):
-    regex_pattern = re.compile(
-        r"^average_[(](?P<average_features>[^,]+(?:,[^,]+)+)[)]$"
-    )
+    regex_pattern = re.compile(r"^average_[(](?P<average_features>[^,]+(?:,[^,]+)+)[)]$")
 
     def __init__(self, average_features: str) -> None:
         self.average_features = type(self)._split_top_level(average_features)
@@ -164,9 +160,7 @@ class AverageFeature(DerivativeFeatureStrategy):
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(
-                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
-                )
+                new_values.append(v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1))
             values = new_values
 
         stacked = np.stack(values, axis=-1)
@@ -188,9 +182,7 @@ class SumFeature(DerivativeFeatureStrategy):
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(
-                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
-                )
+                new_values.append(v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1))
             values = new_values
 
         stacked = np.stack(values, axis=-1)
@@ -238,9 +230,7 @@ class NormFeature(DerivativeFeatureStrategy):
         if need_3dim:
             new_values = []
             for v in values:
-                new_values.append(
-                    v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1)
-                )
+                new_values.append(v if v.ndim == 3 else np.repeat(v[:, :, np.newaxis], 3, axis=-1))
             values = new_values
 
         stacked = np.stack(values, axis=-1)
@@ -255,9 +245,7 @@ class ClipPercentileFeature(DerivativeFeatureStrategy):
     Example: clip_range_5_95
     """
 
-    regex_pattern = re.compile(
-        r"^clip_(?P<base_feature>.+?)_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?)$"
-    )
+    regex_pattern = re.compile(r"^clip_(?P<base_feature>.+?)_(?P<low>\d+(?:\.\d+)?)_(?P<high>\d+(?:\.\d+)?)$")
 
     def __init__(self, base_feature: str, low: str, high: str) -> None:
         self.low = float(low)
@@ -316,9 +304,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
         self.sigmas = [float(s) for s in sigmas.split("-")]
         if not self.sigmas:
-            raise ValueError(
-                "At least one sigma must be provided for multigrad feature."
-            )
+            raise ValueError("At least one sigma must be provided for multigrad feature.")
         if any(sigma <= 0 for sigma in self.sigmas):
             raise ValueError(f"All sigmas must be > 0, got {self.sigmas}.")
         if self.axis is not None and self.axis not in {"x", "y"}:
@@ -340,15 +326,11 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
                     self.scale_normalize = True
                 elif token_lower == "mag":
                     if self.axis is not None:
-                        raise ValueError(
-                            "Option 'mag' is incompatible with axis-specific multigrad outputs."
-                        )
+                        raise ValueError("Option 'mag' is incompatible with axis-specific multigrad outputs.")
                     self.include_components = False
                 elif token_lower == "components":
                     if self.axis is not None:
-                        raise ValueError(
-                            "Option 'components' is incompatible with axis-specific multigrad outputs."
-                        )
+                        raise ValueError("Option 'components' is incompatible with axis-specific multigrad outputs.")
                     self.include_components = True
                 else:
                     raise ValueError(
@@ -396,17 +378,13 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         img = np.array(base, dtype=np.float32, copy=True)
 
         if img.ndim != 2:
-            raise ValueError(
-                f"multigrad expects a 2D raster input; '{self.base_feature}' has shape {img.shape}"
-            )
+            raise ValueError(f"multigrad expects a 2D raster input; '{self.base_feature}' has shape {img.shape}")
 
         stacked_channels: list[NDArray[np.float32]] = []
         fuse_layers: list[NDArray[np.float32]] = []
 
         for sigma in self.sigmas:
-            smoothed, weights = self._smooth_with_nan(
-                img, sigma, self._gaussian_mode, self._weight_eps
-            )
+            smoothed, weights = self._smooth_with_nan(img, sigma, self._gaussian_mode, self._weight_eps)
             # Fill NaNs temporarily for gradient calculation.
             smoothed_finite = np.nan_to_num(smoothed, nan=0.0)
             grad_y, grad_x = np.gradient(smoothed_finite, edge_order=1)
@@ -440,9 +418,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
         if self.fuse_mode == "stack":
             if not stacked_channels:
-                raise RuntimeError(
-                    "No channels computed for stacking; check configuration."
-                )
+                raise RuntimeError("No channels computed for stacking; check configuration.")
             stacked = np.stack(stacked_channels, axis=-1)
             return stacked.astype(np.float32, copy=False)
 
@@ -505,9 +481,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
 
         self.sigmas = [float(s) for s in sigmas.split("-")]
         if not self.sigmas:
-            raise ValueError(
-                "At least one sigma must be provided for multigradocc feature."
-            )
+            raise ValueError("At least one sigma must be provided for multigradocc feature.")
         if any(sigma <= 0 for sigma in self.sigmas):
             raise ValueError(f"All sigmas must be > 0, got {self.sigmas}.")
         if self.axis is not None and self.axis not in {"x", "y"}:
@@ -593,15 +567,11 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         grad_y, grad_x = np.gradient(finite, edge_order=1)
         edge_strength = np.hypot(grad_x, grad_y).astype(np.float32, copy=False)
         if self.edge_sigma > 0:
-            edge_strength = gaussian_filter(
-                edge_strength, sigma=self.edge_sigma, mode=self._gaussian_mode
-            )
+            edge_strength = gaussian_filter(edge_strength, sigma=self.edge_sigma, mode=self._gaussian_mode)
         mask = edge_strength >= self.edge_threshold
         if self.edge_dilate > 0:
             structure = np.ones((3, 3), dtype=bool)
-            mask = binary_dilation(
-                mask, structure=structure, iterations=self.edge_dilate
-            )
+            mask = binary_dilation(mask, structure=structure, iterations=self.edge_dilate)
         mask |= ~np.isfinite(img)
         return mask
 
@@ -609,9 +579,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         base = fetch(self.base_feature)
         img = np.array(base, dtype=np.float32, copy=True)
         if img.ndim != 2:
-            raise ValueError(
-                f"multigradocc expects a 2D raster input; '{self.base_feature}' has shape {img.shape}"
-            )
+            raise ValueError(f"multigradocc expects a 2D raster input; '{self.base_feature}' has shape {img.shape}")
 
         occlusion_mask = self._estimate_occlusion_mask(img)
 

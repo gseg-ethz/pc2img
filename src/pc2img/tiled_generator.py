@@ -58,25 +58,17 @@ class TIGSettings:
     interp_kwargs: dict[str, Any] = field(default_factory=dict)
     lazy_disk_cache_config: LazyDiskCacheConfig | None = None
 
-    @validate_call(
-        config=ConfigDict(arbitrary_types_allowed=True), validate_return=False
-    )
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def extend_cache_paths(self, new_folder: str) -> Self:
         updates = {}
         if "lazy_disk_cache_config" in self.interp_kwargs and isinstance(
             self.interp_kwargs["lazy_disk_cache_config"], LazyDiskCacheConfig
         ):
             updates["interp_kwargs"] = dict(self.interp_kwargs).update(
-                {
-                    "lazy_disk_cache_config": self.interp_kwargs[
-                        "lazy_disk_cache_config"
-                    ].extend_cache_path(new_folder)
-                }
+                {"lazy_disk_cache_config": self.interp_kwargs["lazy_disk_cache_config"].extend_cache_path(new_folder)}
             )
         if self.lazy_disk_cache_config is not None:
-            updates["lazy_disk_cache_config"] = (
-                self.lazy_disk_cache_config.extend_cache_path(new_folder)
-            )
+            updates["lazy_disk_cache_config"] = self.lazy_disk_cache_config.extend_cache_path(new_folder)
 
         return replace(self, **updates)
 
@@ -95,21 +87,17 @@ class TiledPointCloudImageGenerator:
     @overload
     def __init__(
         self,
-        pcd_tiles: Sequence[PointCloudTile]
-        | Sequence[tuple[str, PointCloudData, Mapping[str, Any]]],
+        pcd_tiles: Sequence[PointCloudTile] | Sequence[tuple[str, PointCloudData, Mapping[str, Any]]],
         img_res: tuple[int, int],
         proj_cls: ProjectionLike,
         interp_cls: InterpolationLike,
         *,
         proj_kwargs: Mapping[str, Any] | None = None,
         interp_kwargs: Mapping[str, Any] | None = None,
-        lazy_disk_cache_config: Mapping[str, Any]
-        | LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        lazy_disk_cache_config: Mapping[str, Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
     ) -> None: ...
 
-    @validate_call(
-        config=ConfigDict(arbitrary_types_allowed=True), validate_return=False
-    )
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
         pcd_tiles: Sequence[PointCloudTile],
@@ -123,12 +111,8 @@ class TiledPointCloudImageGenerator:
     ):
         self.pcd_tiles = pcd_tiles
         self._img_res = img_res
-        self.proj_cls: type[ProjectionStrategy] = cast(
-            type[ProjectionStrategy], proj_cls
-        )
-        self.interp_cls: type[InterpolationStrategy] = cast(
-            type[InterpolationStrategy], interp_cls
-        )
+        self.proj_cls: type[ProjectionStrategy] = cast(type[ProjectionStrategy], proj_cls)
+        self.interp_cls: type[InterpolationStrategy] = cast(type[InterpolationStrategy], interp_cls)
         self._proj_kwargs = proj_kwargs or {}
         self._interp_kwargs = interp_kwargs or {}
         self._lazy_disk_cache_config = lazy_disk_cache_config
@@ -142,14 +126,9 @@ class TiledPointCloudImageGenerator:
 
         tasks = self.pcd_tiles
 
-        with parallel_config(
-            backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"
-        ):
+        with parallel_config(backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"):
             results = Parallel()(
-                delayed(self._process_tile)(
-                    task.tile_id, task.tile_pcd, task.tile_kwargs, features
-                )
-                for task in tasks
+                delayed(self._process_tile)(task.tile_id, task.tile_pcd, task.tile_kwargs, features) for task in tasks
             )
 
         result_dict: dict[ImageKey, DiskBackedImageData] = {}
@@ -175,9 +154,7 @@ class TiledPointCloudImageGenerator:
         proj_kwargs: dict[str, Any] = dict(self._proj_kwargs)
 
         if "lazy_disk_cache_config" in interp_kwargs:
-            interp_kwargs["lazy_disk_cache_config"] = interp_kwargs[
-                "lazy_disk_cache_config"
-            ].extend_cache_path(tile_id)
+            interp_kwargs["lazy_disk_cache_config"] = interp_kwargs["lazy_disk_cache_config"].extend_cache_path(tile_id)
 
         image_gen = (
             self.image_generators[tile_id]
@@ -186,9 +163,7 @@ class TiledPointCloudImageGenerator:
                 pcd=tile_pcd,
                 proj=self.proj_cls(**tile_kwargs, **proj_kwargs),
                 interp=self.interp_cls(**interp_kwargs),
-                lazy_disk_cache_config=self._lazy_disk_cache_config.extend_cache_path(
-                    tile_id
-                ),
+                lazy_disk_cache_config=self._lazy_disk_cache_config.extend_cache_path(tile_id),
                 img_res=self._img_res,
             )
         )

@@ -16,9 +16,7 @@ class BaseFeatureStrategy(ABC):
     regex_pattern: re.Pattern[str]
 
     @abstractmethod
-    def compute(
-        self, pcd: PointCloudData, fetch: "FeatureManager._get"
-    ) -> np.ndarray: ...
+    def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...
 
 
 class DerivativeFeatureStrategy(ABC):
@@ -31,14 +29,10 @@ class DerivativeFeatureStrategy(ABC):
     regex_pattern: re.Pattern[str]
 
     @abstractmethod
-    def compute(
-        self, pcd: PointCloudData, fetch: "FeatureManager._get"
-    ) -> np.ndarray: ...
+    def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...
 
     @staticmethod
-    def _split_top_level(
-        s: str, top_level_bound: tuple[str, str] = ("(", ")"), sep: str = ","
-    ) -> list[str]:
+    def _split_top_level(s: str, top_level_bound: tuple[str, str] = ("(", ")"), sep: str = ",") -> list[str]:
         """
         Split s on `sep` only when we're *not* inside parentheses.
         """

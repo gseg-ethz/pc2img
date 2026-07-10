@@ -38,9 +38,7 @@ _COMPONENT_TO_CHANNEL = {"positive": 0, "negative": 1, "structure": 2}
 _MAX_DISTANCE_RE = re.compile(r"^r(?P<value>\d+)$")
 _DIRECTIONS_RE = re.compile(r"^d(?P<value>\d+)$")
 _SLOPE_CLIP_RE = re.compile(r"^sclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
-_STRUCTURE_CLIP_RE = re.compile(
-    r"^oclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$"
-)
+_STRUCTURE_CLIP_RE = re.compile(r"^oclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
 _Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?)$")
 _RED_STRENGTH_RE = re.compile(r"^red(?P<value>[+-]?\d+(?:\.\d+)?)$")
 
@@ -90,13 +88,9 @@ def _format_number(value: float) -> str:
 def _validate_clip(name: str, clip: tuple[float, float]) -> tuple[float, float]:
     low, high = clip
     if not (0.0 <= low <= 100.0 and 0.0 <= high <= 100.0):
-        raise ValueError(
-            f"{name} clip percentiles must lie within [0, 100], got {clip}."
-        )
+        raise ValueError(f"{name} clip percentiles must lie within [0, 100], got {clip}.")
     if low > high:
-        raise ValueError(
-            f"{name} clip low percentile must not exceed high percentile, got {clip}."
-        )
+        raise ValueError(f"{name} clip low percentile must not exceed high percentile, got {clip}.")
     return float(low), float(high)
 
 
@@ -141,9 +135,7 @@ def _shift_with_fill(
     dst_x_start = max(0, dx)
     dst_x_stop = array.shape[1] - max(0, -dx)
 
-    shifted[dst_y_start:dst_y_stop, dst_x_start:dst_x_stop] = array[
-        src_y_start:src_y_stop, src_x_start:src_x_stop
-    ]
+    shifted[dst_y_start:dst_y_stop, dst_x_start:dst_x_stop] = array[src_y_start:src_y_stop, src_x_start:src_x_stop]
     return shifted
 
 
@@ -154,13 +146,9 @@ def _safe_gradient(
     grad_x = np.zeros_like(values, dtype=np.float32)
 
     if values.shape[0] > 1:
-        grad_y = np.gradient(values, pixel_size[1], axis=0, edge_order=1).astype(
-            np.float32, copy=False
-        )
+        grad_y = np.gradient(values, pixel_size[1], axis=0, edge_order=1).astype(np.float32, copy=False)
     if values.shape[1] > 1:
-        grad_x = np.gradient(values, pixel_size[0], axis=1, edge_order=1).astype(
-            np.float32, copy=False
-        )
+        grad_x = np.gradient(values, pixel_size[0], axis=1, edge_order=1).astype(np.float32, copy=False)
 
     return grad_y, grad_x
 
@@ -188,9 +176,7 @@ def _normalize_robust(
         normalized[finite] = fill_value
         return normalized
 
-    normalized[finite] = np.clip(
-        (values[finite] - low) / (high - low), 0.0, 1.0
-    ).astype(np.float32, copy=False)
+    normalized[finite] = np.clip((values[finite] - low) / (high - low), 0.0, 1.0).astype(np.float32, copy=False)
     return normalized
 
 
@@ -201,9 +187,7 @@ def _build_ray_offsets(
     pixel_size: tuple[float, float],
 ) -> tuple[tuple[tuple[int, int, float], ...], ...]:
     directions: list[tuple[tuple[int, int, float], ...]] = []
-    angles = np.linspace(
-        0.0, 2.0 * np.pi, num_directions, endpoint=False, dtype=np.float64
-    )
+    angles = np.linspace(0.0, 2.0 * np.pi, num_directions, endpoint=False, dtype=np.float64)
 
     for angle in angles:
         offsets: list[tuple[int, int, float]] = []
@@ -269,17 +253,11 @@ def compute_openness(
                 continue
 
             delta = shifted - scaled
-            upward = np.degrees(np.arctan2(delta, distance)).astype(
-                np.float32, copy=False
-            )
-            downward = np.degrees(np.arctan2(-delta, distance)).astype(
-                np.float32, copy=False
-            )
+            upward = np.degrees(np.arctan2(delta, distance)).astype(np.float32, copy=False)
+            downward = np.degrees(np.arctan2(-delta, distance)).astype(np.float32, copy=False)
 
             max_upward = np.where(valid, np.maximum(max_upward, upward), max_upward)
-            max_downward = np.where(
-                valid, np.maximum(max_downward, downward), max_downward
-            )
+            max_downward = np.where(valid, np.maximum(max_downward, downward), max_downward)
             has_sample |= valid
 
         positive = np.full(scaled.shape, np.nan, dtype=np.float32)
@@ -325,18 +303,12 @@ def compose_rrim_rgb(
     structure_clip: tuple[float, float] = DEFAULT_STRUCTURE_CLIP,
     red_strength: float = DEFAULT_RED_STRENGTH,
 ) -> NDArray[np.float32]:
-    base = _normalize_robust(
-        np.asarray(structure, dtype=np.float32), structure_clip, fill_value=0.5
-    )
-    slope_norm = _normalize_robust(
-        np.asarray(slope, dtype=np.float32), slope_clip, fill_value=0.0
-    )
+    base = _normalize_robust(np.asarray(structure, dtype=np.float32), structure_clip, fill_value=0.5)
+    slope_norm = _normalize_robust(np.asarray(slope, dtype=np.float32), slope_clip, fill_value=0.0)
 
     base_safe = np.nan_to_num(base, nan=0.0)
     slope_safe = np.nan_to_num(slope_norm, nan=0.0)
-    red = np.clip(
-        base_safe + red_strength * slope_safe * (1.0 - base_safe), 0.0, 1.0
-    ).astype(np.float32, copy=False)
+    red = np.clip(base_safe + red_strength * slope_safe * (1.0 - base_safe), 0.0, 1.0).astype(np.float32, copy=False)
 
     rgb = np.stack((red, base_safe, base_safe), axis=-1).astype(np.float32, copy=False)
     invalid = ~np.isfinite(base)
@@ -393,9 +365,7 @@ def compute_rrim(
     if raster.ndim != 2:
         raise ValueError(f"RRIM expects a 2D raster input, got shape {raster.shape}.")
 
-    slope = compute_slope(
-        raster, pixel_size=config.pixel_size, z_factor=config.z_factor
-    )
+    slope = compute_slope(raster, pixel_size=config.pixel_size, z_factor=config.z_factor)
     positive, negative = compute_openness(
         raster,
         pixel_size=config.pixel_size,
@@ -432,9 +402,7 @@ def _parse_option_token(config: RRIMConfig, token: str) -> RRIMConfig:
 
     match = _SLOPE_CLIP_RE.fullmatch(token)
     if match:
-        return replace(
-            config, slope_clip=(float(match.group("low")), float(match.group("high")))
-        )
+        return replace(config, slope_clip=(float(match.group("low")), float(match.group("high"))))
 
     match = _STRUCTURE_CLIP_RE.fullmatch(token)
     if match:
@@ -451,10 +419,7 @@ def _parse_option_token(config: RRIMConfig, token: str) -> RRIMConfig:
     if match:
         return replace(config, red_strength=float(match.group("value")))
 
-    raise ValueError(
-        f"Unknown RRIM option '{token}'. "
-        "Supported tokens are rN, dN, sclipA-B, oclipA-B, zF and redF."
-    )
+    raise ValueError(f"Unknown RRIM option '{token}'. Supported tokens are rN, dN, sclipA-B, oclipA-B, zF and redF.")
 
 
 def _looks_like_option_token(token: str) -> bool:
@@ -472,13 +437,7 @@ def _looks_like_option_token(token: str) -> bool:
 
 
 def _parse_rrim_config(args: str | None) -> RRIMConfig:
-    tokens = (
-        []
-        if args is None
-        else [
-            token for token in DerivativeFeatureStrategy._split_top_level(args) if token
-        ]
-    )
+    tokens = [] if args is None else [token for token in DerivativeFeatureStrategy._split_top_level(args) if token]
     config = RRIMConfig()
 
     if tokens and not _looks_like_option_token(tokens[0]):
@@ -491,17 +450,14 @@ def _parse_rrim_config(args: str | None) -> RRIMConfig:
 
 
 def _parse_rrim_component(args: str) -> tuple[RRIMComponent, RRIMConfig]:
-    tokens = [
-        token for token in DerivativeFeatureStrategy._split_top_level(args) if token
-    ]
+    tokens = [token for token in DerivativeFeatureStrategy._split_top_level(args) if token]
     if not tokens:
         raise ValueError("rrim_component requires at least a component name.")
 
     component = tokens.pop(0).lower()
     if component not in {"slope", "positive", "negative", "structure"}:
         raise ValueError(
-            f"Unsupported RRIM component '{component}'. "
-            "Expected one of: slope, positive, negative, structure."
+            f"Unsupported RRIM component '{component}'. Expected one of: slope, positive, negative, structure."
         )
 
     config = RRIMConfig()
@@ -540,9 +496,7 @@ class RRIMPackFeature(DerivativeFeatureStrategy):
             z_factor=self.config.z_factor,
         )
         structure = (0.5 * (positive - negative)).astype(np.float32, copy=False)
-        return np.stack((positive, negative, structure), axis=-1).astype(
-            np.float32, copy=False
-        )
+        return np.stack((positive, negative, structure), axis=-1).astype(np.float32, copy=False)
 
 
 @FEATURES.register
@@ -569,9 +523,7 @@ class RRIMFeature(DerivativeFeatureStrategy):
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray[np.float32]:
         values = np.asarray(fetch(self.config.base_feature), dtype=np.float32)
         pack = np.asarray(fetch(self._pack_name), dtype=np.float32)
-        slope = compute_slope(
-            values, pixel_size=self.config.pixel_size, z_factor=self.config.z_factor
-        )
+        slope = compute_slope(values, pixel_size=self.config.pixel_size, z_factor=self.config.z_factor)
         structure = pack[..., _COMPONENT_TO_CHANNEL["structure"]]
         return compose_rrim_rgb(
             slope,
@@ -597,20 +549,12 @@ class RRIMComponentFeature(DerivativeFeatureStrategy):
     def __init__(self, args: str) -> None:
         self.component, self.config = _parse_rrim_component(args)
         self._pack_name = self.config.pack_feature_name()
-        self.dependencies = (
-            [self.config.base_feature]
-            if self.component == "slope"
-            else [self._pack_name]
-        )
+        self.dependencies = [self.config.base_feature] if self.component == "slope" else [self._pack_name]
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray[np.float32]:
         if self.component == "slope":
             values = np.asarray(fetch(self.config.base_feature), dtype=np.float32)
-            return compute_slope(
-                values, pixel_size=self.config.pixel_size, z_factor=self.config.z_factor
-            )
+            return compute_slope(values, pixel_size=self.config.pixel_size, z_factor=self.config.z_factor)
 
         pack = np.asarray(fetch(self._pack_name), dtype=np.float32)
-        return pack[..., _COMPONENT_TO_CHANNEL[self.component]].astype(
-            np.float32, copy=False
-        )
+        return pack[..., _COMPONENT_TO_CHANNEL[self.component]].astype(np.float32, copy=False)

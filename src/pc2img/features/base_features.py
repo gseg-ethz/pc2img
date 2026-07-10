@@ -32,6 +32,4 @@ class ScalarFieldFeature(BaseFeatureStrategy):
         try:
             return np.asarray(pcd.scalar_fields[self.feature])
         except KeyError as e:
-            raise ValueError(
-                f"Scalar field '{self.feature}' not found on PointCloudData."
-            ) from e
+            raise ValueError(f"Scalar field '{self.feature}' not found on PointCloudData.") from e

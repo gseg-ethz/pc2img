@@ -23,9 +23,7 @@ class FeatureSpec:
 
 class FeatureRegistry:
     def __init__(self):
-        self._map: dict[
-            re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]
-        ] = {}
+        self._map: dict[re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
         self._default_cls: type[BaseFeatureStrategy] = None
 
     def register(self, cls=None, *, default: bool = False):
@@ -38,9 +36,7 @@ class FeatureRegistry:
             if default and self._default_cls is None:
                 self._default_cls = c
             elif default and self._default_cls != c:
-                raise RuntimeError(
-                    f"strategy {c.__name__} already registered as default"
-                )
+                raise RuntimeError(f"strategy {c.__name__} already registered as default")
 
             return c
 

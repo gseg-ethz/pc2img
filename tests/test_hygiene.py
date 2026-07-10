@@ -108,6 +108,4 @@ def test_ruff_check_src_is_clean() -> None:
         text=True,
         check=False,
     )
-    assert result.returncode == 0, (
-        f"ruff check src/ reported findings:\n{result.stdout}"
-    )
+    assert result.returncode == 0, f"ruff check src/ reported findings:\n{result.stdout}"

@@ -127,6 +127,4 @@ class _StrategyClass(Generic[T]):
             except KeyError:
                 raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}")
 
-        raise TypeError(
-            f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key"
-        )
+        raise TypeError(f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key")

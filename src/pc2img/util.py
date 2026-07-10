@@ -200,9 +200,7 @@ def nanconv(a: NDArray, k: NDArray, replace_nan: float | None = None) -> NDArray
     flat = convolve2d(on, k, mode="same").astype(np.float16)
 
     c = np.full(flat.shape, np.nan, dtype=np.float16)
-    np.divide(
-        convolve2d(a, k, mode="same").astype(np.float16), flat, out=c, where=(flat != 0)
-    )
+    np.divide(convolve2d(a, k, mode="same").astype(np.float16), flat, out=c, where=(flat != 0))
     if replace_nan is not None:
         np.nan_to_num(c, copy=False, nan=replace_nan)
     return c
@@ -281,11 +279,7 @@ def replace_nan(
         elif replace_nan_with == "min":
             fill = np.full_like(out, mn, dtype=np.float32)
         elif replace_nan_with == "random":
-            fill = (
-                np.random.default_rng(rng)
-                .uniform(mn, mx, size=out.shape)
-                .astype(np.float32)
-            )  # type: ignore[arg-type]
+            fill = np.random.default_rng(rng).uniform(mn, mx, size=out.shape).astype(np.float32)  # type: ignore[arg-type]
         else:
             raise ValueError(f"Unknown policy {replace_nan_with!r}")
 
@@ -387,11 +381,7 @@ def convert_to_image(
 
     # Normalize if requested or out of [0,1]
     finite = np.isfinite(x)
-    if (
-        normalize
-        or (x[finite].min(initial=0.0) < 0.0)
-        or (x[finite].max(initial=1.0) > 1.0)
-    ):
+    if normalize or (x[finite].min(initial=0.0) < 0.0) or (x[finite].max(initial=1.0) > 1.0):
         lo = x[finite].min()
         hi = x[finite].max()
         if hi > lo:
@@ -428,10 +418,7 @@ def calculate_dip_direction_and_angle(xyz: np.ndarray) -> np.ndarray:
 
     # Calculate dip angles
     # Angle between the vector and its projection on the XY plane
-    dip_angles = np.arccos(
-        np.sum(norm_vectors * xy_projection, axis=1)
-        / np.linalg.norm(xy_projection, axis=1)
-    )
+    dip_angles = np.arccos(np.sum(norm_vectors * xy_projection, axis=1) / np.linalg.norm(xy_projection, axis=1))
 
     # Calculate dip directions
     # Azimuth of the projection of the vector onto the XY plane
@@ -556,9 +543,7 @@ class OpticalFlowVisualization:
         rad = np.linalg.norm(flow_uv, axis=2, keepdims=True)
         uv_unit = flow_uv / (rad + epsilon)
 
-        rad_max = (
-            np.max(rad) if max_quantile is None else np.quantile(rad, max_quantile)
-        )
+        rad_max = np.max(rad) if max_quantile is None else np.quantile(rad, max_quantile)
         rad_norm_to_max = rad / rad_max
         rad_norm_to_max[rad_norm_to_max > 1.0] = 1.0
 

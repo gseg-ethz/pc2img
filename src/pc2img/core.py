@@ -46,13 +46,9 @@ def coerce_lazy_cfg(
 # --- Typing trick: show loose types to type-checkers, use converters at runtime ---
 
 if TYPE_CHECKING:
-    ProjectionStrategyLike: TypeAlias = (
-        ProjectionStrategy | ProjectionName | tuple[ProjectionName, Mapping[str, Any]]
-    )
+    ProjectionStrategyLike: TypeAlias = ProjectionStrategy | ProjectionName | tuple[ProjectionName, Mapping[str, Any]]
     InterpolationStrategyLike: TypeAlias = (
-        InterpolationStrategy
-        | InterpolationName
-        | tuple[InterpolationName, Mapping[str, Any]]
+        InterpolationStrategy | InterpolationName | tuple[InterpolationName, Mapping[str, Any]]
     )
     ImgResLike = ImgRes | tuple[int, int]
     LazyDiskCacheConfigLike = LazyDiskCacheConfig | Mapping[str, Any] | None
@@ -60,15 +56,11 @@ else:
     ProjectionStrategyLike = ProjectionStrategy
     InterpolationStrategyLike = InterpolationStrategy
     ImgResLike = Annotated[ImgRes, BeforeValidator(coerce_img_res)]
-    LazyDiskCacheConfigLike = Annotated[
-        LazyDiskCacheConfig, BeforeValidator(coerce_lazy_cfg)
-    ]
+    LazyDiskCacheConfigLike = Annotated[LazyDiskCacheConfig, BeforeValidator(coerce_lazy_cfg)]
 
 
 class PointCloudImageGenerator:
-    @validate_call(
-        config=ConfigDict(arbitrary_types_allowed=True), validate_return=False
-    )
+    @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
         pcd: PointCloudData,
@@ -98,8 +90,8 @@ class PointCloudImageGenerator:
         if base_features_1D:
             resolution = self._img_res
             if not self.projection_results:
-                self.projection_results["pts2d"], self.projection_results["mask"] = (
-                    self._proj.project(self._pcd, resolution)
+                self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(
+                    self._pcd, resolution
                 )
 
             pts2d = self.projection_results["pts2d"]

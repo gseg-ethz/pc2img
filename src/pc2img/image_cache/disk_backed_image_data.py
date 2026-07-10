@@ -21,9 +21,7 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
         image_data: np.ndarray,
         **lazy_disk_cache_settings: Unpack[LazyDiskCacheKw],
     ):
-        assert image_data.ndim in (2, 3) and (
-            image_data.ndim == 2 or image_data.shape[-1] == 3
-        )
+        assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or image_data.shape[-1] == 3)
         self._image_data = image_data
         self._shape = image_data.shape
         self._dtype = image_data.dtype
@@ -38,14 +36,11 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
     @LazyDiskCache.ensure_loaded
     def to_uint8(
         self,
-        pre_processing_func: Callable[[NDArray[np.floating[Any]]], NDArray[np.uint8]]
-        | None = None,
+        pre_processing_func: Callable[[NDArray[np.floating[Any]]], NDArray[np.uint8]] | None = None,
     ) -> NDArray[np.uint8]:
 
         if pre_processing_func is None:
-            pre_processing_func = partial(
-                convert_to_image, replace_nan_with="max", normalize=False
-            )
+            pre_processing_func = partial(convert_to_image, replace_nan_with="max", normalize=False)
         return pre_processing_func(self._image_data)
 
     @LazyDiskCache.ensure_loaded
