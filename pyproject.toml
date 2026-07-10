@@ -51,11 +51,22 @@ documentation = "https://google.com"
 [project.optional-dependencies]
 cuda12 = ["pchandler[cuda12]"]
 cuda11 = ["pchandler[cuda11]"]
+# `rrim` is a signposting-only extra: it declares no runtime deps because the RRIM
+# feature needs nothing beyond the core (numpy/scipy are already in `dependencies`).
+# CAVEAT (D-06): a pip extra gates OPTIONAL runtime deps only; it does NOT withhold
+# the `src/pc2img/features/rrim.py` source — that module ships in the wheel regardless
+# of which extras are installed. The legal clearance to ship RRIM is the top-level
+# NOTICE + the patent-expiry basis (docs/ip/rrim-ip-findings.md), NOT this extra.
+# MECHANICAL FACT: installing `pc2img[rrim]` does NOT import `pc2img.features.rrim`
+# and does NOT register the `rrim` feature. Only an explicit
+# `import pc2img.features.rrim` runs the `@FEATURES.register` decorators that make
+# `generate(["rrim", ...])` resolve. The extra registers nothing on its own.
+rrim = []
 
 # Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
 # `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
 [dependency-groups]
-dev = ["black ~= 23.10", "pytest", "memory_profiler"]
+dev = ["black ~= 23.10", "pytest ~= 9.1", "memory_profiler", "pytest-cov ~= 5.0", "coverage ~= 7.0"]
 doc = ["sphinx ~= 5.1"]
 
 # cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
@@ -96,3 +107,33 @@ cuspatial-cu11 = { index = "nvidia" }
 cuproj-cu11    = { index = "nvidia" }
 cuml-cu11      = { index = "nvidia" }
 dask-cudf-cu11 = { index = "nvidia" }
+
+# TEST-01: collect ONLY the project suite. third_party/ (gitignored symlinks to the
+# sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths
+# stops recursion into it — verified: bare `pytest` 1140 collected/7 errors →
+# scoped 26 collected/0 third_party errors.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Modern import machinery: no sys.path injection, avoids duplicate-basename
+# import-file-mismatch, and is the current pytest recommendation. Do NOT add any
+# --cov flag here — coverage stays on the CLI/CI invocation only (see coverage note).
+addopts = "--import-mode=importlib --strict-markers"
+xfail_strict = false   # D-03: an unexpected pass (XPASS) must NOT fail the suite
+
+# D-05: branch coverage of the whole pc2img package. pchandler has no
+# [tool.coverage.*] block (it passes --cov=pchandler on the CLI with branch off);
+# D-05 requires branch coverage, so this minimal block is a justified addition.
+[tool.coverage.run]
+branch = true
+source = ["pc2img"]
+omit = ["*/_version.py"]   # setuptools_scm-generated, not meaningful to cover
+
+# NOTE: fail_under is intentionally NOT set here — the coverage gate lives on the
+# CI command line only (Plan 03), so subset/local runs never trip a floor.
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
+]

@@ -36,8 +36,8 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 
 ### Test & Coverage
 
-- [ ] **TEST-01**: pytest configuration scopes discovery to `tests/` (stops collecting `third_party/`)
-- [ ] **TEST-02**: Coverage measurement + reporting established with a recorded baseline
+- [x] **TEST-01**: pytest configuration scopes discovery to `tests/` (stops collecting `third_party/`)
+- [x] **TEST-02**: Coverage measurement + reporting established with a recorded baseline
 - [ ] **TEST-03**: Projection & interpolation math covered by tests
 - [ ] **TEST-04**: Derivative features + feature-name DSL covered by tests
 - [ ] **TEST-05**: Orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`) covered by tests
@@ -45,7 +45,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 
 ### CI/CD
 
-- [ ] **CICD-01**: Lightweight CI runs the test suite on pull requests (early safety net)
+- [x] **CICD-01**: Lightweight CI runs the test suite on pull requests (early safety net)
 - [ ] **CICD-02**: Branch protection + publication hardening matching the PCHandler template (pre-ship)
 
 ### Downstream Migration
@@ -100,13 +100,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-03 | Phase 5 | Pending |
 | BUG-04 | Phase 5 | Pending |
 | BUG-05 | Phase 5 | Pending |
-| TEST-01 | Phase 3 | Pending |
-| TEST-02 | Phase 3 | Pending |
+| TEST-01 | Phase 3 | Complete |
+| TEST-02 | Phase 3 | Complete |
 | TEST-03 | Phase 5 | Pending |
 | TEST-04 | Phase 5 | Pending |
 | TEST-05 | Phase 5 | Pending |
 | TEST-06 | Phase 5 | Pending |
-| CICD-01 | Phase 3 | Pending |
+| CICD-01 | Phase 3 | Complete |
 | CICD-02 | Phase 6 | Pending |
 | BC-01 | Phase 6 | Pending |
 

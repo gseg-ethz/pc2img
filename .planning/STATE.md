@@ -2,18 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Test & CI Foundation
-status: "Phase 2 shipped — PR #8 (into develop-gsd)"
-stopped_at: Phase 2 context gathered
-last_updated: "2026-07-09T14:55:11.245Z"
-last_activity: 2026-07-09
+current_phase: 4
+current_phase_name: Code Quality & Algorithmic Soundness Review
+status: verifying
+stopped_at: Phase 03 + 03.1 shipped — PR #10
+last_updated: "2026-07-10T12:46:26.516Z"
+last_activity: 2026-07-10
+last_activity_desc: Phase 03 + 03.1 shipped (PR #10 → develop-gsd), transitioned to Phase 4
 progress:
-  total_phases: 6
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 33
+  total_phases: 7
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
+  percent: 57
 ---
 
 # Project State
@@ -23,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 02 — dependency-adaptation-reproducible-environment
+**Current focus:** Phase 03.1 — rrim-red-relief-image-ip-status-clarification
 
 ## Current Position
 
-Phase: 3 — Test & CI Foundation
+Phase: 4 — Code Quality & Algorithmic Soundness Review
 Plan: Not started
-Status: Phase 2 shipped — PR #8 (into develop-gsd)
-Last activity: 2026-07-09 - Completed quick task 260709-nvp: re-ignore scripts/ bytecode caches
+Status: Phase complete — ready for verification
+Last activity: 2026-07-10 — Phase 03 + 03.1 complete, transitioned to Phase 4
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -38,7 +39,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 7
+- Total plans completed: 10
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -48,6 +49,8 @@ Progress: [░░░░░░░░░░] 0%
 |-------|-------|-------|----------|
 | 01 | 4 | - | - |
 | 02 | 3 | - | - |
+| 03 | 3 | - | - |
+| 03.1 | 3 | - | - |
 
 **Recent Trend:**
 
@@ -62,6 +65,12 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 1min | 2 tasks | 1 files |
 | Phase 02 P02 | 10min | 3 tasks | 3 files |
 | Phase 02 P03 | 5min | 2 tasks | 4 files |
+| Phase 03 P01 | 2 | 2 tasks | 2 files |
+| Phase 03 P02 | 2min | 2 tasks | 4 files |
+| Phase 03 P03 | 2min | 2 tasks | 2 files |
+| Phase 03.1 P01 | 20min | 2 tasks | 2 files |
+| Phase 03.1 P02 | 2min | 2 tasks | 4 files |
+| Phase 03.1 P03 | 5min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -83,6 +92,13 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 02 P02]: Added [tool.uv] conflicts for cuda11/cuda12 (owner option a) so the universal uv.lock hash-pins both GPU stacks in separate forks; cuXX pick defers to install time. A2 transitive RAPIDS source binding confirmed green.
 - [Phase ?]: DEP-01/DEP-02 delivered as audit attestation + runtime smoke, not code fixes: all three named pchandler 2.x breaks (FoVTree, to_py4dgeo, Csv/Las) have zero call sites in src/pc2img/
 - [Phase ?]: Smoke passes an explicit LazyDiskCacheConfig; the uncoerced None-default cache-config bug is deferred to Phase 4/5 (pending todo)
+- [Phase 03 P01]: Pinned pytest to ~= 9.1 (D-14) alongside pytest-cov ~= 5.0 + coverage ~= 7.0 (D-07); did NOT downgrade to pchandler's stale pytest ~= 8.4
+- [Phase 03 P01]: Added branch-coverage [tool.coverage.*] config (D-05) but omitted fail_under from TOML and kept --cov out of addopts so subset runs never trip a floor; coverage gate lives on the CI CLI only (Plan 03)
+- [Phase ?]: [Phase 03 P02] Green-by-triage: deleted the two import-broken pre-refactor modules (D-02); parked the 11 live-verified failures as xfail(strict=False) with Phase-5 reasons (D-03); suite now 15 passed / 11 xfailed / 0 failed
+- [Phase ?]: [Phase 03 P02] tests/ was entirely untracked (planning git-rm assumption false); committed the 3 surviving test modules + unchanged src/pc2img/features/rrim.py so the green + CI premise holds on a fresh checkout (Rule-3 deviation)
+- [Phase ?]: [Phase 03.1 P01] RRIM disposition locked: keep rrim.py on patent-expiry basis; core AAS patent family expired all jurisdictions (US 7,764,282 B2 et al.), no license required; verbatim claim-1 walk of active patents JP 5281518 + US 11,836,856 shows flat-RGB rrim.py reads on neither
+- [Phase ?]: [Phase 03.1 P02] Shipped top-level NOTICE as the RRIM distribution-safety artifact (patent-expiry basis + AAS/Chiba/Yokoyama attribution + trademark disclaimer); added opt-in rrim=[] signposting extra (registers nothing — only import pc2img.features.rrim registers) and re-locked uv.lock; docstrings reconciled to opt-in contract; wheel .dist-info legal-file inclusion deferred to Phase 6 (D-09/D-11/D-12)
+- [Phase 03.1 P03]: Owner signed off on keep-on-patent-expiry RRIM disposition (D-10); IP gate CLEARED, branch publication-safe (D-07 resolve-then-push); blocking patent-review todo moved pending->completed via git mv (audit trail) only after the human sign-off gate passed
 
 ### Pending Todos
 
@@ -98,6 +114,10 @@ Recent decisions affecting current work:
 |---|-------------|------|--------|-----------|
 | 260709-nvp | Re-ignore Python bytecode caches under scripts/ (fix over-broad `!/scripts/**` negation) | 2026-07-09 | bec9950 | [260709-nvp-re-ignore-python-bytecode-caches-under-s](./quick/260709-nvp-re-ignore-python-bytecode-caches-under-s/) |
 
+### Roadmap Evolution
+
+- Phase 03.1 inserted after Phase 3: RRIM (Red Relief Image) IP status clarification (URGENT)
+
 ## Deferred Items
 
 Items acknowledged and carried forward from previous milestone close:
@@ -108,6 +128,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-09T14:17:58.770Z
-Stopped at: Phase 2 context gathered
-Resume file: .planning/phases/02-dependency-adaptation-reproducible-environment/02-CONTEXT.md
+Last session: 2026-07-10T04:31:06.909Z
+Stopped at: Phase 03.1 context gathered
+Resume file: .planning/phases/03.1-rrim-red-relief-image-ip-status-clarification/03.1-CONTEXT.md

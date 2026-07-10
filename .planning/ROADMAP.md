@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches (completed 2026-07-08)
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
-- [ ] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net
+- [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [ ] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings
 - [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
@@ -94,7 +94,39 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Coverage measurement runs and a baseline percentage is recorded and reported.
   3. A CI workflow runs the test suite automatically on every pull request and reports pass/fail.
 
-**Plans**: TBD
+**Plans**: 3/3 plans complete
+
+**Wave 1**
+
+- [x] 03-01-PLAN.md — Add pytest/coverage config tables + three dev-group test-tooling pins, regenerate uv.lock [TEST-01, TEST-02]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 03-02-PLAN.md — Reach a green scoped suite by triage: delete 2 import-broken modules, xfail the current failures [TEST-01]
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 03-03-PLAN.md — Measure + record the coverage baseline (CONTRIBUTING) and add the lightweight PR CI workflow [TEST-02, CICD-01]
+
+### Phase 03.1: RRIM (Red Relief Image) IP status clarification (INSERTED)
+
+**Goal:** Clear the blocking RRIM IP/publication gate by executing the locked keep-on-patent-expiry disposition (D-09..D-12) in-tree — shipped IP findings doc + NOTICE (expiry basis + AAS/Chiba/Yokoyama attribution + RRIM® trademark disclaimer), an ADR, an opt-in `rrim` extra with a reconciled docstring, an internal good-faith ETH/owner sign-off, and the blocking todo resolved — leaving the branch provably publication-safe so Phase 3's live-CI push can proceed.
+**Requirements**: none mapped (driven by CONTEXT decisions D-09..D-12)
+**Depends on:** Phase 3
+**Plans:** 3/3 plans complete
+
+Plans:
+**Wave 1**
+
+- [x] 03.1-01-PLAN.md — IP findings doc (shipped) + ADR recording the locked disposition (Wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [x] 03.1-02-PLAN.md — top-level NOTICE + opt-in `rrim` extra + reconciled rrim.py docstring (Wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [x] 03.1-03-PLAN.md — verify suite green + coverage floor unchanged, ETH/owner sign-off, resolve blocking todo (Wave 3)
 
 ### Phase 4: Code Quality & Algorithmic Soundness Review
 
@@ -147,7 +179,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 |-------|----------------|--------|-----------|
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
-| 3. Test & CI Foundation | 0/TBD | Not started | - |
+| 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
