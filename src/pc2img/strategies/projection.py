@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self, cast
+from typing import Optional, Literal, Any, Generator, Callable, Self, cast, TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
@@ -9,8 +11,15 @@ from pchandler import PointCloudData
 from pchandler.filters import FoVFilter, BoxFilter
 from pchandler.geometry.spherical import FoV
 from pchandler.geometry.coordinates import rhv2xyz
-from pchandler.geometry.transforms import _TransformArray
 from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
+
+if TYPE_CHECKING:
+    # Private pchandler symbol used only in a static annotation on
+    # PerspectiveProjection.__init__ (see below). Guarding it under TYPE_CHECKING
+    # keeps `import pc2img.strategies.projection` — which also ships
+    # SphericalProjection / OrthographicProjection — working even if a future
+    # pchandler drops or renames the private symbol (T-04-D1).
+    from pchandler.geometry.transforms import _TransformArray
 
 from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
 
