@@ -22,7 +22,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Branch Untangling & Mainline Consolidation** - Establish develop-gsd as the single forward mainline; inventory and disposition all other branches (completed 2026-07-08)
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
 - [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
-- [ ] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings
+- [x] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings (completed 2026-07-10)
 - [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
 
@@ -140,7 +140,29 @@ Plans:
   3. A mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math is complete.
   4. Correctness issues surfaced by the soundness review are captured as concrete, testable bug items (BUG-05 inputs for Phase 5).
 
-**Plans**: TBD
+**Plans**: 7/7 plans complete
+
+**Wave 0**
+
+- [x] 04-01-PLAN.md — Swap black→ruff in the dev group + author tests/test_hygiene.py smoke/metadata/lint gate [QUAL-01]
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [x] 04-02-PLAN.md — pyproject full pass: [tool.ruff] config, joblib collapse, viz extra, metadata + human-verify gate for PyPI-facing URL/license, cuda note [QUAL-01]
+- [x] 04-03-PLAN.md — Mechanical source FIX: repair/delete make_generator, guard _TransformArray, sync features __all__, delete dup convert_to_image [QUAL-01, QUAL-02]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 04-04-PLAN.md — ruff sweep: check --fix + deliberate ERA001 deletion + ruff format; keep registration + suite green [QUAL-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 04-05-PLAN.md — Design-track review (D1–D4) find→refute → 04-FINDINGS-design.md (4 anchors + pickle finding) [QUAL-02]
+- [x] 04-06-PLAN.md — Math-track review (M1–M5) find→refute with numeric probes → 04-FINDINGS-math.md [QUAL-03]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [x] 04-07-PLAN.md — Synthesis + phase gate: merge/dedupe/re-anchor into canonical 04-FINDINGS.md [QUAL-02, QUAL-03]
 
 ### Phase 5: Bug Fixes & Module Test Coverage
 
@@ -180,6 +202,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 1. Branch Untangling & Mainline Consolidation | 4/4 | Complete    | 2026-07-08 |
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
-| 4. Code Quality & Algorithmic Soundness Review | 0/TBD | Not started | - |
+| 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |

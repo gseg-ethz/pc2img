@@ -1,13 +1,13 @@
-from abc import ABC
-from typing import Type, Dict, Any
 import re
 
 from .core import BaseFeatureStrategy, DerivativeFeatureStrategy
+
 
 class FeatureSpec:
     """
     Represents a parsed feature name and its parameters.
     """
+
     def __init__(self, name: str, pattern: re.Pattern):
         m = pattern.fullmatch(name)
         if not m:
@@ -16,19 +16,19 @@ class FeatureSpec:
         self.params = m.groupdict()
         # dependencies recognized from params or fixed list
         self.dependencies = []
-        if 'base_feature' in self.params:
-            self.dependencies.append(self.params['base_feature'])
+        if "base_feature" in self.params:
+            self.dependencies.append(self.params["base_feature"])
         self.cls = None
 
-class FeatureRegistry:
 
+class FeatureRegistry:
     def __init__(self):
-        self._map: Dict[re.Pattern[str], Type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
-        self._default_cls: Type[BaseFeatureStrategy] = None
+        self._map: dict[re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
+        self._default_cls: type[BaseFeatureStrategy] = None
 
     def register(self, cls=None, *, default: bool = False):
         # support both @reg and @reg(default=True)
-        def decorator(c: Type[BaseFeatureStrategy | DerivativeFeatureStrategy]):
+        def decorator(c: type[BaseFeatureStrategy | DerivativeFeatureStrategy]):
             pat = c.regex_pattern
             if pat in self._map:
                 raise RuntimeError(f"Pattern {pat.pattern} already registered")
@@ -39,6 +39,7 @@ class FeatureRegistry:
                 raise RuntimeError(f"strategy {c.__name__} already registered as default")
 
             return c
+
         return decorator(cls) if cls else decorator
 
     def match(self, name: str) -> FeatureSpec:
@@ -57,7 +58,7 @@ class FeatureRegistry:
             # create a pseudo-spec for default class
             spec = FeatureSpec.__new__(FeatureSpec)
             spec.name = name
-            spec.params = {'feature': name}
+            spec.params = {"feature": name}
             spec.dependencies = []
             spec.cls = self._default_cls
             return spec

@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import inspect
 import logging
-from typing import TypeVar, Generic, TYPE_CHECKING, Callable, ParamSpec, Any, Generator, Protocol, cast, TypeGuard, Optional
-
+from collections.abc import Callable, Generator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ParamSpec,
+    Protocol,
+    TypeVar,
+    cast,
+)
 
 if TYPE_CHECKING:
     from .interpolation import InterpolationStrategy
@@ -17,8 +24,8 @@ T_co = TypeVar("T_co", covariant=True)
 
 logger = logging.getLogger(__name__)
 
-# class StrategyRegistry(Generic[T]):
-class StrategyRegistry(Generic[T]):
+
+class StrategyRegistry[T]:
     def __init__(self) -> None:
         self._map: dict[str, type[T]] = {}
         self._ctor_meta: dict[type[T], tuple[set[str], bool]] = {}
@@ -45,6 +52,7 @@ class StrategyRegistry(Generic[T]):
                     accepts_var_kw = True
             self._ctor_meta[cast(type[T], cls)] = (valid_kw, accepts_var_kw)
             return cls
+
         return decorator
 
     def get_strategy(self, identifier: str) -> type[T]:
@@ -58,7 +66,7 @@ class StrategyRegistry(Generic[T]):
         valid_kw, accepts_var_kw = self._ctor_meta[cls]
         if not accepts_var_kw:
             return cls(**kwargs)
-        
+
         filtered = {k: v for k, v in kwargs.items() if k in valid_kw}
         unexpected = set(kwargs) - set(filtered)
         if unexpected:
@@ -68,7 +76,7 @@ class StrategyRegistry(Generic[T]):
                 stacklevel=2,
             )
         return cls(**filtered)
-    
+
     # NEW: reverse lookup from instance or class to its registered key
     def key_of(self, obj: T | type[T]) -> str:
         cls: type[T] = cast(type[T], obj if inspect.isclass(obj) else type(obj))
@@ -86,17 +94,19 @@ class StrategyRegistry(Generic[T]):
 PROJECTIONS: StrategyRegistry[ProjectionStrategy] = StrategyRegistry()
 INTERPOLATIONS: StrategyRegistry[InterpolationStrategy] = StrategyRegistry()
 
+
 class StrategyFactory(Protocol[P, T_co]):
     def __call__(self, *args: P.args, **kwargs: P.kwargs) -> T_co: ...
 
-class _StrategyClass(Generic[T]):
+
+class _StrategyClass[T]:
     """
     Subclass this, setting `registry` to your StrategyRegistry
     and `base_type` to the ABC class for that family.
     """
+
     registry: StrategyRegistry[T]
     base_type: type[T]
-
 
     @classmethod
     def __get_validators__(cls) -> Generator[Callable[..., type[T]], None, None]:
@@ -112,7 +122,7 @@ class _StrategyClass(Generic[T]):
         if isinstance(v, str):
             try:
                 return cls.registry.get_strategy(v)
-            except KeyError:
-                raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}")
+            except KeyError as err:
+                raise ValueError(f"Unknown {cls.base_type.__name__!r} key: {v!r}") from err
 
         raise TypeError(f"Cannot interpret {v!r} as a {cls.base_type.__name__} class/key")

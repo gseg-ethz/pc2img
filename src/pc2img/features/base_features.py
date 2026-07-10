@@ -2,11 +2,9 @@ import re
 
 import numpy as np
 from numpy.typing import NDArray
-
 from pchandler import PointCloudData
 
 from .core import BaseFeatureStrategy
-
 from .registry import FEATURES
 
 
@@ -24,6 +22,7 @@ class ScalarFieldFeature(BaseFeatureStrategy):
     A BaseFeatureStrategy that pulls any named scalar field off the point cloud.
     Usage: feature name should be "scalar_<field_name>"
     """
+
     regex_pattern = re.compile(r"^scalar_field_(?P<feature>.+)$")
 
     def __init__(self, feature: str):

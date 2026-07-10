@@ -11,9 +11,10 @@ RRIM becomes a benchmarking bottleneck.
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from functools import lru_cache
-from typing import Callable, Literal
+from typing import Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -138,7 +139,9 @@ def _shift_with_fill(
     return shifted
 
 
-def _safe_gradient(values: NDArray[np.float32], pixel_size: tuple[float, float]) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
+def _safe_gradient(
+    values: NDArray[np.float32], pixel_size: tuple[float, float]
+) -> tuple[NDArray[np.float32], NDArray[np.float32]]:
     grad_y = np.zeros_like(values, dtype=np.float32)
     grad_x = np.zeros_like(values, dtype=np.float32)
 
@@ -403,7 +406,10 @@ def _parse_option_token(config: RRIMConfig, token: str) -> RRIMConfig:
 
     match = _STRUCTURE_CLIP_RE.fullmatch(token)
     if match:
-        return replace(config, structure_clip=(float(match.group("low")), float(match.group("high"))))
+        return replace(
+            config,
+            structure_clip=(float(match.group("low")), float(match.group("high"))),
+        )
 
     match = _Z_FACTOR_RE.fullmatch(token)
     if match:
@@ -413,10 +419,7 @@ def _parse_option_token(config: RRIMConfig, token: str) -> RRIMConfig:
     if match:
         return replace(config, red_strength=float(match.group("value")))
 
-    raise ValueError(
-        f"Unknown RRIM option '{token}'. "
-        "Supported tokens are rN, dN, sclipA-B, oclipA-B, zF and redF."
-    )
+    raise ValueError(f"Unknown RRIM option '{token}'. Supported tokens are rN, dN, sclipA-B, oclipA-B, zF and redF.")
 
 
 def _looks_like_option_token(token: str) -> bool:
@@ -454,8 +457,7 @@ def _parse_rrim_component(args: str) -> tuple[RRIMComponent, RRIMConfig]:
     component = tokens.pop(0).lower()
     if component not in {"slope", "positive", "negative", "structure"}:
         raise ValueError(
-            f"Unsupported RRIM component '{component}'. "
-            "Expected one of: slope, positive, negative, structure."
+            f"Unsupported RRIM component '{component}'. Expected one of: slope, positive, negative, structure."
         )
 
     config = RRIMConfig()

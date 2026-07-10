@@ -22,9 +22,9 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 
 ### Code Quality & Algorithmic Soundness
 
-- [ ] **QUAL-01**: Code-hygiene cleanup — dead/commented code removed, duplicate `joblib` pin collapsed, placeholder `pyproject` metadata replaced, duplicate `convert_to_image` removed, matplotlib moved to an optional extra
-- [ ] **QUAL-02**: Software-design review completed; findings addressed or logged (divergent registries, in-place raster mutation, missing dependency-cycle guard, broken `make_generator` factory)
-- [ ] **QUAL-03**: Mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math; findings addressed or logged
+- [x] **QUAL-01**: Code-hygiene cleanup — dead/commented code removed, duplicate `joblib` pin collapsed, placeholder `pyproject` metadata replaced, duplicate `convert_to_image` removed, matplotlib moved to an optional extra
+- [x] **QUAL-02**: Software-design review completed; findings addressed or logged (divergent registries, in-place raster mutation, missing dependency-cycle guard, broken `make_generator` factory)
+- [x] **QUAL-03**: Mathematical/algorithmic soundness review of projection geometry, Delaunay culling heuristics, NaN-aware smoothing, and feature math; findings addressed or logged
 
 ### Bug Fixes (each with a proving test)
 
@@ -92,9 +92,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BRANCH-01 | Phase 1 | Complete |
 | BRANCH-02 | Phase 1 | Complete |
 | BRANCH-03 | Phase 1 | Complete |
-| QUAL-01 | Phase 4 | Pending |
-| QUAL-02 | Phase 4 | Pending |
-| QUAL-03 | Phase 4 | Pending |
+| QUAL-01 | Phase 4 | Complete |
+| QUAL-02 | Phase 4 | Complete |
+| QUAL-03 | Phase 4 | Complete |
 | BUG-01 | Phase 5 | Pending |
 | BUG-02 | Phase 5 | Pending |
 | BUG-03 | Phase 5 | Pending |

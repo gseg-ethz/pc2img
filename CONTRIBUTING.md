@@ -29,7 +29,7 @@ versions recorded in `uv.lock`.
 uv sync --group doc     # additionally install the `doc` group (sphinx) for building docs
 ```
 
-Both `dev` (black, pytest, memory_profiler) and `doc` (sphinx) are declared as
+Both `dev` (ruff, pytest, memory_profiler) and `doc` (sphinx) are declared as
 [PEP 735](https://peps.python.org/pep-0735/) `[dependency-groups]`, so they never
 leak into the published wheel metadata and are never installed by
 `pip install pc2img`.
@@ -98,6 +98,26 @@ variants are declared as mutually exclusive via `[tool.uv] conflicts` (they pull
 conflicting `cuda-python` major versions); uv resolves each in a separate fork, so
 both stay hash-pinned in the universal lock. Pick the variant that matches your
 NVIDIA driver at install time: `pip install pc2img[cuda12]` or `pc2img[cuda11]`.
+
+## Choosing a CUDA variant (`cuda11` vs `cuda12`)
+
+pc2img exposes two GPU extras, `pc2img[cuda11]` and `pc2img[cuda12]` — both pull
+`pchandler[cudaXX]`, which in turn drags in the RAPIDS stack
+(`cudf`/`cuspatial`/`cuproj`/`cuml`/`dask-cudf`).
+
+- **The pick is driven by your installed NVIDIA driver, not your CUDA toolkit.**
+  Run `nvidia-smi` and read the "CUDA Version" in the top-right — that is the
+  *maximum* CUDA runtime your driver supports.
+  - Driver supports CUDA ≥ 12.0 → install `pc2img[cuda12]` (preferred; RAPIDS 25.4
+    is primarily a cu12 line).
+  - Older driver capped at CUDA 11.x → install `pc2img[cuda11]`.
+- **The two extras are mutually exclusive** — `cudf-cu12` needs
+  `cuda-python>=12.6.2,<13` while `cudf-cu11` needs `>=11.8.5,<12`, so a single
+  environment cannot satisfy both. Choose exactly one at install time.
+- Both require the nvidia index (`--extra-index-url=https://pypi.nvidia.com`).
+- For exact driver/runtime minimums, consult the
+  [RAPIDS install selector](https://docs.rapids.ai/install/) rather than a version
+  table duplicated here.
 
 ## Gotchas
 

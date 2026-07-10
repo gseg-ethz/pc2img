@@ -1,45 +1,55 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Optional, Literal, Any, Generator, Callable, Self, cast
+from collections.abc import Callable, Generator
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Literal,
+)
 
 import numpy as np
+from GSEGUtils.base_types import (
+    Array_Nx2_Float_T,
+    Vector_Bool_T,
+)
 from numpy.typing import NDArray
-from scipy.spatial.transform import Rotation
-
 from pchandler import PointCloudData
-from pchandler.filters import FoVFilter, BoxFilter
-from pchandler.geometry.spherical import FoV
+from pchandler.filters import BoxFilter, FoVFilter
 from pchandler.geometry.coordinates import rhv2xyz
-from pchandler.geometry.transforms import _TransformArray
-from GSEGUtils.base_types import Vector_Bool_T, Array_Nx2_Float_T, Array_3x3_T, Array_4x4_T, Array_Nx3_T
+from pchandler.geometry.spherical import FoV
 
-from .registry import PROJECTIONS, _StrategyClass, StrategyFactory
+if TYPE_CHECKING:
+    # Private pchandler symbol used only in a static annotation on
+    # PerspectiveProjection.__init__ (see below). Guarding it under TYPE_CHECKING
+    # keeps `import pc2img.strategies.projection` — which also ships
+    # SphericalProjection / OrthographicProjection — working even if a future
+    # pchandler drops or renames the private symbol (T-04-D1).
+    from pchandler.geometry.transforms import _TransformArray
 
+from .registry import PROJECTIONS, _StrategyClass
 
 ProjectionName = Literal["spherical", "orthographic", "perspective"]
 
 
 class ProjectionStrategy(ABC):
     @classmethod
-    def __get_validators__(cls) -> Generator[Callable[..., "ProjectionStrategy"], None, None]:
+    def __get_validators__(
+        cls,
+    ) -> Generator[Callable[..., ProjectionStrategy], None, None]:
         yield cls.validate
 
     @classmethod
-    def validate(cls, value: Any, _) -> "ProjectionStrategy":
+    def validate(cls, value: Any, _) -> ProjectionStrategy:
         if isinstance(value, cls):
             return value
         if isinstance(value, str):
             return PROJECTIONS.create(value)
-        if (
-                isinstance(value, tuple)
-                and len(value) == 2
-                and isinstance(value[0], str)
-                and isinstance(value[1], dict)
-        ):
+        if isinstance(value, tuple) and len(value) == 2 and isinstance(value[0], str) and isinstance(value[1], dict):
             key, kwargs = value
             return PROJECTIONS.create(key, **kwargs)
 
         raise TypeError(f"Cannot interpret {value!r} as a {cls.__name__} strategy")
-
 
     @abstractmethod
     def project_raw(
@@ -57,11 +67,7 @@ class ProjectionStrategy(ABC):
     @abstractmethod
     def inverse_projection(self): ...
 
-    def project(
-        self,
-        pcd: PointCloudData,
-        resolution: tuple[int, int]
-    ) -> tuple[NDArray, NDArray]:
+    def project(self, pcd: PointCloudData, resolution: tuple[int, int]) -> tuple[NDArray, NDArray]:
         """
         Normalize raw coords into [0,1]×[0,1] based on data extents,
         map to pixel indices at the given resolution, and apply the mask.
@@ -73,8 +79,6 @@ class ProjectionStrategy(ABC):
         coords_raw, mask, mins, maxs = self.project_raw(pcd)
         w, h = resolution
         # normalize per-dimension
-        # mins = coords_raw.min(axis=0)
-        # maxs = coords_raw.max(axis=0)
         span = maxs - mins
         # avoid division by zero
         span[span == 0] = 1
@@ -95,19 +99,22 @@ class ProjectionStrategyClass(_StrategyClass[ProjectionStrategy]):
 @PROJECTIONS.register("spherical")
 class SphericalProjection(ProjectionStrategy):
     def __init__(
-            self,
-            *,
-            field_of_view: Optional[FoV] = None,
+        self,
+        *,
+        field_of_view: FoV | None = None,
     ) -> None:
         self._field_of_view = field_of_view
 
     @property
-    def fov(self) -> Optional[FoV]:
+    def fov(self) -> FoV | None:
         return self._field_of_view
 
     def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        mask = FoVFilter(fov=self._field_of_view).mask(pcd) if self._field_of_view is not None \
+        mask = (
+            FoVFilter(fov=self._field_of_view).mask(pcd)
+            if self._field_of_view is not None
             else np.ones((pcd.nbPoints,), dtype=bool)
+        )
 
         fov = self._field_of_view if self._field_of_view is not None else pcd.fov
         mins = np.array([fov.left, fov.top]).squeeze()
@@ -115,17 +122,23 @@ class SphericalProjection(ProjectionStrategy):
 
         return pcd.spher[mask, 1:], mask, mins, maxs
 
-    def inverse_projection(self, range_img: NDArray, spherical_origin: Optional[NDArray] = None) -> tuple[NDArray, NDArray]:
+    def inverse_projection(
+        self, range_img: NDArray, spherical_origin: NDArray | None = None
+    ) -> tuple[NDArray, NDArray]:
         px_vertical, px_horizontal = range_img.shape
         horizontal_range = np.linspace(
             self._field_of_view.left,
             self._field_of_view.right,
-            num=px_horizontal, endpoint=True, dtype=np.float32
+            num=px_horizontal,
+            endpoint=True,
+            dtype=np.float32,
         )
         vertical_range = np.linspace(
             self._field_of_view.top,
             self._field_of_view.bottom,
-            num=px_vertical, endpoint=True, dtype=np.float32
+            num=px_vertical,
+            endpoint=True,
+            dtype=np.float32,
         )
 
         vertical_mesh, horizontal_mesh = np.meshgrid(vertical_range, horizontal_range, indexing="ij")
@@ -142,26 +155,21 @@ class SphericalProjection(ProjectionStrategy):
         return xyz, mask
 
 
-
-
-
 @PROJECTIONS.register("orthographic")
 class OrthographicProjection(ProjectionStrategy):
     def __init__(
-            self,
-            *,
-            plane: Literal["xy", "yz", "xz"],
-            roi_box: Optional[tuple[float, float, float, float]] = None,
+        self,
+        *,
+        plane: Literal["xy", "yz", "xz"],
+        roi_box: tuple[float, float, float, float] | None = None,
     ) -> None:
         match plane:
-            case 'xy':
-                self._xyz_column_selection = [0,1]
-            case 'yz':
-                self._xyz_column_selection = [1,2]
-            case 'xz':
-                self._xyz_column_selection = [0,2]
-            # case _:  # Not needed if the configuration is guaranteed via a Pydantic Model or similar
-            #     raise ValueError(f"plane must be 'xy' or 'yz' or 'xz'")
+            case "xy":
+                self._xyz_column_selection = [0, 1]
+            case "yz":
+                self._xyz_column_selection = [1, 2]
+            case "xz":
+                self._xyz_column_selection = [0, 2]
         self.plane = plane
         self._roi_box = roi_box
 
@@ -189,11 +197,15 @@ class PerspectiveProjection(ProjectionStrategy):
     def inverse_projection(self):
         raise NotImplementedError("This function computes the inverse projection.")
 
-    def __init__(self, projection_matrix: NDArray|_TransformArray, rotation_matrix: NDArray|_TransformArray):
+    def __init__(
+        self,
+        projection_matrix: NDArray | _TransformArray,
+        rotation_matrix: NDArray | _TransformArray,
+    ):
         self.projection_matrix = projection_matrix
         self.rotation_matrix = rotation_matrix
 
-    def project(self, pcd: PointCloudData, resolution: tuple[int, int] ) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
+    def project(self, pcd: PointCloudData, resolution: tuple[int, int]) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
         """
         Rotate the scan so that the projection direction
 
@@ -205,9 +217,7 @@ class PerspectiveProjection(ProjectionStrategy):
         uv = uv.arr[:, :2] / uv.arr[:, 2].reshape(-1, 1)
         mask = np.logical_and(
             np.logical_and(uv[:, 0] >= 0, uv[:, 0] < resolution[0]),
-            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1])
+            np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1]),
         )
 
         return uv[mask, :], mask
-
-

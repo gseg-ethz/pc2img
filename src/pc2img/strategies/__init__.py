@@ -1,11 +1,32 @@
 __all__ = [
-    "ProjectionName", "ProjectionStrategy", "SphericalProjection", "OrthographicProjection",
-    "InterpolationName", "InterpolationStrategy", "DelaunayInterpolation", "NearestNeighborInterpolation",
+    "ProjectionName",
+    "ProjectionStrategy",
+    "SphericalProjection",
+    "OrthographicProjection",
+    "InterpolationName",
+    "InterpolationStrategy",
+    "DelaunayInterpolation",
+    "NearestNeighborInterpolation",
     "TriangulationStrategy",
-    "PROJECTIONS", "INTERPOLATIONS", "ProjectionStrategyClass", "InterpolationStrategyClass",
+    "PROJECTIONS",
+    "INTERPOLATIONS",
+    "ProjectionStrategyClass",
+    "InterpolationStrategyClass",
 ]
 
-from .projection import ProjectionName, ProjectionStrategy, SphericalProjection, OrthographicProjection, ProjectionStrategyClass
-from .interpolation import InterpolationName, InterpolationStrategy, NearestNeighborInterpolation, DelaunayInterpolation,InterpolationStrategyClass
+from .interpolation import (
+    DelaunayInterpolation,
+    InterpolationName,
+    InterpolationStrategy,
+    InterpolationStrategyClass,
+    NearestNeighborInterpolation,
+)
+from .projection import (
+    OrthographicProjection,
+    ProjectionName,
+    ProjectionStrategy,
+    ProjectionStrategyClass,
+    SphericalProjection,
+)
+from .registry import INTERPOLATIONS, PROJECTIONS
 from .triangulation import TriangulationStrategy
-from .registry import PROJECTIONS, INTERPOLATIONS

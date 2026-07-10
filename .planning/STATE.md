@@ -2,19 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 4
-current_phase_name: Code Quality & Algorithmic Soundness Review
-status: verifying
-stopped_at: Phase 03 + 03.1 shipped — PR #10
-last_updated: "2026-07-10T12:46:26.516Z"
+current_phase: 04
+status: "Phase 04 shipped — PR #11"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-07-10T18:24:38.452Z"
 last_activity: 2026-07-10
-last_activity_desc: Phase 03 + 03.1 shipped (PR #10 → develop-gsd), transitioned to Phase 4
 progress:
   total_phases: 7
-  completed_phases: 4
-  total_plans: 13
-  completed_plans: 13
-  percent: 57
+  completed_phases: 5
+  total_plans: 20
+  completed_plans: 20
+  percent: 71
+current_phase_name: code-quality-algorithmic-soundness-review
 ---
 
 # Project State
@@ -24,14 +23,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-08)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 03.1 — rrim-red-relief-image-ip-status-clarification
+**Current focus:** Phase 04 — code-quality-algorithmic-soundness-review
 
 ## Current Position
 
-Phase: 4 — Code Quality & Algorithmic Soundness Review
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-10 — Phase 03 + 03.1 complete, transitioned to Phase 4
+Phase: 04 — COMPLETE
+Plan: 7 of 7
+Status: Phase 04 shipped — PR #11
+Last activity: 2026-07-10
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -71,6 +70,13 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03.1 P01 | 20min | 2 tasks | 2 files |
 | Phase 03.1 P02 | 2min | 2 tasks | 4 files |
 | Phase 03.1 P03 | 5min | 2 tasks | 2 files |
+| Phase 04 P01 | 3min | 2 tasks | 3 files |
+| Phase 04 P03 | 6min | 3 tasks | 4 files |
+| Phase 04 P02 | 3min | 4 tasks | 3 files |
+| Phase 04 P04 | 24min | 2 tasks | 23 files |
+| Phase 04 P05 | 10min | 2 tasks | 2 files |
+| Phase 04 P06 | 12min | 2 tasks | 2 files |
+| Phase 04 P07 | 9min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -99,6 +105,13 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03.1 P01] RRIM disposition locked: keep rrim.py on patent-expiry basis; core AAS patent family expired all jurisdictions (US 7,764,282 B2 et al.), no license required; verbatim claim-1 walk of active patents JP 5281518 + US 11,836,856 shows flat-RGB rrim.py reads on neither
 - [Phase ?]: [Phase 03.1 P02] Shipped top-level NOTICE as the RRIM distribution-safety artifact (patent-expiry basis + AAS/Chiba/Yokoyama attribution + trademark disclaimer); added opt-in rrim=[] signposting extra (registers nothing — only import pc2img.features.rrim registers) and re-locked uv.lock; docstrings reconciled to opt-in contract; wheel .dist-info legal-file inclusion deferred to Phase 6 (D-09/D-11/D-12)
 - [Phase 03.1 P03]: Owner signed off on keep-on-patent-expiry RRIM disposition (D-10); IP gate CLEARED, branch publication-safe (D-07 resolve-then-push); blocking patent-review todo moved pending->completed via git mv (audit trail) only after the human sign-off gate passed
+- [Phase 04]: [Phase 04 P01] Swapped black->ruff ~= 0.15 in PEP 735 dev group (D-11 default; ruff format is black-equivalent), relocked uv.lock; authored tests/test_hygiene.py as the Wave 0 QUAL-01 gate (1 LIVE import-smoke pass + 3 xfail: keywords/viz/ruff-clean, split so 04-02/04-04 flip markers independently); no [tool.ruff] block yet (deferred to 04-02)
+- [Phase ?]: [Phase 04 P03] Deleted broken make_generator (zero callers) rather than repairing; guarded pchandler private _TransformArray under TYPE_CHECKING + __future__ annotations (resolves Phase-1 IN-03 / T-04-D1); synced features barrel __all__ to registered non-rrim set; deleted dead plt-referencing convert_to_image duplicate (QUAL-01/02)
+- [Phase 04]: [Phase 04 P02] Landed 88-col [tool.ruff] config (D-11; families E/F/W/I/B/C90/UP/NPY+ERA001, not sibling 120); barrel per-file-ignores exempt the four __init__.py from F401 so 04-04 ruff --fix keeps registration re-exports; collapsed joblib to one ~=1.5 pin; matplotlib->optional viz extra; de-placeholdered metadata; owner-confirmed BSD license classifier + github docs URL (T-04-M1)
+- [Phase ?]: [Phase 04 P04] Owner reversed D-11: ruff line-length 88->120 (dense numerical code; cleared 25 E501 with zero edits, matches sibling template); applied PEP695 (UP040/UP046); Option A - kept [tool.ruff] STRICT and retargeted the hygiene gate test to the fixable subset (--ignore E402,C901,B008) not global-ignore; 18 residual findings (E402x9->BUG-04, C901x5, B008x4->seed E) deferred to Phase 5 as visible breadcrumbs (D-02); CI enforcement still deferred to Phase 6 (D-10)
+- [Phase 04]: [Phase 04 P07] Synthesized canonical 04-FINDINGS.md: 24 active findings (M-01..M-13 + DSN-01..DSN-11) merged most-severe-first, per-entry schema-linted (8 D-06 fields + file:line anchor); BUG-01=M-01 recorded once cross-referenced; DSN-02/BUG-02 states TypeError->NotImplementedError; no per-finding BUG-05 ids (D-07)
+- [Phase 04]: [Phase 04 P07] Rule-1: plan Task-2 linter regex (mid-pattern (?im)) fails to compile on Python >=3.11 incl project .venv 3.12.13; validated with semantically-identical hoisted-flag form -> 24/24 schema-valid; Phase 5/verifier must use hoisted-flag linter
+- [Phase 04 gap-closure]: Closed SC1 partial gap from 04-VERIFICATION.md — deleted the ~37 lines of commented-out dead code ERA001's heuristic could not flag (orphaned class/def/decorator headers left by 04-04's ERA001-only sweep) across 6 src files + stale DeSpAn pyproject leftovers (commit 4192da5); explanatory prose preserved; suite still 19 passed / 11 xfailed / 0 xpassed, ruff format + hygiene gate clean; appended forward-only correction to 04-04-SUMMARY (18cf7e7 did NOT fully remove TriangulationData/BarycentricInterpolation)
 
 ### Pending Todos
 
@@ -128,6 +141,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T04:31:06.909Z
-Stopped at: Phase 03.1 context gathered
-Resume file: .planning/phases/03.1-rrim-red-relief-image-ip-status-clarification/03.1-CONTEXT.md
+Last session: 2026-07-10T16:19:16.796Z
+Stopped at: Completed 04-02-PLAN.md
+Resume file: None

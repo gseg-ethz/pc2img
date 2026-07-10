@@ -1,19 +1,17 @@
-from pathlib import Path
-from typing import Optional, TypeVar, Any, overload, Mapping, NamedTuple, TypeAlias, TYPE_CHECKING, Annotated, cast
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, cast
 
-from pydantic import ConfigDict, validate_call, BeforeValidator
 import numpy as np
-
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, LazyDiskCacheKw
-
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 from pchandler import PointCloudData
+from pydantic import BeforeValidator, ConfigDict, validate_call
 
-from pc2img.strategies.projection import ProjectionStrategy, ProjectionName
-from pc2img.strategies.interpolation import InterpolationStrategy, InterpolationName
 from pc2img.features.manager import FeatureManager
 from pc2img.image_cache.disk_backed_image_data import DiskBackedImageData
+from pc2img.strategies.interpolation import InterpolationName, InterpolationStrategy
+from pc2img.strategies.projection import ProjectionName, ProjectionStrategy
 
-# ImgRes: TypeAlias = tuple[int, int]
+
 class ImgRes(NamedTuple):
     width: int
     height: int
@@ -21,17 +19,21 @@ class ImgRes(NamedTuple):
     def __repr__(self) -> str:
         return f"ImgRes(width={self.width}, height={self.height})"
 
+
 # --- Converters (single source of truth for coercion) ---
+
 
 def coerce_img_res(x: ImgRes | tuple[int, int]) -> ImgRes:
     if isinstance(x, ImgRes):
         return x
-    if (isinstance(x, tuple) and len(x) == 2 
-            and all(isinstance(v, int) for v in x)):
+    if isinstance(x, tuple) and len(x) == 2 and all(isinstance(v, int) for v in x):
         return ImgRes(*x)
     raise TypeError("img_res must be ImgRes or (width:int, height:int)")
 
-def coerce_lazy_cfg(x: LazyDiskCacheConfig | Mapping[str, Any] | None) -> LazyDiskCacheConfig:
+
+def coerce_lazy_cfg(
+    x: LazyDiskCacheConfig | Mapping[str, Any] | None,
+) -> LazyDiskCacheConfig:
     if x is None:
         return LazyDiskCacheConfig()
     if isinstance(x, LazyDiskCacheConfig):
@@ -40,18 +42,13 @@ def coerce_lazy_cfg(x: LazyDiskCacheConfig | Mapping[str, Any] | None) -> LazyDi
         return LazyDiskCacheConfig(**x)
     raise TypeError("lazy_disk_cache_config must be a mapping or LazyDiskCacheConfig")
 
+
 # --- Typing trick: show loose types to type-checkers, use converters at runtime ---
 
 if TYPE_CHECKING:
-    ProjectionStrategyLike: TypeAlias = (
-        ProjectionStrategy
-        | ProjectionName
-        | tuple[ProjectionName, Mapping[str, Any]]
-    )
-    InterpolationStrategyLike: TypeAlias = (
-        InterpolationStrategy
-        | InterpolationName
-        | tuple[InterpolationName, Mapping[str, Any]]
+    type ProjectionStrategyLike = ProjectionStrategy | ProjectionName | tuple[ProjectionName, Mapping[str, Any]]
+    type InterpolationStrategyLike = (
+        InterpolationStrategy | InterpolationName | tuple[InterpolationName, Mapping[str, Any]]
     )
     ImgResLike = ImgRes | tuple[int, int]
     LazyDiskCacheConfigLike = LazyDiskCacheConfig | Mapping[str, Any] | None
@@ -61,8 +58,8 @@ else:
     ImgResLike = Annotated[ImgRes, BeforeValidator(coerce_img_res)]
     LazyDiskCacheConfigLike = Annotated[LazyDiskCacheConfig, BeforeValidator(coerce_lazy_cfg)]
 
-class PointCloudImageGenerator:
 
+class PointCloudImageGenerator:
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def __init__(
         self,
@@ -77,15 +74,15 @@ class PointCloudImageGenerator:
         self._proj = cast(ProjectionStrategy, proj)
         self._interp = cast(InterpolationStrategy, interp)
         self.feature_mgr = FeatureManager(
-            self._pcd, 
-            lazy_disk_cache_config=cast(LazyDiskCacheConfig, lazy_disk_cache_config)
+            self._pcd,
+            lazy_disk_cache_config=cast(LazyDiskCacheConfig, lazy_disk_cache_config),
         )
         self.projection_results = {}
 
     def generate(
-            self,
-            features: list[str],
-    ) -> dict[str,DiskBackedImageData]:
+        self,
+        features: list[str],
+    ) -> dict[str, DiskBackedImageData]:
 
         self.feature_mgr.request(features)
         base_features_1D = self.feature_mgr.get_base_features()
@@ -93,7 +90,9 @@ class PointCloudImageGenerator:
         if base_features_1D:
             resolution = self._img_res
             if not self.projection_results:
-                self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(self._pcd, resolution)
+                self.projection_results["pts2d"], self.projection_results["mask"] = self._proj.project(
+                    self._pcd, resolution
+                )
 
             pts2d = self.projection_results["pts2d"]
             mask = self.projection_results["mask"]

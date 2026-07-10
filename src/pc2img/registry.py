@@ -1,16 +1,7 @@
-from pc2img.core import PointCloudImageGenerator
-from pc2img.strategies.registry import PROJECTIONS, INTERPOLATIONS
-
-
-# Factory for assembling a configured generator
-
-def make_generator(
-    pcd,
-    proj_name: str,
-    proj_cfg: dict,
-    interp_name: str,
-    interp_cfg: dict
-) -> PointCloudImageGenerator:
-    proj = PROJECTIONS.create(proj_name, **proj_cfg)
-    interp = INTERPOLATIONS.create(interp_name, **interp_cfg)
-    return PointCloudImageGenerator(pcd, proj, interp)
+# The former ``make_generator`` factory was removed in Phase 04 (QUAL-01): it called
+# ``PointCloudImageGenerator(pcd, proj, interp)`` with three positional arguments, which
+# — against the real 5-parameter constructor ``(pcd, img_res, proj, interp,
+# lazy_disk_cache_config)`` — landed ``proj`` in ``img_res`` and ``interp`` in ``proj``.
+# No caller existed anywhere in ``src/``, ``tests/``, or ``scripts/``, so the broken
+# factory was deleted rather than repaired. Construct a generator directly via
+# ``pc2img.PointCloudImageGenerator`` instead.
