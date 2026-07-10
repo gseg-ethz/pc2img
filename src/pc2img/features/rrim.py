@@ -331,8 +331,18 @@ def compute_rrim(
     This is appropriate for DEM-like rasters and a pragmatic approximation for
     scanner-centred range images.
 
+    Opt-in registration
+    --------------------
+    RRIM is NOT part of the default feature barrel: importing `pc2img.features`
+    does not register it. A caller MUST run `import pc2img.features.rrim` first,
+    which executes the module-level `@FEATURES.register` decorators, before
+    `generate(["rrim", ...])` will resolve the name. Installing the `rrim` pip
+    extra alone does NOT register the feature — the extra only signposts optional
+    deps; the explicit module import is what registers.
+
     Example
     -------
+    `import pc2img.features.rrim  # opt-in: runs @FEATURES.register`
     `images = generator.generate(["rrim", "rrim_component_(structure,range,r24,d16)"])`
     `rrim_uint8 = images["rrim"].to_uint8()`
     """
@@ -459,6 +469,15 @@ def _parse_rrim_component(args: str) -> tuple[RRIMComponent, RRIMConfig]:
 
 @FEATURES.register
 class RRIMPackFeature(DerivativeFeatureStrategy):
+    """
+    Packs the (positive, negative, structure) openness components of RRIM.
+
+    Opt-in: this feature is only registered after `import pc2img.features.rrim`
+    runs the module-level `@FEATURES.register` side-effect. It is NOT in the
+    default `pc2img.features` barrel, and enabling the `rrim` pip extra alone does
+    not register it — the module import is what registers.
+    """
+
     regex_pattern = re.compile(r"^rrim_pack_\((?P<args>.+)\)$")
 
     def __init__(self, args: str) -> None:
@@ -480,6 +499,18 @@ class RRIMPackFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class RRIMFeature(DerivativeFeatureStrategy):
+    """
+    The `rrim` feature: a flat 2-D RGB red-relief raster (slope-red + openness).
+
+    Opt-in registration contract: RRIM is deliberately kept OUT of the default
+    `pc2img.features` barrel. `generate(["rrim", ...])` resolves only after the
+    caller runs `import pc2img.features.rrim`, which triggers the import-time
+    `@FEATURES.register` side-effect on this class. Installing the `rrim` pip
+    extra does NOT import this module and does NOT register the feature; the extra
+    only signposts optional runtime deps. The explicit module import is the sole
+    thing that registers `rrim`.
+    """
+
     regex_pattern = re.compile(r"^rrim(?:_\((?P<args>.+)\))?$")
 
     def __init__(self, args: str | None = None) -> None:
@@ -503,6 +534,14 @@ class RRIMFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class RRIMComponentFeature(DerivativeFeatureStrategy):
+    """
+    Exposes a single RRIM component (slope/positive/negative/structure) as a raster.
+
+    Opt-in: like the other RRIM features, it is only registered after
+    `import pc2img.features.rrim` runs the `@FEATURES.register` side-effect. It is
+    NOT in the default barrel, and the `rrim` pip extra alone does not register it.
+    """
+
     regex_pattern = re.compile(r"^rrim_component_\((?P<args>.+)\)$")
 
     def __init__(self, args: str) -> None:
