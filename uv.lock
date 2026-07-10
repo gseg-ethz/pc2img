@@ -1657,7 +1657,7 @@ requires-dist = [
     { name = "tifffile", extras = ["all"], specifier = "~=2024.1" },
     { name = "typing-extensions", specifier = "~=4.9" },
 ]
-provides-extras = ["cuda12", "cuda11"]
+provides-extras = ["cuda12", "cuda11", "rrim"]
 
 [package.metadata.requires-dev]
 dev = [
