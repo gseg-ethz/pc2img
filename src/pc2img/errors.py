@@ -32,3 +32,13 @@ class RegistryLookupError(KeyError, RuntimeError):
     ``except KeyError`` and ``except RuntimeError`` handlers continue to catch
     registry misses after the D-14 unification.
     """
+
+    def __str__(self) -> str:
+        # KeyError (first in the MRO) overrides __str__ to repr-wrap the message,
+        # so a single-string arg would render with surrounding quotes
+        # (``"Unknown feature 'range'"`` → ``'"Unknown feature ...'"``). Restore
+        # the plain RuntimeError-style message the FeatureRegistry sites used to
+        # emit before the unification; multi/no-arg cases defer to the base.
+        if len(self.args) == 1 and isinstance(self.args[0], str):
+            return self.args[0]
+        return super().__str__()

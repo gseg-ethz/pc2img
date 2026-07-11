@@ -164,3 +164,20 @@ def test_match_derives_deps_via_dependencies_for_without_construction(monkeypatc
     spec = FEATURES.match("average_(range,range)")
     assert spec.cls is AverageFeature
     assert spec.dependencies == ["range", "range"]
+
+
+def test_registry_lookup_error_str_is_not_repr_wrapped() -> None:
+    # WR-02 (05-REVIEW): RegistryLookupError subclasses KeyError, whose __str__
+    # repr-wraps the message (adds quotes). The FeatureRegistry sites used to
+    # raise clean RuntimeError text, so str() must render the plain message —
+    # no surrounding quotes — to avoid a diagnostics regression.
+    from pc2img.errors import RegistryLookupError
+
+    msg = "Unknown feature 'range'"
+    assert str(RegistryLookupError(msg)) == msg
+    # And a real registry miss surfaces cleanly (no double-quoting).
+    from pc2img.strategies.registry import PROJECTIONS
+
+    with pytest.raises(RegistryLookupError) as ei:
+        PROJECTIONS.create("definitely_not_a_projection")
+    assert '"' not in str(ei.value) and not str(ei.value).startswith("'")
