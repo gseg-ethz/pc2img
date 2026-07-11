@@ -112,6 +112,16 @@ explicit = true
 # Plan 02 invokes the documented fallback (name them directly in the cuda extras).
 # No entry may point at a local /scratch or third_party/ path (D-12, forbidden).
 [tool.uv.sources]
+# Time-boxed git-rev BRIDGE for the GSEGUtils reload-registration hook
+# (register_lazy_disk_cache_class, landed 05-08). pc2img/CI resolves GSEGUtils
+# from PyPI, where the published 0.5.2 lacks the hook, and [tool.uv.sources]
+# forbids local/third_party paths (D-12) — a remote git URL is the allowed
+# delivery vehicle. The pushed 05-08 branch SHA reports 0.5.2.postN via
+# setuptools_scm, which satisfies the unchanged `GSEGUtils ~= 0.5` gate above.
+# PHASE-6 CONVERSION (D-17/BC-01, tracked in 05-12): once release-please ships
+# GSEGUtils 0.6.0 to PyPI, bump the dependency to `GSEGUtils ~= 0.6`, DROP this
+# git source, and re-lock.
+gsegutils       = { git = "https://github.com/gseg-ethz/GSEGUtils.git", rev = "2cf80835aa724f64a83853c8e35c91cb7640a919" }
 cudf-cu12      = { index = "nvidia" }
 cuspatial-cu12 = { index = "nvidia" }
 cuproj-cu12    = { index = "nvidia" }
