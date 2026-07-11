@@ -14,19 +14,39 @@ class GradientFeature(DerivativeFeatureStrategy):
     """
     Computes the gradient of a base feature image along x or y.
     Dependencies: the base feature (will be treated as grid-level).
+
+    Name syntax:
+        gradient_<axis>_<base_feature>[_px<pixel_size>]   (axis ∈ {x, y})
+
+    ``pixel_size`` is the ``np.gradient`` sample spacing; the reported gradient is
+    scaled by ``1/pixel_size``. It defaults to ``100`` (KEPT-BEHAVIOR, D-07): every
+    pre-existing ``gradient_..`` name that omits the ``_px`` suffix reproduces the
+    historical ``1/100``-scaled output byte-for-byte. Supply ``_px<value>`` (or the
+    ``pixel_size=`` constructor kwarg) to opt into a different spacing.
+
+    Examples:
+        gradient_x_range          → ∂/∂x with spacing 100 (historical default)
+        gradient_x_range_px1      → ∂/∂x with unit spacing (opt-in)
     """
 
-    regex_pattern = re.compile(r"^gradient_(?P<axis>[xy])_(?P<base_feature>.+)$")
+    regex_pattern = re.compile(
+        r"^gradient_(?P<axis>[xy])_(?P<base_feature>.+?)"
+        r"(?:_px(?P<pixel_size>\d+(?:\.\d+)?))?$"
+    )
 
-    def __init__(self, base_feature: str, axis: str) -> None:
+    def __init__(self, base_feature: str, axis: str, pixel_size: str | float | None = None) -> None:
         self.base_feature = base_feature
         self.axis = axis
+        # Default 100 reproduces today's 1/100-scaled output byte-for-byte (D-07).
+        self.pixel_size = 100.0 if pixel_size is None else float(pixel_size)
+        if self.pixel_size <= 0:
+            raise ValueError(f"pixel_size must be > 0, got {self.pixel_size}.")
         self.dependencies = [base_feature]
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         img = fetch(self.base_feature)
         ax = 1 if self.axis == "x" else 0
-        grad = np.gradient(img, 100, axis=ax)
+        grad = np.gradient(img, self.pixel_size, axis=ax)
         return grad
 
 
@@ -69,9 +89,13 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         self.dependencies = [base_feature]
         self.low = float(low)
         self.high = float(high)
+        # M-12: re-enable the percentile bounds check (mirrors ClipPercentileFeature).
+        if not (0.0 <= self.low < self.high <= 100.0):
+            raise ValueError("normalized percentiles must satisfy 0 <= low < high <= 100.")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
-        img = fetch(self.base_feature)
+        # DSN-03: copy-before-mutate so the fetched raster is never written in place.
+        img = np.array(fetch(self.base_feature), copy=True)
         low_bound, high_bound = np.nanpercentile(img, [self.low, self.high])
 
         if high_bound - low_bound != 0:
@@ -96,6 +120,21 @@ class LogFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class HillshadeFeature(DerivativeFeatureStrategy):
+    """
+    Hillshade of a base raster (Lambertian illumination).
+
+    Name syntax:
+        hillshade[_<base_feature>][_<azimuth>][_<altitude>][_<z_factor>]
+
+    Convention note (M-11 / D-08, KEPT-BEHAVIOR): the illumination *magnitude*
+    formula is algebraically equivalent to the ESRI hillshade, but the aspect axis
+    here (``aspect = arctan2(-x, y)`` with ``x = ∂/∂row``, ``y = ∂/∂col``) is NOT
+    north-up ESRI-compass aligned — it is rotated ≈90° relative to that convention.
+    This is deliberate and downstream-validated; results are self-consistent under
+    an azimuth sweep. Do not "correct" the aspect handedness without re-validating
+    downstream consumers (a principled align-north option is a deferred improvement).
+    """
+
     regex_pattern = re.compile(
         r"^hillshade"
         r"(?:_(?P<base_feature>.+?))?"

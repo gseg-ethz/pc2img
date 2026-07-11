@@ -31,35 +31,24 @@ from pc2img.features.derivative_features import (
     HillshadeFeature,
     NormalizedFeature,
 )
+from pc2img.features.registry import FEATURES
 
 
 # --------------------------------------------------------------------------- #
-# DSN-03 + M-12 — genuine defects, authored xfail (flip to passing in the fix) #
+# DSN-03 + M-12 — genuine defects, now fixed (proving asserts pass)            #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(
-    strict=False,
-    reason="Phase 5 (BUG-05): NormalizedFeature bounds validation (M-12) not yet re-enabled",
-)
 def test_normalized_feature_rejects_inverted_percentiles() -> None:
     # low > high is nonsense; ClipPercentileFeature already rejects it, and the
-    # commented-out check here (:68) enforced ``0 <= low < high <= 100``.
+    # re-enabled check here (M-12) enforces ``0 <= low < high <= 100``.
     with pytest.raises(ValueError):
         NormalizedFeature(base_feature="range", low="90", high="10")
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="Phase 5 (BUG-05): NormalizedFeature out-of-[0,100] validation (M-12) not yet re-enabled",
-)
 def test_normalized_feature_rejects_out_of_range_percentiles() -> None:
     with pytest.raises(ValueError):
         NormalizedFeature(base_feature="range", low="10", high="120")
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="Phase 5 (BUG-05): NormalizedFeature copy-before-mutate (DSN-03) not yet applied",
-)
 def test_normalized_feature_does_not_mutate_fetched_array(fetch_stub) -> None:
     # DSN-03: compute() must not write into the array it receives from ``fetch``.
     raster = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float64)
@@ -88,6 +77,44 @@ def test_gradient_default_matches_hundredth_scaled_reference(fetch_stub) -> None
     # Pins today's output byte-for-byte: np.gradient with spacing 100 (∴ 1/100 scale).
     expected = np.gradient(ramp, 100, axis=1)
     np.testing.assert_array_equal(grad, expected)
+
+
+def test_gradient_pixel_size_default_reproduces_hundred_spacing(fetch_stub) -> None:
+    ramp = _unit_slope_ramp()
+
+    default = GradientFeature(base_feature="range", axis="x").compute(None, fetch_stub({"range": ramp}))
+    explicit = GradientFeature(base_feature="range", axis="x", pixel_size="100").compute(
+        None, fetch_stub({"range": ramp})
+    )
+
+    # The opt-in param's default is a no-op: byte-identical to the historical output.
+    np.testing.assert_array_equal(default, explicit)
+
+
+def test_gradient_pixel_size_scales_output(fetch_stub) -> None:
+    ramp = _unit_slope_ramp()
+
+    px100 = GradientFeature(base_feature="range", axis="x", pixel_size="100").compute(None, fetch_stub({"range": ramp}))
+    px1 = GradientFeature(base_feature="range", axis="x", pixel_size="1").compute(None, fetch_stub({"range": ramp}))
+
+    # Spacing divides the gradient: unit spacing is 100x the spacing-100 result.
+    np.testing.assert_allclose(px1, px100 * 100)
+
+
+def test_gradient_dsl_px_suffix_parses_pixel_size() -> None:
+    spec = FEATURES.match("gradient_x_range_px50")
+    feature = spec.cls(**spec.params)
+
+    assert feature.base_feature == "range"
+    assert feature.pixel_size == 50.0
+
+
+def test_gradient_dsl_without_suffix_keeps_default_spacing() -> None:
+    spec = FEATURES.match("gradient_x_range")
+    feature = spec.cls(**spec.params)
+
+    assert feature.base_feature == "range"
+    assert feature.pixel_size == 100.0
 
 
 # --------------------------------------------------------------------------- #
