@@ -8,11 +8,17 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from pc2img.core import PointCloudImageGenerator
 from pc2img.features import registry as registry_module
 from pc2img.features import rrim as rrim_module
+from pc2img.features.registry import FEATURES
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _RRIM_SRC = "src/pc2img/features/rrim.py"
+
+# The default RRIMConfig pack name (base_feature=range, r16, d8, z1) — the exact
+# string RRIMFeature.__init__ derives, so match() must schedule the same dep.
+_DEFAULT_PACK_NAME = "rrim_pack_(range,r16,d8,z1)"
 
 
 def test_rrim_module_docstring_is_populated() -> None:
@@ -103,3 +109,67 @@ def test_rrim_feature_registry_outputs_rgb_and_components() -> None:
 
     assert structure.shape == raster.shape
     assert np.allclose(structure, pack[..., 2], equal_nan=True)
+
+
+# --------------------------------------------------------------------------- #
+# G1 (BUG-05, blocker): RRIM dependency resolution via dependencies_for        #
+#                                                                              #
+# FeatureRegistry.match derives deps via cls.dependencies_for(params) WITHOUT  #
+# constructing the class (DSN-05). The three RRIM classes use a regex group    #
+# named ``args`` (not ``base_feature``), so without a dependencies_for         #
+# override the inherited base returns [] and the base raster is never          #
+# scheduled — reproducing "Scalar field 'rrim' not found" end-to-end. These    #
+# tests derive deps without construction AND drive the full generate() path.   #
+# --------------------------------------------------------------------------- #
+@pytest.mark.xfail(reason="Phase 5 (BUG-05/G1): RRIM classes lack a dependencies_for override; deps resolve to [] so the base raster is never scheduled", strict=False)
+def test_rrim_dependencies_for_derives_deps_without_construction() -> None:
+    """match() derives each RRIM name's deps via dependencies_for, no __init__."""
+    assert FEATURES.match("rrim").dependencies == ["range", _DEFAULT_PACK_NAME]
+    assert FEATURES.match("rrim_pack_(range)").dependencies == ["range"]
+    # slope component depends on the base feature directly ...
+    assert FEATURES.match("rrim_component_(slope,range)").dependencies == ["range"]
+    # ... while a non-slope component depends on the pack raster.
+    assert FEATURES.match("rrim_component_(structure,range)").dependencies == [_DEFAULT_PACK_NAME]
+
+
+@pytest.mark.xfail(reason="Phase 5 (BUG-05/G1): RRIM classes lack a dependencies_for override; deps resolve to [] so the base raster is never scheduled", strict=False)
+def test_rrim_dependencies_for_does_not_construct_the_class(monkeypatch) -> None:
+    """dependencies_for must read params['args'], never run __init__."""
+
+    def _boom(self, *args, **kwargs):
+        raise AssertionError("dependencies_for must not construct the RRIM feature")
+
+    monkeypatch.setattr(rrim_module.RRIMFeature, "__init__", _boom)
+    assert rrim_module.RRIMFeature.dependencies_for({"args": None}) == ["range", _DEFAULT_PACK_NAME]
+
+
+def _rrim_generator(synthetic_pcd) -> PointCloudImageGenerator:
+    pcd = synthetic_pcd(n=300)
+    return PointCloudImageGenerator(pcd, (16, 16), ("orthographic", {"plane": "xy"}), "nearest_neighbor")
+
+
+@pytest.mark.xfail(reason="Phase 5 (BUG-05/G1): RRIM classes lack a dependencies_for override; deps resolve to [] so the base raster is never scheduled", strict=False)
+def test_generate_rrim_end_to_end_returns_finite_rgb(synthetic_pcd) -> None:
+    gen = _rrim_generator(synthetic_pcd)
+    images = gen.generate(["rrim"])
+    raster = np.asarray(images["rrim"])
+    assert raster.shape == (16, 16, 3)
+    assert np.isfinite(raster).all()
+
+
+@pytest.mark.xfail(reason="Phase 5 (BUG-05/G1): RRIM classes lack a dependencies_for override; deps resolve to [] so the base raster is never scheduled", strict=False)
+def test_generate_rrim_pack_end_to_end_returns_finite_pack(synthetic_pcd) -> None:
+    gen = _rrim_generator(synthetic_pcd)
+    images = gen.generate(["rrim_pack_(range)"])
+    raster = np.asarray(images["rrim_pack_(range)"])
+    assert raster.shape == (16, 16, 3)
+    assert np.isfinite(raster).all()
+
+
+@pytest.mark.xfail(reason="Phase 5 (BUG-05/G1): RRIM classes lack a dependencies_for override; deps resolve to [] so the base raster is never scheduled", strict=False)
+def test_generate_rrim_component_slope_end_to_end_returns_finite_raster(synthetic_pcd) -> None:
+    gen = _rrim_generator(synthetic_pcd)
+    images = gen.generate(["rrim_component_(slope,range)"])
+    raster = np.asarray(images["rrim_component_(slope,range)"])
+    assert raster.shape == (16, 16)
+    assert np.isfinite(raster).all()
