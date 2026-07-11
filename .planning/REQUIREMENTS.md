@@ -38,10 +38,10 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 
 - [x] **TEST-01**: pytest configuration scopes discovery to `tests/` (stops collecting `third_party/`)
 - [x] **TEST-02**: Coverage measurement + reporting established with a recorded baseline
-- [ ] **TEST-03**: Projection & interpolation math covered by tests
-- [ ] **TEST-04**: Derivative features + feature-name DSL covered by tests
-- [ ] **TEST-05**: Orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`) covered by tests
-- [ ] **TEST-06**: `util.py` (`convert_to_image`, `replace_nan`, `to_gray`, `nanconv`) covered by tests
+- [x] **TEST-03**: Projection & interpolation math covered by tests
+- [x] **TEST-04**: Derivative features + feature-name DSL covered by tests
+- [x] **TEST-05**: Orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`) covered by tests
+- [x] **TEST-06**: `util.py` (`convert_to_image`, `replace_nan`, `to_gray`, `nanconv`) covered by tests
 
 ### CI/CD
 
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-05 | Phase 5 | Pending |
 | TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 3 | Complete |
-| TEST-03 | Phase 5 | Pending |
-| TEST-04 | Phase 5 | Pending |
-| TEST-05 | Phase 5 | Pending |
-| TEST-06 | Phase 5 | Pending |
+| TEST-03 | Phase 5 | Complete |
+| TEST-04 | Phase 5 | Complete |
+| TEST-05 | Phase 5 | Complete |
+| TEST-06 | Phase 5 | Complete |
 | CICD-01 | Phase 3 | Complete |
 | CICD-02 | Phase 6 | Pending |
 | BC-01 | Phase 6 | Pending |
