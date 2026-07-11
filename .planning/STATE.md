@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T04:12:09.546Z"
+last_updated: "2026-07-11T04:18:42.447Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 23
+  completed_plans: 24
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 4 of 12
+Plan: 5 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -80,6 +80,7 @@ Progress: [███████░░░] 69%
 | Phase 04 P07 | 9min | 2 tasks | 1 files |
 | Phase 05 P01 | 12min | 2 tasks | 2 files |
 | Phase 05 P02 | 6min | 3 tasks | 2 files |
+| Phase 05 P03 | 8min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -119,6 +120,7 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 05 P08] Delivery route changed at the approved checkpoint from version tag to git-rev bridge — hand-rolled v0.6.0 tag REMOVED (release-please collision + open 0.5.3 PR); setuptools_scm build reports 0.5.2.post4, satisfying existing `GSEGUtils ~= 0.5`; pc2img consumes the hook via [tool.uv.sources] git-rev @ 2cf80835aa724f64a83853c8e35c91cb7640a919 + re-lock (05-09); PyPI `~= 0.6` conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
 - [Phase ?]: [Phase 05 P02] M-04 adapted from 'delete project_raw' to a documented NotImplementedError refusal — deletion leaves the abstractmethod unimplemented and makes PerspectiveProjection uninstantiable (04-FINDINGS M-04 sanctions this); added OrthographicProjection.inverse_projection refusal (class was previously uninstantiable)
 - [Phase ?]: [Phase 05 P02] Perspective rebuilt to pinned contract: keyword-only translation, extrinsic-first Transform.generate([R|t]) @ pcd, Z_c<=0 depth cull (M-02), K·(R·X+t) (M-03), eager 4×4→TypeError / non-orthonormal→ValueError validation (M-03b); D-15 seam guard raises on wrapping FoVs; BC: 4×4 rotation_matrix now raises (D-17)
+- [Phase ?]: PERF-02 opt-in landed as nanconv compute_dtype (default np.float32); reduced precision engages only on explicit opt-in (D-03)
 
 ### Pending Todos
 
@@ -148,6 +150,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T04:11:39.137Z
+Last session: 2026-07-11T04:18:14.363Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md
