@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T04:27:10.485Z"
+last_updated: "2026-07-11T04:34:46.853Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 25
+  completed_plans: 26
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 6 of 12
+Plan: 7 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -82,6 +82,7 @@ Progress: [███████░░░] 69%
 | Phase 05 P02 | 6min | 3 tasks | 2 files |
 | Phase 05 P03 | 8min | 2 tasks | 2 files |
 | Phase 05 P04 | 3min | 2 tasks | 2 files |
+| Phase 05 P05 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -123,6 +124,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05 P02] Perspective rebuilt to pinned contract: keyword-only translation, extrinsic-first Transform.generate([R|t]) @ pcd, Z_c<=0 depth cull (M-02), K·(R·X+t) (M-03), eager 4×4→TypeError / non-orthonormal→ValueError validation (M-03b); D-15 seam guard raises on wrapping FoVs; BC: 4×4 rotation_matrix now raises (D-17)
 - [Phase ?]: PERF-02 opt-in landed as nanconv compute_dtype (default np.float32); reduced precision engages only on explicit opt-in (D-03)
 - [Phase ?]: 05-04: NormalizedFeature strict validation 0<=low<high<=100 + copy-before-mutate (DSN-03/M-12); GradientFeature opt-in pixel_size default 100 with DSL _px suffix, byte-identical (M-10); Hillshade aspect kept + documented (M-11)
+- [Phase ?]: M-06 Delaunay interior-culling kept as default (D-06); thresholds surfaced as opt-in kwargs with byte-identical defaults
+- [Phase ?]: interior_culling=False admits all in-hull triangles, matching scipy.LinearNDInterpolator NaN placement (oracle path for TEST-03)
 
 ### Pending Todos
 
@@ -152,6 +155,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T04:26:31.588Z
+Last session: 2026-07-11T04:34:15.588Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md
