@@ -138,9 +138,7 @@ def make_synthetic_pcd(
                 values = rng.random((n,), dtype=np.float32)
             arr = np.asarray(values)
             if arr.shape[0] != n:
-                raise ValueError(
-                    f"scalar field {name!r} has length {arr.shape[0]}, expected {n}"
-                )
+                raise ValueError(f"scalar field {name!r} has length {arr.shape[0]}, expected {n}")
             scalar_fields[name] = arr
 
     if scalar_fields is None:
@@ -186,10 +184,7 @@ def fetch_stub() -> Callable[[Mapping[str, NDArray]], Callable[[str], NDArray]]:
             try:
                 return table[name]
             except KeyError as e:
-                raise KeyError(
-                    f"fetch_stub has no array for {name!r}; "
-                    f"available: {sorted(table)}"
-                ) from e
+                raise KeyError(f"fetch_stub has no array for {name!r}; available: {sorted(table)}") from e
 
         return fetch
 
