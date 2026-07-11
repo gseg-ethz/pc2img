@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .core import DerivativeFeatureStrategy
+from .derivative_features import _validate_percentile_bounds
 from .registry import FEATURES
 
 RRIMComponent = Literal["slope", "positive", "negative", "structure"]
@@ -86,11 +87,10 @@ def _format_number(value: float) -> str:
 
 
 def _validate_clip(name: str, clip: tuple[float, float]) -> tuple[float, float]:
+    # G8: non-strict percentile bounds via the shared single-source helper
+    # (clipping to a single percentile is a well-defined degenerate operation).
     low, high = clip
-    if not (0.0 <= low <= 100.0 and 0.0 <= high <= 100.0):
-        raise ValueError(f"{name} clip percentiles must lie within [0, 100], got {clip}.")
-    if low > high:
-        raise ValueError(f"{name} clip low percentile must not exceed high percentile, got {clip}.")
+    _validate_percentile_bounds(low, high, strict=False)
     return float(low), float(high)
 
 

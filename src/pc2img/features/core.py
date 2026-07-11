@@ -9,6 +9,26 @@ if TYPE_CHECKING:
     from .manager import FeatureManager
 
 
+def _default_dependencies_for(params: dict[str, str | None]) -> list[str]:
+    """Derive raster dependencies from a parsed regex ``groupdict`` (G5).
+
+    The single source of the default single-``base_feature`` dependency grammar,
+    shared by both feature ABCs so the rule is defined in exactly one place. It
+    returns ``[base_feature]`` when the parsed ``groupdict`` carries a
+    ``base_feature`` group, else ``[]``.
+
+    DSN-05: this lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
+    constructing the feature class (which previously ran ``__init__`` twice — once
+    in ``match`` and again at compute time). Families whose ``__init__`` derives
+    dependencies differently (e.g. the split-list ``average``/``sum``/``norm``
+    features, ``hillshade``'s defaulted base, or the RRIM family) OVERRIDE
+    ``dependencies_for`` to mirror their own derivation so ``match`` and
+    construction always agree.
+    """
+    base_feature = params.get("base_feature")
+    return [base_feature] if base_feature is not None else []
+
+
 class BaseFeatureStrategy(ABC):
     """Produces a 1D array of length N (per point)."""
 
@@ -17,19 +37,12 @@ class BaseFeatureStrategy(ABC):
 
     @classmethod
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
-        """Derive raster dependencies from a parsed regex ``groupdict``.
+        """Default single-``base_feature`` derivation via :func:`_default_dependencies_for`.
 
-        DSN-05: this lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
-        constructing the feature class (which previously ran ``__init__`` twice —
-        once in ``match`` and again at compute time). The base implementation
-        handles the common single-``base_feature`` grammar; families whose
-        ``__init__`` derives dependencies differently (e.g. the split-list
-        ``average``/``sum``/``norm`` features, or ``hillshade``'s defaulted base)
-        OVERRIDE this classmethod to mirror their own derivation so ``match`` and
-        construction always agree.
+        Overridable: subclasses whose grammar differs mirror their own
+        ``__init__`` derivation here (see :func:`_default_dependencies_for`).
         """
-        base_feature = params.get("base_feature")
-        return [base_feature] if base_feature is not None else []
+        return _default_dependencies_for(params)
 
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...
@@ -46,15 +59,12 @@ class DerivativeFeatureStrategy(ABC):
 
     @classmethod
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
-        """Derive raster dependencies from a parsed regex ``groupdict``.
+        """Default single-``base_feature`` derivation via :func:`_default_dependencies_for`.
 
-        See :meth:`BaseFeatureStrategy.dependencies_for`. The base implementation
-        returns the single ``base_feature`` dependency (or ``[]`` when the grammar
-        has no ``base_feature`` group); split-list and defaulted-base families
-        override it.
+        See :meth:`BaseFeatureStrategy.dependencies_for`. Split-list and
+        defaulted-base families (and the RRIM family) override this.
         """
-        base_feature = params.get("base_feature")
-        return [base_feature] if base_feature is not None else []
+        return _default_dependencies_for(params)
 
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...

@@ -183,7 +183,6 @@ def test_dependencies_for_stays_overridable_after_unification() -> None:
     ) == ["range", "scalar_field_x"]
 
 
-@pytest.mark.xfail(reason="Phase 5 (G5): the shared _default_dependencies_for helper does not exist yet", strict=False)
 def test_both_feature_abcs_share_one_default_dependency_helper() -> None:
     """G5: both ABCs derive the single-base_feature default via one helper."""
     from pc2img.features import core
@@ -198,7 +197,6 @@ def test_both_feature_abcs_share_one_default_dependency_helper() -> None:
 # --------------------------------------------------------------------------- #
 # G6 — FeatureSpec no longer self-derives dependencies (match is single writer)#
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(reason="Phase 5 (G6): FeatureSpec.__init__ still derives self.dependencies from base_feature", strict=False)
 def test_feature_spec_does_not_self_derive_dependencies() -> None:
     from pc2img.features.derivative_features import GradientFeature
     from pc2img.features.registry import FeatureSpec

@@ -22,11 +22,11 @@ class FeatureSpec:
             raise ValueError(f"Name '{name}' does not match pattern {pattern.pattern}")
         self.name = name
         self.params = m.groupdict()
-        # dependencies recognized from params or fixed list
+        # G6: FeatureSpec does NOT derive its own dependencies. ``FeatureRegistry.match``
+        # is the single writer of ``spec.dependencies`` (via ``cls.dependencies_for``
+        # on the matched path, or ``[]`` on the default-fallback path); deriving them
+        # here was dead code that ``match`` overwrote on every path.
         self.dependencies = []
-        base_feature = self.params.get("base_feature")
-        if base_feature is not None:
-            self.dependencies.append(base_feature)
         self.cls = None
 
 

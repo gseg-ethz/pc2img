@@ -161,7 +161,6 @@ def test_rrim_validate_clip_accepts_equal_percentiles_non_strict() -> None:
     assert rrim._validate_clip("slope", (50.0, 50.0)) == (50.0, 50.0)
 
 
-@pytest.mark.xfail(reason="Phase 5 (G8): the shared _validate_percentile_bounds helper does not exist yet", strict=False)
 def test_shared_percentile_validator_strict_and_non_strict_contract() -> None:
     from pc2img.features.derivative_features import _validate_percentile_bounds
 

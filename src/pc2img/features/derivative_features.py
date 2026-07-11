@@ -9,6 +9,30 @@ from .core import DerivativeFeatureStrategy
 from .registry import FEATURES
 
 
+def _validate_percentile_bounds(low: float, high: float, *, strict: bool) -> None:
+    """Validate a (low, high) percentile pair — the single source of the rule (G8).
+
+    Enforces ``0 <= low <= 100`` and ``0 <= high <= 100``, then the ordering:
+    ``low < high`` when ``strict`` else ``low <= high``. Raises ``ValueError`` on
+    a violation; returns ``None`` on success.
+
+    The ``strict`` flag is a DELIBERATE contract, not drift. ``NormalizedFeature``
+    passes ``strict=True`` because a zero-width percentile range (``low == high``)
+    divides by zero during normalization, so an equal pair is genuinely invalid
+    there. ``ClipPercentileFeature`` and the RRIM clip validation pass
+    ``strict=False`` because clipping to a single percentile is a well-defined
+    (degenerate) operation. Centralizing the rule keeps the two contracts from
+    silently diverging between call sites while preserving each site's outcome.
+    """
+    if not (0.0 <= low <= 100.0 and 0.0 <= high <= 100.0):
+        raise ValueError(f"percentiles must lie within [0, 100], got low={low}, high={high}.")
+    if strict:
+        if not (low < high):
+            raise ValueError(f"percentiles must satisfy low < high, got low={low}, high={high}.")
+    elif low > high:
+        raise ValueError(f"percentile low must not exceed high, got low={low}, high={high}.")
+
+
 @FEATURES.register
 class GradientFeature(DerivativeFeatureStrategy):
     """
@@ -89,9 +113,9 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         self.dependencies = [base_feature]
         self.low = float(low)
         self.high = float(high)
-        # M-12: re-enable the percentile bounds check (mirrors ClipPercentileFeature).
-        if not (0.0 <= self.low < self.high <= 100.0):
-            raise ValueError("normalized percentiles must satisfy 0 <= low < high <= 100.")
+        # M-12/G8: strict percentile bounds (a zero-width range divides by zero),
+        # validated through the shared single-source helper.
+        _validate_percentile_bounds(self.low, self.high, strict=True)
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         # DSN-03: copy-before-mutate so the fetched raster is never written in place.
@@ -310,10 +334,9 @@ class ClipPercentileFeature(DerivativeFeatureStrategy):
     def __init__(self, base_feature: str, low: str, high: str) -> None:
         self.low = float(low)
         self.high = float(high)
-        if not (0.0 <= self.low <= 100.0 and 0.0 <= self.high <= 100.0):
-            raise ValueError("clip percentiles must lie within [0, 100].")
-        if self.low > self.high:
-            raise ValueError("clip low percentile must not exceed high percentile.")
+        # G8: non-strict bounds (clipping to a single percentile is well-defined),
+        # validated through the shared single-source helper.
+        _validate_percentile_bounds(self.low, self.high, strict=False)
         self.base_feature = base_feature
         self.dependencies = [base_feature]
 
