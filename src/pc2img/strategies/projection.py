@@ -225,11 +225,13 @@ class OrthographicProjection(ProjectionStrategy):
         else:
             mask = np.ones((pcd.nbPoints,), dtype=bool)
 
-        # Select the two plane columns rows-then-columns: pcd.xyz[mask][:, cols]
-        # yields (M, 2). The prior pcd.xyz[mask, cols] fancy-index broadcast the
-        # boolean row mask against the 2-element column list and produced a
-        # silent diagonal (M-01/BUG-01).
-        coords = pcd.xyz[mask][:, cols]
+        # Select the two plane columns in a single pass: np.ix_(mask, cols) gathers
+        # the (M, 2) block directly, byte-identical to the prior two-step
+        # pcd.xyz[mask][:, cols] but without materializing the discarded (M, 3)
+        # intermediate (G7). The prior pcd.xyz[mask, cols] fancy-index broadcast the
+        # boolean row mask against the 2-element column list and produced a silent
+        # diagonal (M-01/BUG-01), which is why the two-axis gather is required.
+        coords = pcd.xyz[np.ix_(mask, cols)]
 
         # Provide the (mins, maxs) the base project() needs for span normalization.
         # Prefer the ROI box extent when supplied (so identical clouds normalize to
@@ -310,8 +312,15 @@ class PerspectiveProjection(ProjectionStrategy):
             )
         # A proper rotation is orthonormal with det ≈ +1. A scale/shear baked into
         # a 3x3 is silent wrong-geometry; refuse it rather than honor it.
-        identity = np.eye(3, dtype=np.float32)
-        if not (np.allclose(rot @ rot.T, identity, atol=1e-6) and np.isclose(np.linalg.det(rot), 1.0, atol=1e-6)):
+        # G4: run the orthonormality/det check in float64 from the ORIGINAL matrix.
+        # Casting a legitimate double-precision rotation down to float32 first can
+        # push rot @ rot.T off identity by up to ~1 ULP (~1e-7) and, at atol=1e-6,
+        # sits one round-trip away from false-rejecting a valid rotation. Keeping
+        # the validation math in float64 removes that brittleness; self._rotation
+        # stays float32 for the downstream matmul path.
+        rot64 = np.asarray(getattr(rotation_matrix, "arr", rotation_matrix), dtype=np.float64)
+        identity = np.eye(3, dtype=np.float64)
+        if not (np.allclose(rot64 @ rot64.T, identity, atol=1e-6) and np.isclose(np.linalg.det(rot64), 1.0, atol=1e-6)):
             raise ValueError(
                 "PerspectiveProjection rotation_matrix must be a proper rotation "
                 "(orthonormal, det ≈ +1); got a matrix with scale/shear or reflection."
@@ -330,7 +339,22 @@ class PerspectiveProjection(ProjectionStrategy):
         self.rotation_matrix = rotation_matrix
         self._rotation = rot
         self._translation = trans
-        self._intrinsics = np.asarray(getattr(projection_matrix, "arr", projection_matrix), dtype=np.float32)
+        intrinsics = np.asarray(getattr(projection_matrix, "arr", projection_matrix), dtype=np.float32)
+        # G2: validate K with the same fail-fast posture as the rotation above.
+        # A wrong-shape K would otherwise crash opaquely inside project()'s matmul,
+        # and a non-pinhole K (bottom row != [0,0,1]) would make the perspective
+        # divisor uv_h[:,2] diverge in sign from camera depth, defeating the M-02
+        # behind-camera cull (a phantom could land in-bounds).
+        if intrinsics.shape != (3, 3):
+            raise ValueError(f"PerspectiveProjection expected a 3×3 intrinsics matrix K; got shape {intrinsics.shape}.")
+        if not np.allclose(intrinsics[2], [0.0, 0.0, 1.0], atol=1e-6):
+            raise ValueError(
+                "PerspectiveProjection intrinsics matrix K must be in pinhole form "
+                f"(bottom row ≈ [0, 0, 1]); got {intrinsics[2].tolist()}. The divisor of the "
+                "perspective divide must be the camera depth so it stays sign-aligned with the "
+                "behind-camera cull."
+            )
+        self._intrinsics = intrinsics
 
     def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
         # PerspectiveProjection computes the full projection in one shot in

@@ -231,7 +231,6 @@ def test_perspective_project_raw_is_documented_refusal():
 # uv_h[:,2] diverge in sign from depth, defeating the M-02 behind-camera cull. #
 # Validate K at construction with the same fail-fast posture as the rotation.  #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(reason="Phase 5 (G2): K is stored unchecked; a non-3x3 K is not refused at construction", strict=False)
 def test_perspective_rejects_wrong_shape_intrinsics():
     r = np.eye(3, dtype=np.float32)
     bad_k = np.eye(2, dtype=np.float32)
@@ -239,7 +238,6 @@ def test_perspective_rejects_wrong_shape_intrinsics():
         PerspectiveProjection(bad_k, r)
 
 
-@pytest.mark.xfail(reason="Phase 5 (G2): a non-pinhole K (bottom row != [0,0,1]) is not refused at construction", strict=False)
 @pytest.mark.parametrize("bottom_row", [[0.0, 0.0, 2.0], [1.0, 0.0, 1.0]])
 def test_perspective_rejects_non_pinhole_intrinsics(bottom_row):
     r = np.eye(3, dtype=np.float32)
