@@ -15,6 +15,22 @@ class BaseFeatureStrategy(ABC):
     dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        """Derive raster dependencies from a parsed regex ``groupdict``.
+
+        DSN-05: this lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
+        constructing the feature class (which previously ran ``__init__`` twice —
+        once in ``match`` and again at compute time). The base implementation
+        handles the common single-``base_feature`` grammar; families whose
+        ``__init__`` derives dependencies differently (e.g. the split-list
+        ``average``/``sum``/``norm`` features, or ``hillshade``'s defaulted base)
+        OVERRIDE this classmethod to mirror their own derivation so ``match`` and
+        construction always agree.
+        """
+        base_feature = params.get("base_feature")
+        return [base_feature] if base_feature is not None else []
+
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...
 
@@ -27,6 +43,18 @@ class DerivativeFeatureStrategy(ABC):
 
     dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        """Derive raster dependencies from a parsed regex ``groupdict``.
+
+        See :meth:`BaseFeatureStrategy.dependencies_for`. The base implementation
+        returns the single ``base_feature`` dependency (or ``[]`` when the grammar
+        has no ``base_feature`` group); split-list and defaulted-base families
+        override it.
+        """
+        base_feature = params.get("base_feature")
+        return [base_feature] if base_feature is not None else []
 
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...

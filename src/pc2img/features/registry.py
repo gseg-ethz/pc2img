@@ -1,5 +1,7 @@
 import re
+from typing import cast
 
+from ..errors import RegistryLookupError
 from .core import BaseFeatureStrategy, DerivativeFeatureStrategy
 
 
@@ -7,6 +9,12 @@ class FeatureSpec:
     """
     Represents a parsed feature name and its parameters.
     """
+
+    name: str
+    params: dict[str, str | None]
+    dependencies: list[str]
+    # Resolved by ``FeatureRegistry.match`` after construction; ``None`` until set.
+    cls: type[BaseFeatureStrategy | DerivativeFeatureStrategy] | None
 
     def __init__(self, name: str, pattern: re.Pattern):
         m = pattern.fullmatch(name)
@@ -16,27 +24,33 @@ class FeatureSpec:
         self.params = m.groupdict()
         # dependencies recognized from params or fixed list
         self.dependencies = []
-        if "base_feature" in self.params:
-            self.dependencies.append(self.params["base_feature"])
+        base_feature = self.params.get("base_feature")
+        if base_feature is not None:
+            self.dependencies.append(base_feature)
         self.cls = None
 
 
 class FeatureRegistry:
     def __init__(self):
         self._map: dict[re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
-        self._default_cls: type[BaseFeatureStrategy] = None
+        # DSN-11: the default class is genuinely optional until a `default=True`
+        # feature registers, so type it `type[...] | None`.
+        self._default_cls: type[BaseFeatureStrategy] | None = None
 
     def register(self, cls=None, *, default: bool = False):
         # support both @reg and @reg(default=True)
         def decorator(c: type[BaseFeatureStrategy | DerivativeFeatureStrategy]):
             pat = c.regex_pattern
             if pat in self._map:
-                raise RuntimeError(f"Pattern {pat.pattern} already registered")
+                raise RegistryLookupError(f"Pattern {pat.pattern} already registered")
             self._map[pat] = c
             if default and self._default_cls is None:
-                self._default_cls = c
+                # The default feature is by construction a per-point BaseFeatureStrategy
+                # (a derivative raster cannot stand in as the unknown-name fallback);
+                # narrow the broader decorator param to the annotated default type.
+                self._default_cls = cast("type[BaseFeatureStrategy]", c)
             elif default and self._default_cls != c:
-                raise RuntimeError(f"strategy {c.__name__} already registered as default")
+                raise RegistryLookupError(f"strategy {c.__name__} already registered as default")
 
             return c
 
@@ -45,13 +59,16 @@ class FeatureRegistry:
     def match(self, name: str) -> FeatureSpec:
         matches = [(p, c) for p, c in self._map.items() if p.fullmatch(name)]
         if len(matches) > 1:
-            raise RuntimeError(f"Multiple patterns match '{name}'")
+            raise RegistryLookupError(f"Multiple patterns match '{name}'")
         if len(matches) == 1:
             pat, cls = matches[0]
             spec = FeatureSpec(name, pat)
-            inst = cls(**spec.params)
             spec.cls = cls
-            spec.dependencies = inst.dependencies
+            # DSN-05: derive dependencies from the parsed groupdict WITHOUT
+            # constructing the feature (no more double `__init__`). Each family
+            # overrides `dependencies_for` to mirror its own derivation, so
+            # match() and construction always agree.
+            spec.dependencies = cls.dependencies_for(spec.params)
             return spec
         # no regex match → fallback to default base-feature
         if self._default_cls:
@@ -62,7 +79,7 @@ class FeatureRegistry:
             spec.dependencies = []
             spec.cls = self._default_cls
             return spec
-        raise RuntimeError(f"No pattern for '{name}' and no default registered")
+        raise RegistryLookupError(f"No pattern for '{name}' and no default registered")
 
 
 FEATURES = FeatureRegistry()

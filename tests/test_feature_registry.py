@@ -25,8 +25,6 @@ import pc2img.features  # noqa: F401
 from pc2img.features.core import DerivativeFeatureStrategy
 from pc2img.features.registry import FeatureRegistry
 
-_XFAIL_REASON = "Phase 5 (BUG-05 / D-14): registries not yet unified"
-
 
 # --------------------------------------------------------------------------- #
 # Local dummy features (for duplicate / ambiguity scenarios on a fresh reg)    #
@@ -74,7 +72,6 @@ def test_unknown_feature_name_falls_back_to_default_without_raising() -> None:
 # --------------------------------------------------------------------------- #
 # Unified miss-exception type (dual inheritance)                               #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_unknown_strategy_key_raises_unified_error_caught_as_keyerror() -> None:
     from pc2img.errors import RegistryLookupError
     from pc2img.strategies.registry import PROJECTIONS
@@ -88,7 +85,6 @@ def test_unknown_strategy_key_raises_unified_error_caught_as_keyerror() -> None:
         PROJECTIONS.get_strategy("no_such_projection")
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_ambiguous_feature_match_raises_unified_error_caught_as_runtimeerror() -> None:
     from pc2img.errors import RegistryLookupError
 
@@ -105,7 +101,6 @@ def test_ambiguous_feature_match_raises_unified_error_caught_as_runtimeerror() -
         reg.match("ambi_x")
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_duplicate_pattern_registration_raises_unified_error() -> None:
     from pc2img.errors import RegistryLookupError
 
@@ -118,7 +113,6 @@ def test_duplicate_pattern_registration_raises_unified_error() -> None:
 # --------------------------------------------------------------------------- #
 # dependencies_for classmethod — derives deps WITHOUT constructing the class   #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_dependencies_for_base_feature_single_dep() -> None:
     from pc2img.features.derivative_features import GradientFeature
 
@@ -126,7 +120,6 @@ def test_dependencies_for_base_feature_single_dep() -> None:
     assert GradientFeature.dependencies_for(params) == ["range"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_dependencies_for_average_splits_its_own_group() -> None:
     from pc2img.features.derivative_features import AverageFeature
 
@@ -134,7 +127,6 @@ def test_dependencies_for_average_splits_its_own_group() -> None:
     assert AverageFeature.dependencies_for(params) == ["range", "scalar_field_x"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_dependencies_for_sum_splits_its_own_group() -> None:
     from pc2img.features.derivative_features import SumFeature
 
@@ -142,7 +134,6 @@ def test_dependencies_for_sum_splits_its_own_group() -> None:
     assert SumFeature.dependencies_for(params) == ["range", "scalar_field_x"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_dependencies_for_norm_splits_its_own_group() -> None:
     from pc2img.features.derivative_features import NormFeature
 
@@ -150,7 +141,6 @@ def test_dependencies_for_norm_splits_its_own_group() -> None:
     assert NormFeature.dependencies_for(params) == ["range", "scalar_field_x"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_dependencies_for_does_not_construct_the_feature(monkeypatch) -> None:
     """``dependencies_for`` must read the groupdict, never run ``__init__``."""
     from pc2img.features.derivative_features import AverageFeature
@@ -162,7 +152,6 @@ def test_dependencies_for_does_not_construct_the_feature(monkeypatch) -> None:
     assert AverageFeature.dependencies_for({"average_features": "range,range"}) == ["range", "range"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_match_derives_deps_via_dependencies_for_without_construction(monkeypatch) -> None:
     """``FeatureRegistry.match`` must resolve deps without the double-construction."""
     from pc2img.features.derivative_features import AverageFeature

@@ -166,6 +166,14 @@ class HillshadeFeature(DerivativeFeatureStrategy):
         self.z_factor = float(z_factor)
         self.dependencies = [base_feature]
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__: the base_feature group is OPTIONAL and defaults to
+        # "range" when absent (bare ``hillshade``). Preserve that so match() and
+        # construction agree (DSN-05).
+        base_feature = params.get("base_feature")
+        return [base_feature if base_feature is not None else "range"]
+
     def compute(self, _, fetch) -> NDArray:
         values = fetch(self.base_feature)
 
@@ -190,6 +198,11 @@ class AverageFeature(DerivativeFeatureStrategy):
         self.average_features = type(self)._split_top_level(average_features)
         self.dependencies = self.average_features
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__: split this feature's own regex group (DSN-05).
+        return cls._split_top_level(params["average_features"] or "")
+
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.average_features]
         need_3dim = any(v.ndim == 3 for v in values)
@@ -211,6 +224,11 @@ class SumFeature(DerivativeFeatureStrategy):
     def __init__(self, sum_features: str) -> None:
         self.sum_features = type(self)._split_top_level(sum_features)
         self.dependencies = self.sum_features
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__: split this feature's own regex group (DSN-05).
+        return cls._split_top_level(params["sum_features"] or "")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.sum_features]
@@ -259,6 +277,11 @@ class NormFeature(DerivativeFeatureStrategy):
     def __init__(self, norm_features: str) -> None:
         self.norm_features = type(self)._split_top_level(norm_features)
         self.dependencies = self.norm_features
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__: split this feature's own regex group (DSN-05).
+        return cls._split_top_level(params["norm_features"] or "")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
         values: list[NDArray] = [fetch(v) for v in self.norm_features]

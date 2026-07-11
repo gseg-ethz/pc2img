@@ -12,6 +12,8 @@ from typing import (
     cast,
 )
 
+from ..errors import RegistryLookupError
+
 if TYPE_CHECKING:
     from .interpolation import InterpolationStrategy
     from .projection import ProjectionStrategy
@@ -34,7 +36,7 @@ class StrategyRegistry[T]:
     def register[S](self, identifier: str) -> Callable[[type[S]], type[S]]:
         def decorator(cls: type[S]) -> type[S]:
             if identifier in self._map:
-                raise KeyError(f"Strategy {identifier!r} already registered")
+                raise RegistryLookupError(f"Strategy {identifier!r} already registered")
             self._map[identifier] = cast(type[T], cls)
 
             self._cls_to_key.setdefault(cast(type[T], cls), identifier)
@@ -59,7 +61,7 @@ class StrategyRegistry[T]:
         try:
             return self._map[identifier]
         except KeyError as e:
-            raise KeyError(f"No strategy registered under {identifier!r}") from e
+            raise RegistryLookupError(f"No strategy registered under {identifier!r}") from e
 
     def create(self, identifier: str, **kwargs: Any) -> T:
         cls = self.get_strategy(identifier)
@@ -88,7 +90,7 @@ class StrategyRegistry[T]:
             key = self._cls_to_key.get(cast(type[T], base))
             if key is not None:
                 return key
-        raise KeyError(f"Class {cls.__module__}.{cls.__qualname__} is not registered")
+        raise RegistryLookupError(f"Class {cls.__module__}.{cls.__qualname__} is not registered")
 
 
 PROJECTIONS: StrategyRegistry[ProjectionStrategy] = StrategyRegistry()
