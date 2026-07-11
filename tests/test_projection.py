@@ -153,10 +153,6 @@ def test_spherical_inverse_rejects_wrapping_fov():
 # --------------------------------------------------------------------------- #
 # M-02 / M-03 / M-04 — Perspective cluster                                     #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-02 behind-camera (Z_c<=0) depth cull not yet fixed",
-    strict=False,
-)
 def test_perspective_masks_behind_camera():
     k = _intrinsics()
     r = np.eye(3, dtype=np.float32)
@@ -169,10 +165,6 @@ def test_perspective_masks_behind_camera():
     assert pts2d.shape == (1, 2)
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-03 perspective camera translation not yet supported",
-    strict=False,
-)
 def test_perspective_applies_translation():
     k = _intrinsics()
     r = np.eye(3, dtype=np.float32)
@@ -194,19 +186,11 @@ def test_perspective_applies_translation():
     assert not np.allclose(pts2d[0], pts0[0])
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-03b 4x4 rotation_matrix rejection not yet implemented",
-    strict=False,
-)
 def test_perspective_rejects_4x4_rotation():
     with pytest.raises(TypeError):
         PerspectiveProjection(_intrinsics(), np.eye(4, dtype=np.float32))
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-03b non-orthonormal rotation rejection not yet implemented",
-    strict=False,
-)
 def test_perspective_rejects_non_orthonormal_rotation():
     # A scale matrix is 3x3 but not a proper rotation (det != 1, R.R^T != I).
     bad = np.diag([2.0, 1.0, 1.0]).astype(np.float32)
@@ -214,10 +198,6 @@ def test_perspective_rejects_non_orthonormal_rotation():
         PerspectiveProjection(_intrinsics(), bad)
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-04 perspective project()/@pcd contract not yet fixed",
-    strict=False,
-)
 def test_perspective_translation_survives_registry_coercion():
     # translation= must survive the (name, kwargs)-tuple → PROJECTIONS.create path,
     # not just direct __init__ (registry coercion path, <perspective_api_contract>).
@@ -232,3 +212,11 @@ def test_perspective_translation_survives_registry_coercion():
     assert bool(mask[0])
     uv = k @ (x[0] + t)
     np.testing.assert_allclose(pts2d[0], uv[:2] / uv[2], rtol=1e-5, atol=1e-5)
+
+
+def test_perspective_project_raw_is_documented_refusal():
+    # M-04: project_raw is a documented NotImplementedError (the class projects in
+    # one shot via project()), not a silent/undocumented dead override.
+    proj = PerspectiveProjection(_intrinsics(), np.eye(3, dtype=np.float32))
+    with pytest.raises(NotImplementedError):
+        proj.project_raw(PointCloudData(np.zeros((1, 3), dtype=np.float32)))

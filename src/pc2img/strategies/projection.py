@@ -18,6 +18,7 @@ from pchandler import PointCloudData
 from pchandler.filters import BoxFilter, FoVFilter
 from pchandler.geometry.coordinates import rhv2xyz
 from pchandler.geometry.spherical import FoV
+from pchandler.geometry.transforms import Transform
 
 if TYPE_CHECKING:
     # Private pchandler symbol used only in a static annotation on
@@ -250,33 +251,125 @@ class OrthographicProjection(ProjectionStrategy):
 
 @PROJECTIONS.register("perspective")
 class PerspectiveProjection(ProjectionStrategy):
-    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        raise NotImplementedError("This function computes the projected coordinates in one shot.")
+    """Full pinhole camera projection ``x ∝ K·(R·X + t)``.
 
-    def inverse_projection(self):
-        raise NotImplementedError("This function computes the inverse projection.")
+    Parameters
+    ----------
+    projection_matrix : NDArray | _TransformArray
+        The 3x3 camera intrinsic matrix ``K``. Applied linearly; the perspective
+        divide by camera depth is performed manually.
+    rotation_matrix : NDArray | _TransformArray
+        The 3x3 **proper rotation** ``R`` of the extrinsic. Must be orthonormal
+        with ``det ≈ +1``. A non-3x3 matrix (notably a 4x4) raises ``TypeError`` —
+        pass the camera translation via ``translation=`` instead of baking it into
+        a 4x4 extrinsic.
+    translation : NDArray | None, keyword-only
+        The length-3 camera-frame translation ``t``. ``None`` → ``zeros(3)``,
+        reproducing an origin camera. Convention is camera-frame: a caller holding
+        a camera *center* ``C`` (world coordinates) passes ``t = −R·C`` — matching
+        pchandler ``Transform.generate(rotation, translation)`` which builds
+        ``x0 = (R·s + t) @ x1``. Do NOT use an ``R·(X − C)`` convention.
+
+    Notes
+    -----
+    Breaking change (D-17): a 4x4 ``rotation_matrix`` was previously accepted and
+    silently treated as an affine extrinsic; it now raises ``TypeError``. The 4x4
+    path had zero reachable callers, so this is batched into the release with no
+    runtime ``DeprecationWarning`` — version pinning is the migration deferral.
+
+    The extrinsic is applied FIRST via pchandler's transform matmul contract
+    (``Transform @ pcd`` → ``pcd.__rmatmul__``): ``K`` (3x3) cannot be pre-composed
+    with a 4x4 affine because ``pcd.__rmatmul__`` accepts a 4x4 only if it is a
+    pure affine and ``_TransformArray.__matmul__`` composes only same-shaped
+    matrices — so we never write ``(K @ extrinsic) @ pcd``.
+    """
 
     def __init__(
         self,
         projection_matrix: NDArray | _TransformArray,
         rotation_matrix: NDArray | _TransformArray,
+        *,
+        translation: NDArray | None = None,
     ):
+        rot = np.asarray(getattr(rotation_matrix, "arr", rotation_matrix), dtype=np.float32)
+        # Fail fast on a non-3x3 rotation. A 4x4 is the notable case: the caller
+        # meant to supply an extrinsic — steer them to translation= (D-01).
+        if rot.shape != (3, 3):
+            raise TypeError(
+                f"PerspectiveProjection expected a 3×3 rotation matrix; got shape {rot.shape}. "
+                "Pass the camera translation via the translation= argument."
+            )
+        # A proper rotation is orthonormal with det ≈ +1. A scale/shear baked into
+        # a 3x3 is silent wrong-geometry; refuse it rather than honor it.
+        identity = np.eye(3, dtype=np.float32)
+        if not (np.allclose(rot @ rot.T, identity, atol=1e-6) and np.isclose(np.linalg.det(rot), 1.0, atol=1e-6)):
+            raise ValueError(
+                "PerspectiveProjection rotation_matrix must be a proper rotation "
+                "(orthonormal, det ≈ +1); got a matrix with scale/shear or reflection."
+            )
+
+        if translation is None:
+            trans = np.zeros(3, dtype=np.float32)
+        else:
+            trans = np.asarray(translation, dtype=np.float32)
+            if trans.shape != (3,):
+                raise ValueError(
+                    f"PerspectiveProjection translation must be a length-3 vector; got shape {trans.shape}."
+                )
+
         self.projection_matrix = projection_matrix
         self.rotation_matrix = rotation_matrix
+        self._rotation = rot
+        self._translation = trans
+        self._intrinsics = np.asarray(getattr(projection_matrix, "arr", projection_matrix), dtype=np.float32)
+
+    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        # PerspectiveProjection computes the full projection in one shot in
+        # project() (K·(R·X + t) + manual perspective divide), so the two-phase
+        # project_raw/normalize contract of the base class does not apply. This
+        # documented refusal satisfies the ABC; it is never reached by project().
+        raise NotImplementedError(
+            "PerspectiveProjection computes pixel coordinates in one shot via project(); "
+            "it does not implement the two-phase project_raw()/normalize contract."
+        )
+
+    def inverse_projection(self):
+        raise NotImplementedError("PerspectiveProjection has no inverse: the perspective divide discards depth.")
 
     def project(self, pcd: PointCloudData, resolution: tuple[int, int]) -> tuple[Array_Nx2_Float_T, Vector_Bool_T]:
-        """
-        Rotate the scan so that the projection direction
+        """Project points to pixel coordinates via the full pinhole model.
 
-        Returns:
-          - pts2d: array of pixel coordinates shape (M, 2)
-          - mask: original boolean mask shape (N,)
+        Applies the extrinsic ``[R|t]`` first (camera-frame coordinates), culls
+        behind-camera points (depth ``Z_c ≤ 0``), then applies ``K`` and the
+        manual perspective divide.
+
+        Returns
+        -------
+        pts2d : Array_Nx2_Float_T
+            Pixel coordinates of the in-bounds, in-front points, shape ``(M, 2)``.
+        mask : Vector_Bool_T
+            Boolean mask over all ``N`` input points, shape ``(N,)``.
         """
-        uv = (self.projection_matrix @ self.rotation_matrix) @ pcd
-        uv = uv.arr[:, :2] / uv.arr[:, 2].reshape(-1, 1)
-        mask = np.logical_and(
+        # 1) extrinsic-first: build the 4x4 affine [R|t] and apply it via the
+        #    documented pchandler `Transform @ pcd` contract (dispatches to
+        #    pcd.__rmatmul__), yielding camera-frame coordinates Xc = R·X + t.
+        extrinsic = Transform.generate(rotation=self._rotation, translation=self._translation)
+        camera_frame = extrinsic @ pcd
+        camera_xyz = np.asarray(camera_frame.xyz)
+        depth = camera_xyz[:, 2]
+
+        # 2) apply K, then the manual perspective divide by the homogeneous depth.
+        uv_h = camera_xyz @ self._intrinsics.T  # (N, 3), row = K · Xc
+        with np.errstate(invalid="ignore", divide="ignore"):
+            uv = uv_h[:, :2] / uv_h[:, 2].reshape(-1, 1)
+
+        # 3) M-02 behind-camera cull: drop points at/behind the camera plane
+        #    (Z_c ≤ 0) so a double-sign-flip phantom cannot land in-bounds.
+        in_front = depth > 0
+        in_bounds = np.logical_and(
             np.logical_and(uv[:, 0] >= 0, uv[:, 0] < resolution[0]),
             np.logical_and(uv[:, 1] >= 0, uv[:, 1] < resolution[1]),
         )
+        mask = np.logical_and(in_front, in_bounds)
 
         return uv[mask, :], mask
