@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T04:58:05.254Z"
+last_updated: "2026-07-11T05:13:17.867Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 28
+  completed_plans: 29
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 9 of 12
+Plan: 10 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -85,6 +85,7 @@ Progress: [███████░░░] 69%
 | Phase 05 P05 | 6min | 2 tasks | 2 files |
 | Phase 05 P06 | 8min | 2 tasks | 2 files |
 | Phase 05 P09 | 13min | 4 tasks | 7 files |
+| Phase 05 P07 | 11min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -133,6 +134,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05 P09] DiskBackedImageStore is a thin WRAPPER over DiskBackedStore[DiskBackedImageData]; DSN-09 deserialization sink + .pkl paths deleted (security-by-construction, .npy+JSON allow_pickle=False codec); legacy names re-aliased, overwrite semantics preserved (pre-del)
 - [Phase ?]: [Phase 05 P09] Delivered the 05-08 hook to CI via [tool.uv.sources] git-rev bridge @ 2cf80835 + re-locked uv.lock (git build 0.5.2.post4 satisfies GSEGUtils ~= 0.5); PyPI ~=0.6 conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
 - [Phase ?]: [Phase 05 P09] BC (D-17): cache format .pkl -> .npy+.meta.json (legacy .pkl refused as cache miss); DiskBackedImageData arithmetic surface now live (returns ndarray, previously raised)
+- [Phase ?]: 05-07: unified StrategyRegistry+FeatureRegistry on RegistryLookupError(KeyError,RuntimeError); dual inheritance preserves all except-clause catch behavior (BC-01/D-17)
+- [Phase ?]: 05-07: FeatureRegistry.match() reads deps via overridable dependencies_for classmethod (no double __init__); Hillshade needed its own override None->range beyond the plan's Average/Sum/Norm list
 
 ### Pending Todos
 
@@ -162,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T04:57:21.734Z
+Last session: 2026-07-11T05:13:06.224Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md
