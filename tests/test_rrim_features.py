@@ -1,9 +1,49 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from pc2img.features import registry as registry_module
 from pc2img.features import rrim as rrim_module
+
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_RRIM_SRC = "src/pc2img/features/rrim.py"
+
+
+@pytest.mark.xfail(
+    reason="Phase 5 (BUG-04): rrim.py docstring not the first statement; __doc__ unset",
+    strict=False,
+)
+def test_rrim_module_docstring_is_populated() -> None:
+    """BUG-04 proving test: the module docstring must be the first statement so __doc__ populates."""
+    assert isinstance(rrim_module.__doc__, str)
+    assert rrim_module.__doc__.strip()
+
+
+@pytest.mark.xfail(
+    reason="Phase 5 (BUG-04): rrim.py imports precede the docstring, tripping E402x9",
+    strict=False,
+)
+def test_rrim_module_docstring_clears_e402() -> None:
+    """BUG-04 proving test: reordering the header so the docstring leads clears the E402 findings."""
+    ruff = Path(sys.executable).with_name("ruff")
+    ruff_cmd = str(ruff) if ruff.exists() else shutil.which("ruff")
+    if ruff_cmd is None:
+        pytest.skip("ruff not found on PATH or next to the interpreter")
+
+    check = subprocess.run(
+        [ruff_cmd, "check", "--select", "E402", _RRIM_SRC],
+        cwd=_REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert check.returncode == 0, f"ruff E402 reported findings:\n{check.stdout}"
 
 
 def test_compute_rrim_flat_plane_returns_neutral_gray() -> None:
