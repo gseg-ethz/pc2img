@@ -222,6 +222,91 @@ def test_perspective_project_raw_is_documented_refusal():
         proj.project_raw(PointCloudData(np.zeros((1, 3), dtype=np.float32)))
 
 
+# --------------------------------------------------------------------------- #
+# G2 — PerspectiveProjection K (intrinsics) validation                         #
+#                                                                              #
+# The rotation is validated (3x3, orthonormal, det+1) but K is stored          #
+# unchecked. A wrong-shape K yields an opaque matmul crash at project() time;  #
+# a non-pinhole K (bottom row != [0,0,1]) makes the perspective divisor        #
+# uv_h[:,2] diverge in sign from depth, defeating the M-02 behind-camera cull. #
+# Validate K at construction with the same fail-fast posture as the rotation.  #
+# --------------------------------------------------------------------------- #
+@pytest.mark.xfail(reason="Phase 5 (G2): K is stored unchecked; a non-3x3 K is not refused at construction", strict=False)
+def test_perspective_rejects_wrong_shape_intrinsics():
+    r = np.eye(3, dtype=np.float32)
+    bad_k = np.eye(2, dtype=np.float32)
+    with pytest.raises((ValueError, TypeError)):
+        PerspectiveProjection(bad_k, r)
+
+
+@pytest.mark.xfail(reason="Phase 5 (G2): a non-pinhole K (bottom row != [0,0,1]) is not refused at construction", strict=False)
+@pytest.mark.parametrize("bottom_row", [[0.0, 0.0, 2.0], [1.0, 0.0, 1.0]])
+def test_perspective_rejects_non_pinhole_intrinsics(bottom_row):
+    r = np.eye(3, dtype=np.float32)
+    k = _intrinsics()
+    k[2] = np.array(bottom_row, dtype=np.float32)
+    with pytest.raises(ValueError):
+        PerspectiveProjection(k, r)
+
+
+def test_perspective_accepts_valid_pinhole_intrinsics():
+    # A well-formed pinhole K (bottom row [0,0,1]) constructs successfully.
+    proj = PerspectiveProjection(_intrinsics(), np.eye(3, dtype=np.float32))
+    assert np.allclose(np.asarray(proj._intrinsics)[2], [0.0, 0.0, 1.0])
+
+
+# --------------------------------------------------------------------------- #
+# G4 — orthonormality/det check accepts a double-precision rotation            #
+#                                                                              #
+# Characterization: a legitimate float64 proper rotation must be accepted. The #
+# fix moves the orthonormality/det math to float64 so the float32 round-trip   #
+# can never false-reject a valid double-precision rotation at the atol=1e-6    #
+# boundary. (Random scipy rotations already pass under float32 at atol=1e-6,   #
+# so this pins the accept side rather than flipping a RED failure.)            #
+# --------------------------------------------------------------------------- #
+def _float64_proper_rotation() -> np.ndarray:
+    """A proper rotation in genuine float64 (scipy if available, else axis-angle)."""
+    try:
+        from scipy.spatial.transform import Rotation
+
+        return np.asarray(Rotation.random(random_state=9).as_matrix(), dtype=np.float64)
+    except Exception:  # pragma: no cover - scipy is a hard dep, fallback for safety
+        theta = 0.7
+        axis = np.array([1.0, 2.0, 3.0], dtype=np.float64)
+        axis /= np.linalg.norm(axis)
+        x, y, z = axis
+        c, s = np.cos(theta), np.sin(theta)
+        return np.array(
+            [
+                [c + x * x * (1 - c), x * y * (1 - c) - z * s, x * z * (1 - c) + y * s],
+                [y * x * (1 - c) + z * s, c + y * y * (1 - c), y * z * (1 - c) - x * s],
+                [z * x * (1 - c) - y * s, z * y * (1 - c) + x * s, c + z * z * (1 - c)],
+            ],
+            dtype=np.float64,
+        )
+
+
+def test_perspective_accepts_float64_proper_rotation():
+    r64 = _float64_proper_rotation()
+    assert r64.dtype == np.float64
+    # Must construct without a false ValueError from the orthonormality/det check.
+    PerspectiveProjection(_intrinsics(), r64)
+
+
+# --------------------------------------------------------------------------- #
+# G7 — OrthographicProjection single-pass np.ix_ gather (behavior-identical)   #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("plane", ["xy", "yz", "xz"])
+def test_orthographic_project_raw_ix_equivalence(synthetic_pcd, plane):
+    pcd = synthetic_pcd(n=24)
+    coords, mask, _mins, _maxs = OrthographicProjection(plane=plane).project_raw(pcd)
+    cols = _PLANE_COLS[plane]
+    xyz = np.asarray(pcd.xyz)
+    # The single-pass np.ix_ gather must be byte-identical to the prior two-step index.
+    np.testing.assert_array_equal(coords, xyz[np.ix_(mask, cols)])
+    np.testing.assert_array_equal(coords, xyz[mask][:, cols])
+
+
 def test_spherical_inverse_projection_without_fov_raises_valueerror():
     # WR-01 (05-REVIEW): a default-constructed SphericalProjection (field_of_view
     # is None) cannot invert — inverse_projection has no point cloud to source a
