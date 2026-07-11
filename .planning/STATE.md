@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
-stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T05:13:17.867Z"
+stopped_at: Completed 05-10-PLAN.md
+last_updated: "2026-07-11T05:22:44.490Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 29
+  completed_plans: 30
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 10 of 12
+Plan: 11 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -86,6 +86,7 @@ Progress: [███████░░░] 69%
 | Phase 05 P06 | 8min | 2 tasks | 2 files |
 | Phase 05 P09 | 13min | 4 tasks | 7 files |
 | Phase 05 P07 | 11min | 2 tasks | 6 files |
+| Phase 05 P10 | 16min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -136,6 +137,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05 P09] BC (D-17): cache format .pkl -> .npy+.meta.json (legacy .pkl refused as cache miss); DiskBackedImageData arithmetic surface now live (returns ndarray, previously raised)
 - [Phase ?]: 05-07: unified StrategyRegistry+FeatureRegistry on RegistryLookupError(KeyError,RuntimeError); dual inheritance preserves all except-clause catch behavior (BC-01/D-17)
 - [Phase ?]: 05-07: FeatureRegistry.match() reads deps via overridable dependencies_for classmethod (no double __init__); Hillshade needed its own override None->range beyond the plan's Average/Sum/Norm list
+- [Phase ?]: 05-10: tiled DSN-07 uses lightweight 'or LazyDiskCacheConfig()' sentinel; DSN-07 now consistent across all sites (D-17)
+- [Phase ?]: 05-10: BUG-03 manifested as ValidationError (frozen pydantic dataclass re-validates replace(None)); fixed via build-dict-then-assign
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T05:13:06.224Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md
+Last session: 2026-07-11T05:22:44.483Z
+Stopped at: Completed 05-10-PLAN.md
+Resume file: None

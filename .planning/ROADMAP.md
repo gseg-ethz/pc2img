@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 9/12 plans executed
+**Plans**: 10/12 plans executed
 
 **Wave 1**
 
@@ -196,7 +196,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 05-10-PLAN.md — tiled_generator.py: BUG-03 interp_kwargs + DSN-10 + DSN-07 [BUG-03, BUG-05, TEST-05]
+- [x] 05-10-PLAN.md — tiled_generator.py: BUG-03 interp_kwargs + DSN-10 + DSN-07 [BUG-03, BUG-05, TEST-05]
 - [ ] 05-11-PLAN.md — manager.py + core.py: DSN-04/07/08 + DSN-06 omitted-config coercion [BUG-05, TEST-05]
 
 **Wave 4** *(blocked on Wave 3)*
@@ -227,5 +227,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 9/12 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 10/12 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
