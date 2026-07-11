@@ -4,17 +4,24 @@ from typing import Any, Unpack
 
 import numpy as np
 from GSEGUtils.lazy_disk_cache import (
+    DiskBackedNDArray,
     LazyDiskCache,
     LazyDiskCacheKw,
 )
-from numpy.lib.mixins import NDArrayOperatorsMixin
 from numpy.typing import NDArray
 
 from pc2img.util import convert_to_image
 
 
-class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
-    __array_priority__ = 1000
+class DiskBackedImageData(DiskBackedNDArray):
+    """Disk-backed raster: a thin ``DiskBackedNDArray`` with an image-shape guard.
+
+    Reparented onto :class:`GSEGUtils.lazy_disk_cache.DiskBackedNDArray` (D-04):
+    the working ``__array_ufunc__`` (unwrap -> delegate -> plain ndarray), the
+    ``__array__`` / ``__getitem__`` / ``data`` accessors and the offload/load
+    buffer hooks are all inherited. This class only adds the ``ndim in (2, 3)``
+    (single- or 3-channel) shape assertion and the :meth:`to_uint8` conversion.
+    """
 
     def __init__(
         self,
@@ -22,16 +29,7 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
         **lazy_disk_cache_settings: Unpack[LazyDiskCacheKw],
     ):
         assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or image_data.shape[-1] == 3)
-        self._image_data = image_data
-        self._shape = image_data.shape
-        self._dtype = image_data.dtype
-        super().__init__(**lazy_disk_cache_settings)
-
-    @property
-    def data(self):
-        if self.offloaded:
-            self.load()
-        return self._image_data
+        super().__init__(image_data, **lazy_disk_cache_settings)
 
     @LazyDiskCache.ensure_loaded
     def to_uint8(
@@ -41,28 +39,4 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
 
         if pre_processing_func is None:
             pre_processing_func = partial(convert_to_image, replace_nan_with="max", normalize=False)
-        return pre_processing_func(self._image_data)
-
-    @LazyDiskCache.ensure_loaded
-    def __array__(self, dtype=None, *, copy=None):
-        if copy is False:
-            raise ValueError("`copy=False` isn't supported. A copy is always created.")
-
-        arr = self._image_data
-        return arr.astype(dtype, copy=True) if dtype else arr.copy()
-
-    @LazyDiskCache.ensure_loaded
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        raise NotImplementedError
-
-    def _describe_buffer(self):
-        return self._shape, self._dtype, self._image_data
-
-    def _drop_buffer(self):
-        self._image_data = None
-
-    def _describe_shape_dtype(self):
-        return self._shape, self._dtype
-
-    def _set_buffer(self, buf: NDArray):
-        self._image_data = buf
+        return pre_processing_func(self._data)
