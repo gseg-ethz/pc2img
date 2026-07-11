@@ -220,3 +220,14 @@ def test_perspective_project_raw_is_documented_refusal():
     proj = PerspectiveProjection(_intrinsics(), np.eye(3, dtype=np.float32))
     with pytest.raises(NotImplementedError):
         proj.project_raw(PointCloudData(np.zeros((1, 3), dtype=np.float32)))
+
+
+def test_spherical_inverse_projection_without_fov_raises_valueerror():
+    # WR-01 (05-REVIEW): a default-constructed SphericalProjection (field_of_view
+    # is None) cannot invert — inverse_projection has no point cloud to source a
+    # FoV from — so it must fail fast with a clear ValueError, not dereference
+    # None into a bare AttributeError.
+    proj = SphericalProjection()
+    range_img = np.ones((16, 32), dtype=np.float32)
+    with pytest.raises(ValueError, match="explicit field_of_view"):
+        proj.inverse_projection(range_img)

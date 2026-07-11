@@ -150,10 +150,19 @@ class SphericalProjection(ProjectionStrategy):
     def inverse_projection(
         self, range_img: NDArray, spherical_origin: NDArray | None = None
     ) -> tuple[NDArray, NDArray]:
-        if self._field_of_view is not None:
-            # Same seam guard as the forward path: a wrapping FoV would make the
-            # linspace below run left→right through the +/- pi discontinuity.
-            _reject_wrapping_fov(self._field_of_view)
+        if self._field_of_view is None:
+            # inverse_projection rebuilds angles from the raster's pixel grid, which
+            # needs the angular extents. Unlike the forward path there is no point
+            # cloud here to source a FoV from, so require an explicit one rather
+            # than dereferencing None below (AttributeError).
+            raise ValueError(
+                "SphericalProjection.inverse_projection requires the projection to "
+                "have been constructed with an explicit field_of_view; the range "
+                "image alone does not carry angular extents."
+            )
+        # Same seam guard as the forward path: a wrapping FoV would make the
+        # linspace below run left→right through the +/- pi discontinuity.
+        _reject_wrapping_fov(self._field_of_view)
 
         px_vertical, px_horizontal = range_img.shape
         horizontal_range = np.linspace(
