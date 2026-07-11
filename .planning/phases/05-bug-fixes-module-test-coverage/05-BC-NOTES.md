@@ -142,7 +142,7 @@ features), 05-05 (interpolation), 05-07 (registries), 05-08 + 05-09 (image_cache
   `DiskBackedImageData` will no longer see it — arithmetic now succeeds and
   yields an ndarray. Result type is `np.ndarray`, not `DiskBackedImageData`.
 
-## 10. GSEGUtils gained a public `register_lazy_disk_cache_class` hook + pc2img is on a TEMPORARY git-rev bridge — BREAKING (dependency) (D-05 Option A, 05-08 / 05-09)
+## 10. GSEGUtils gained a public `register_lazy_disk_cache_class` hook; pc2img pins it from PyPI (GSEGUtils 0.5.3) — BREAKING (dependency) (D-05 Option A, 05-08 / 05-09; bridge resolved 2026-07-11)
 
 - **Symbol:** `GSEGUtils.lazy_disk_cache.register_lazy_disk_cache_class(cls)`
   (function + decorator form); consumed at import time in
@@ -153,27 +153,35 @@ features), 05-05 (interpolation), 05-07 (registries), 05-08 + 05-09 (image_cache
   via this hook (explicit allow-list, no importlib fallback — D-02 tampering
   posture preserved). pc2img registers `DiskBackedImageData` this way so
   offloaded rasters round-trip through the `.npy`+JSON codec.
-- **Dependency state (IMPORTANT):** pc2img currently consumes the hook-bearing
-  GSEGUtils via a **temporary `[tool.uv.sources]` git-rev bridge** pinned to
-  GSEGUtils branch `gsd/register-lazy-disk-cache-class` @ SHA
-  **`2cf80835aa724f64a83853c8e35c91cb7640a919`** (git build reports
-  `0.5.2.post4`, satisfying the unchanged `GSEGUtils ~= 0.5` specifier). This
-  keeps pc2img published metadata free of PEP 508 direct-reference URLs.
+- **Dependency state (RESOLVED 2026-07-11, in Phase 5):** during Phase-5 execution
+  pc2img consumed the hook via a temporary `[tool.uv.sources]` git-rev bridge
+  (GSEGUtils branch `gsd/register-lazy-disk-cache-class` @
+  `2cf80835aa724f64a83853c8e35c91cb7640a919`, build `0.5.2.post4`). That branch has
+  since been **released: the hook shipped in the published GSEGUtils `0.5.3` on
+  PyPI.** Note the version: release-please emitted a pre-major **PATCH** bump (NOT
+  `0.6.0`) because its config sets `bump-patch-for-minor-pre-major: true`, so a
+  pre-1.0 `feat:` bumps patch. pc2img now pins **`GSEGUtils >= 0.5.3, < 1.0`** and
+  resolves it straight from PyPI; the git-rev bridge + its `[tool.uv.sources]`
+  entry were removed and `uv.lock` re-locked to the registry build. pc2img metadata
+  is PyPI-clean (no direct-reference URLs).
 
-### ⚠️ PHASE-6 CONVERSION REQUIRED (BC-01 action — do NOT do in Phase 5)
+### ✅ BC-01 dependency conversion — DONE (2026-07-11, Phase 5, pre-ship)
 
-This is the one action item this file hands to Phase 6:
+Originally handed to Phase 6, but completed early during Phase-5 execution (the
+phase had not yet shipped, so there was no need to defer):
 
-1. **Merge** the GSEGUtils branch `gsd/register-lazy-disk-cache-class` into
-   GSEGUtils `main` via PR, so **release-please cuts the real `0.6.0`** to PyPI
-   (absorbing the pending `0.5.3` docs/chore release notes).
-2. In pc2img, **bump `GSEGUtils ~= 0.6`**.
-3. **DROP** the `[tool.uv.sources]` gsegutils git-rev entry from `pyproject.toml`.
-4. **Re-lock** (`uv lock`) and commit the updated `uv.lock`.
+1. ✅ GSEGUtils released the hook to PyPI as **`0.5.3`** via its own release-please
+   flow (owner-driven in the GSEGUtils workspace) — NOT `0.6.0`; pre-major patch bump.
+2. ✅ pc2img pin bumped `~= 0.5` → **`>= 0.5.3, < 1.0`** (floor at the hook-bearing
+   build; the `< 1.0` ceiling preserves the original pre-1.0 range and avoids a
+   `~= 0.5.3` cap that would break the moment GSEGUtils ships `0.6.0`).
+3. ✅ **DROPPED** the `[tool.uv.sources]` gsegutils git-rev entry from `pyproject.toml`.
+4. ✅ Re-locked (`uv lock`) → `uv.lock` resolves `gsegutils 0.5.3` from PyPI;
+   verified via `uv sync --frozen` + hook import + full suite (111 passed).
 
-Until step 1 lands on PyPI, pc2img cannot drop the git bridge without losing the
-public hook (stock PyPI `GSEGUtils 0.5.2` lacks it). This is Phase-6 BC-01
-material.
+This BC-01 dependency item is **closed** — no Phase-6 follow-up remains for it. (The
+broader BC-01 milestone deliverable still aggregates all Phase-5 BC notes below for
+downstream consumers.)
 
 ## 11. Feature dependency cycle raises `ValueError`, not `RecursionError` — BREAKING (surface only) (DSN-08, 05-11)
 
