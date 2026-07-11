@@ -80,3 +80,57 @@ def test_offload_reload_round_trip(tmp_path: Path):
 
     reloaded = np.asarray(store["range"])
     np.testing.assert_array_equal(reloaded, arr)
+
+
+# --------------------------------------------------------------------------- #
+# G3 — overwrite / delete must purge the on-disk codec pair                    #
+#                                                                              #
+# add_image_to_store's overwrite path does `del self[key]`, but the base       #
+# __delitem__ drops only the in-memory entry. The stale `<key>.npy` +          #
+# `<key>.meta.json` remain, and a fresh store re-scans `*.npy` on construction #
+# — so it re-adopts and serves the stale pre-overwrite raster.                 #
+# --------------------------------------------------------------------------- #
+@pytest.mark.xfail(reason="Phase 5 (G3): base __delitem__ leaves the stale codec pair on disk; a re-scanned store serves it", strict=False)
+def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store1 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store1.add_image_to_store("range", a)
+    store1.offload_image_data_to_disk("range")
+    assert store1._get_npy_path("range").exists()
+
+    # Overwrite the key in the SAME store — routes through `del self["range"]`.
+    store1.add_image_to_store("range", b)
+
+    # A fresh store over the same cache_dir must NOT serve the stale pre-overwrite A.
+    store2 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    try:
+        served = np.asarray(store2["range"])
+    except KeyError:
+        served = None  # cache miss: A purged, B never offloaded — acceptable
+    if served is not None:
+        assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
+
+
+@pytest.mark.xfail(reason="Phase 5 (G3): base __delitem__ does not purge the on-disk codec pair", strict=False)
+def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((6, 6)))
+    store.offload_image_data_to_disk("range")
+    assert store._get_npy_path("range").exists()
+    assert store._get_meta_path("range").exists()
+
+    del store["range"]
+
+    assert not store._get_npy_path("range").exists()
+    assert not store._get_meta_path("range").exists()
+
+
+def test_delete_absent_key_does_not_raise(tmp_path: Path):
+    # A key that was never offloaded (no on-disk codec pair) must delete cleanly:
+    # unlink(missing_ok=True) carries the safety, not a cache_dir-is-None guard.
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((6, 6)))
+    del store["range"]  # in memory only — no .npy on disk
+    assert "range" not in store
