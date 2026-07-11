@@ -36,14 +36,15 @@ jobs:
         run: uv sync --frozen
 
       # Coverage flags live here on the command line, never in addopts, so local
-      # subset runs stay fast. --cov-fail-under=35 matches the floor recorded in
-      # CONTRIBUTING.md (measured baseline 37% minus headroom).
+      # subset runs stay fast. --cov-fail-under=55 matches the floor recorded in
+      # CONTRIBUTING.md (measured baseline 57% minus a 2-point headroom margin,
+      # ratcheted in Phase 5 as the bug-fix + module-coverage tests landed).
       - name: Run tests
         run: >-
           uv run --frozen pytest
           --cov=pc2img --cov-branch
           --cov-report=term-missing --cov-report=xml
-          --cov-fail-under=35
+          --cov-fail-under=55
 
       - name: Upload coverage report
         if: always()
