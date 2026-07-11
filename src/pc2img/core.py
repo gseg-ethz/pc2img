@@ -73,9 +73,14 @@ class PointCloudImageGenerator:
         self._img_res = cast(ImgRes, img_res)
         self._proj = cast(ProjectionStrategy, proj)
         self._interp = cast(InterpolationStrategy, interp)
+        # DSN-06: an OMITTED lazy_disk_cache_config never runs the BeforeValidator
+        # (pydantic does not validate default values), so it would reach here as an
+        # uncoerced None and fail store construction. Coerce here so the omitted and
+        # explicit-None paths behave identically (coerce_lazy_cfg is idempotent on an
+        # already-coerced LazyDiskCacheConfig).
         self.feature_mgr = FeatureManager(
             self._pcd,
-            lazy_disk_cache_config=cast(LazyDiskCacheConfig, lazy_disk_cache_config),
+            lazy_disk_cache_config=coerce_lazy_cfg(lazy_disk_cache_config),
         )
         self.projection_results = {}
 

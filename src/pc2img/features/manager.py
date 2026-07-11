@@ -14,11 +14,14 @@ class FeatureManager:
         self,
         pcd: PointCloudData,
         *,
-        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        lazy_disk_cache_config: LazyDiskCacheConfig | None = None,
     ):
         self.registry: FeatureRegistry = FEATURES
         self.pcd: PointCloudData = pcd
-        self._raster_cache = DiskBackedImageStore(config=lazy_disk_cache_config)
+        # DSN-07: None-sentinel default (no shared mutable LazyDiskCacheConfig()),
+        # consistent with the core.py / tiled_generator sites.
+        config = lazy_disk_cache_config or LazyDiskCacheConfig()
+        self._raster_cache = DiskBackedImageStore(config=config)
         self._base_features: list[FeatureSpec] = []
         self._targets: list[FeatureSpec] = []
 
@@ -26,22 +29,33 @@ class FeatureManager:
         # Analyze which base features need to be rasterized for targets
 
         self._targets = []
+        # DSN-04: reset per request so successive request() calls do not accumulate
+        # stale base-feature specs on a reused generator.
+        self._base_features = []
         if isinstance(targets, str):
             targets = [targets]
 
-        def visit(spec: FeatureSpec):
+        def visit(spec: FeatureSpec, visiting: set[str]):
             if spec.name in self._raster_cache:
                 return
+            # DSN-08: a name re-entered on the current dependency path is a cycle;
+            # raise a clear ValueError instead of recursing into a RecursionError.
+            if spec.name in visiting:
+                raise ValueError(f"dependency cycle: {spec.name}")
+            visiting.add(spec.name)
             if issubclass(spec.cls, BaseFeatureStrategy):
                 self._base_features.append(spec)
             for dep in spec.dependencies:
                 dep_spec = self.registry.match(dep)
-                visit(dep_spec)
+                visit(dep_spec, visiting)
+            # backtrack: only nodes on the active recursion path count as a cycle,
+            # so diamond dependencies across siblings are not falsely flagged.
+            visiting.discard(spec.name)
 
         for t in targets:
             target_spec = self.registry.match(t)
             self._targets.append(target_spec)
-            visit(target_spec)
+            visit(target_spec, set())
 
     def available_features(self) -> list[str]:
         return list(self._raster_cache.keys())

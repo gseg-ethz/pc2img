@@ -64,7 +64,6 @@ def self_cyclic_feature() -> Iterator[str]:
         FEATURES._map.pop(_SelfCycleFeature.regex_pattern, None)
 
 
-@pytest.mark.xfail(strict=False, reason="Phase 5 (BUG-05): DSN-04 (_base_features not reset) not yet fixed")
 def test_request_twice_does_not_accumulate_base_features(
     synthetic_pcd: Callable[..., PointCloudData],
 ) -> None:
@@ -83,7 +82,6 @@ def test_request_twice_does_not_accumulate_base_features(
     assert len(mgr._base_features) == 1
 
 
-@pytest.mark.xfail(strict=False, reason="Phase 5 (BUG-05): DSN-08 (no cycle guard) not yet fixed")
 def test_dependency_cycle_raises_valueerror_not_recursionerror(
     synthetic_pcd: Callable[..., PointCloudData],
     self_cyclic_feature: str,
@@ -101,7 +99,6 @@ def test_dependency_cycle_raises_valueerror_not_recursionerror(
         mgr.request(self_cyclic_feature)
 
 
-@pytest.mark.xfail(strict=False, reason="Phase 5 (BUG-05): DSN-07 (mutable-default config) not yet fixed")
 def test_default_config_uses_none_sentinel() -> None:
     """DSN-07: the ``lazy_disk_cache_config`` default is the ``None`` sentinel.
 
