@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 4/12 plans executed
+**Plans**: 5/12 plans executed
 
 **Wave 1**
 
@@ -188,7 +188,7 @@ Plans:
 
 - [x] 05-02-PLAN.md — projection.py: M-01/BUG-01 orthographic + M-05/D-15 seam guard + M-02/03/04 perspective (D-01) [BUG-01, BUG-05, TEST-03]
 - [x] 05-03-PLAN.md — util.py: nanconv copy-input + float32 (M-07/M-08/D-09) + convert_to_image all-NaN (M-09) [BUG-05, TEST-06]
-- [ ] 05-04-PLAN.md — derivative_features.py: DSN-03+M-12 fix + M-10/M-11 kept-behavior params (D-07/D-08) [BUG-05, TEST-04]
+- [x] 05-04-PLAN.md — derivative_features.py: DSN-03+M-12 fix + M-10/M-11 kept-behavior params (D-07/D-08) [BUG-05, TEST-04]
 - [ ] 05-05-PLAN.md — interpolation.py: M-06 kept-behavior culling thresholds (D-06/PERF-03) + oracle [BUG-05, TEST-03]
 - [ ] 05-06-PLAN.md — rrim.py: BUG-04 docstring/E402 reorder; M-13 defer/log (D-16) [BUG-04, BUG-05]
 - [ ] 05-07-PLAN.md — registry unification: RegistryLookupError + dependencies_for + DSN-11 (D-14) [BUG-05, TEST-04]
@@ -227,5 +227,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 4/12 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 5/12 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
