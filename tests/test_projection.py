@@ -61,10 +61,6 @@ def _wrapping_fov() -> FoV:
 # --------------------------------------------------------------------------- #
 # M-01 / BUG-01 — Orthographic arity + column indexing                         #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-01 orthographic arity + column indexing not yet fixed",
-    strict=False,
-)
 @pytest.mark.parametrize("plane", ["xy", "yz", "xz"])
 def test_orthographic_project_columns_and_arity(synthetic_pcd, plane):
     pcd = synthetic_pcd(n=16)
@@ -92,10 +88,6 @@ def test_orthographic_project_columns_and_arity(synthetic_pcd, plane):
     assert not np.allclose(pts2d[:, 0], pts2d[:, 1])
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-01 orthographic project_raw 4-tuple arity not yet fixed",
-    strict=False,
-)
 def test_orthographic_project_raw_returns_4_tuple(synthetic_pcd):
     pcd = synthetic_pcd(n=8)
     out = OrthographicProjection(plane="xy").project_raw(pcd)
@@ -106,10 +98,6 @@ def test_orthographic_project_raw_returns_4_tuple(synthetic_pcd):
     assert maxs.shape == (2,)
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-01 orthographic ROI-box masking + extent not yet fixed",
-    strict=False,
-)
 def test_orthographic_roi_box_masks_and_normalizes(synthetic_pcd):
     pcd = synthetic_pcd(n=32)
     # ROI covering only part of the xy plane — keeps a strict subset of points.
@@ -149,10 +137,6 @@ def test_spherical_inverse_roundtrip_shapes():
 # --------------------------------------------------------------------------- #
 # M-05 / D-15 — Spherical wrapping-FoV seam guard                              #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-05 spherical seam guard (project_raw) not yet fixed",
-    strict=False,
-)
 def test_spherical_project_raw_rejects_wrapping_fov(synthetic_pcd):
     pcd = synthetic_pcd(n=8)
     proj = SphericalProjection(field_of_view=_wrapping_fov())
@@ -160,10 +144,6 @@ def test_spherical_project_raw_rejects_wrapping_fov(synthetic_pcd):
         proj.project_raw(pcd)
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-05 spherical seam guard (inverse_projection) not yet fixed",
-    strict=False,
-)
 def test_spherical_inverse_rejects_wrapping_fov():
     proj = SphericalProjection(field_of_view=_wrapping_fov())
     with pytest.raises(NotImplementedError):
@@ -247,9 +227,7 @@ def test_perspective_translation_survives_registry_coercion():
     x = np.array([[0.5, 0.5, 5.0]], dtype=np.float32)
     pcd = PointCloudData(x)
 
-    proj = PROJECTIONS.create(
-        "perspective", projection_matrix=k, rotation_matrix=r, translation=t
-    )
+    proj = PROJECTIONS.create("perspective", projection_matrix=k, rotation_matrix=r, translation=t)
     pts2d, mask = proj.project(pcd, (200, 200))
     assert bool(mask[0])
     uv = k @ (x[0] + t)

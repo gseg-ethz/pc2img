@@ -32,6 +32,27 @@ from .registry import PROJECTIONS, _StrategyClass
 ProjectionName = Literal["spherical", "orthographic", "perspective"]
 
 
+def _reject_wrapping_fov(fov: FoV) -> None:
+    """Refuse a horizontally wrapping FoV (``left > right``, ``crosses_pi=True``).
+
+    A wrapping FoV would make the ``left`` extent numerically greater than the
+    ``right`` extent, so span normalization silently reverses the horizontal
+    pixel axis (the M-05/D-15 silent-reversal bug). Rather than emit reversed
+    columns we refuse, mirroring pchandler's own ``FoV.tile()`` split-first
+    refusal. Callers must split the FoV at the ``+/- pi`` boundary first.
+
+    Shared by both ``SphericalProjection.project_raw`` and
+    ``SphericalProjection.inverse_projection`` so the forward and inverse paths
+    stay in sync behind a single message source.
+    """
+    if fov.crosses_pi:
+        raise NotImplementedError(
+            "SphericalProjection does not support wrapping FoVs "
+            "(left > right, i.e. crosses_pi=True). "
+            "Split the FoV at the wrap-around boundary before projecting."
+        )
+
+
 class ProjectionStrategy(ABC):
     @classmethod
     def __get_validators__(
@@ -117,6 +138,9 @@ class SphericalProjection(ProjectionStrategy):
         )
 
         fov = self._field_of_view if self._field_of_view is not None else pcd.fov
+        # Guard both the user-supplied FoV and pcd.fov: a wrapping FoV would
+        # reverse the horizontal axis under span normalization (M-05/D-15).
+        _reject_wrapping_fov(fov)
         mins = np.array([fov.left, fov.top]).squeeze()
         maxs = np.array([fov.right, fov.bottom]).squeeze()
 
@@ -125,6 +149,11 @@ class SphericalProjection(ProjectionStrategy):
     def inverse_projection(
         self, range_img: NDArray, spherical_origin: NDArray | None = None
     ) -> tuple[NDArray, NDArray]:
+        if self._field_of_view is not None:
+            # Same seam guard as the forward path: a wrapping FoV would make the
+            # linspace below run left→right through the +/- pi discontinuity.
+            _reject_wrapping_fov(self._field_of_view)
+
         px_vertical, px_horizontal = range_img.shape
         horizontal_range = np.linspace(
             self._field_of_view.left,
@@ -173,20 +202,50 @@ class OrthographicProjection(ProjectionStrategy):
         self.plane = plane
         self._roi_box = roi_box
 
-    def project_raw(self, pcd: PointCloudData) -> NDArray:
+    def project_raw(self, pcd: PointCloudData) -> tuple[NDArray, NDArray, NDArray, NDArray]:
+        cols = self._xyz_column_selection
         if self._roi_box is not None:
             min_corner = np.array(3 * (-np.inf,))
             max_corner = np.array(3 * (np.inf,))
 
-            min_corner[self._xyz_column_selection] = self._roi_box[:2]
-            max_corner[self._xyz_column_selection] = self._roi_box[2:]
+            min_corner[cols] = self._roi_box[:2]
+            max_corner[cols] = self._roi_box[2:]
 
             mask = BoxFilter(min_corner, max_corner).mask(pcd)
         else:
             mask = np.ones((pcd.nbPoints,), dtype=bool)
 
-        # Todo: Update to pass min and max back!
-        return pcd.xyz[mask, self._xyz_column_selection], mask
+        # Select the two plane columns rows-then-columns: pcd.xyz[mask][:, cols]
+        # yields (M, 2). The prior pcd.xyz[mask, cols] fancy-index broadcast the
+        # boolean row mask against the 2-element column list and produced a
+        # silent diagonal (M-01/BUG-01).
+        coords = pcd.xyz[mask][:, cols]
+
+        # Provide the (mins, maxs) the base project() needs for span normalization.
+        # Prefer the ROI box extent when supplied (so identical clouds normalize to
+        # the same frame); otherwise fall back to the kept-point extent.
+        if self._roi_box is not None:
+            mins = np.asarray(self._roi_box[:2], dtype=coords.dtype)
+            maxs = np.asarray(self._roi_box[2:], dtype=coords.dtype)
+        elif coords.shape[0]:
+            mins = coords.min(axis=0)
+            maxs = coords.max(axis=0)
+        else:
+            mins = np.zeros(2, dtype=coords.dtype)
+            maxs = np.ones(2, dtype=coords.dtype)
+
+        return coords, mask, mins, maxs
+
+    def inverse_projection(self):
+        # Orthographic projection discards the out-of-plane axis, so a raster
+        # cannot be inverted back to 3D without that missing depth. This method
+        # exists to satisfy the ProjectionStrategy ABC (its absence previously
+        # left OrthographicProjection abstract and impossible to instantiate);
+        # it is a documented refusal, not a silent stub.
+        raise NotImplementedError(
+            "OrthographicProjection has no inverse: the projection drops the "
+            "out-of-plane coordinate, so the raster cannot be lifted back to 3D."
+        )
 
 
 @PROJECTIONS.register("perspective")
