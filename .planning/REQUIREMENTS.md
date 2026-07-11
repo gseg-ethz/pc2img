@@ -59,8 +59,8 @@ Deferred to future release. Tracked but not in current roadmap.
 ### Performance
 
 - **PERF-01**: Replace full-array SHA-256 triangulation keying with shape/extent metadata or a cached grid hash
-- **PERF-02**: Use float32 (not float16) in `nanconv`; reduced precision becomes explicit opt-in
-- **PERF-03**: Promote Delaunay triangle-quality thresholds to constructor parameters
+- **PERF-02**: Use float32 (not float16) in `nanconv`; reduced precision becomes explicit opt-in — **pulled forward into Phase 5 (D-03)**; landed as the `nanconv(..., *, compute_dtype=np.float32)` opt-in (05-03). See Traceability.
+- **PERF-03**: Promote Delaunay triangle-quality thresholds to constructor parameters — **pulled forward into Phase 5 (D-03)**; landed as the `DelaunayInterpolation` culling-threshold kwargs (05-05). See Traceability.
 - **PERF-04**: Bound `_triangulation_precalc` growth (eviction / max size / per-tile scoping)
 
 ### GPU
@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-02 | Phase 5 | Complete |
 | BUG-03 | Phase 5 | Complete |
 | BUG-04 | Phase 5 | Complete |
-| BUG-05 | Phase 5 | Pending (multi-plan; 05-08 contributed the GSEGUtils public class-registration hook unblocking the store consolidation — final closure at phase verification) |
+| BUG-05 | Phase 5 | Complete (multi-plan: 05-02..05-07, 05-09, 05-10, 05-11 fixed each review-surfaced correctness bug with a proving test; 05-08 contributed the GSEGUtils public class-registration hook unblocking the store consolidation — all contributing fixes landed) |
 | TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 3 | Complete |
 | TEST-03 | Phase 5 | Complete |
@@ -109,12 +109,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CICD-01 | Phase 3 | Complete |
 | CICD-02 | Phase 6 | Pending |
 | BC-01 | Phase 6 | Pending |
+| PERF-02 | Phase 5 | Complete (v2 item pulled forward — D-03; `nanconv` float32 default + `compute_dtype` opt-in, 05-03) |
+| PERF-03 | Phase 5 | Complete (v2 item pulled forward — D-03; Delaunay culling-threshold kwargs, 05-05) |
 
 **Coverage:**
 
 - v1 requirements: 24 total (note: earlier "23 total" undercounted by one; there are 24 distinct IDs)
 - Mapped to phases: 24 ✓
 - Unmapped: 0
+- v2 requirements pulled forward and traced to Phase 5: 2 (PERF-02, PERF-03; D-03). The remaining v2 items (PERF-01, PERF-04, GPU-01) stay deferred/untraced.
 
 ---
 *Requirements defined: 2026-07-08*
