@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
 - [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [x] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings (completed 2026-07-10)
-- [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
+- [x] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules (completed 2026-07-11)
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
 
 ## Phase Details
@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 11/12 plans executed
+**Plans**: 12/12 plans complete
 
 **Wave 1**
 
@@ -201,7 +201,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 05-12-PLAN.md — Re-measure coverage + ratchet CI floor (D-10) + consolidate BC-01 note (D-17) [BUG-05, TEST-03..06]
+- [x] 05-12-PLAN.md — Re-measure coverage + ratchet CI floor (D-10) + consolidate BC-01 note (D-17) [BUG-05, TEST-03..06]
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
 
@@ -227,5 +227,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 11/12 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 12/12 | Complete   | 2026-07-11 |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
