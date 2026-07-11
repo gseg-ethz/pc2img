@@ -38,6 +38,11 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - ✓ Lazy disk-backed image cache built on `GSEGUtils.LazyDiskCache` — existing
 - ✓ Parallel tiled generation over many tiles (joblib/loky) — existing
 - ✓ RRIM and multiscale-gradient feature families — existing
+- ✓ Explicit bug fixes, each with a proving test (BUG-01 orthographic arity/indexing, BUG-02 `__array_ufunc__`, BUG-03 `extend_cache_paths` `interp_kwargs`, BUG-04 `rrim.py` docstring, BUG-05 review-surfaced correctness bugs) — Phase 5
+- ✓ Module test coverage across projection/interpolation math, derivative features, feature-name DSL, and orchestration (`FeatureManager`, tiled generator, `util`) — Phase 5 (TEST-03..06)
+- ✓ Hardened disk-backed image store: reparented onto GSEGUtils `DiskBackedStore` (`.npy`+JSON, `allow_pickle=False`, explicit class allow-list) eliminating the DSN-09 deserialization sink — Phase 5
+- ✓ `nanconv` float32 default + `compute_dtype` opt-in (PERF-02) and Delaunay culling-threshold constructor kwargs (PERF-03) — Phase 5 (v2 pulled forward, D-03)
+- ✓ pytest discovery scoped to `tests/` (stops collecting `third_party/`) and coverage analysis / reporting established — Phase 3
 - ✓ Branch untangling & mainline consolidation: `develop-gsd` established as the single forward mainline (richer `dev/*` architecture folded in, incl. the WIP `PerspectiveProjection`); every branch inventoried/dispositioned (`develop/tomislav` excluded); stale `feature/update_to_pchandler-1.0.0` retired — Validated in Phase 1 (BRANCH-01/02/03)
 - ✓ Dependency adaptation & reproducible environment: `pchandler` 2.x + `GSEGUtils` pinned in `pyproject.toml` with the numpy 2.x pin conflict resolved (cuda extras route through `pchandler[cudaXX]` with a `[tool.uv] conflicts` guard, dev/doc in PEP 735 groups); a committed universal `uv.lock` reproduces a clean-room install with no `third_party/` symlinks; the SC1 smoke (spherical → Delaunay → `range`) runs green against the locked env and the three named pchandler 2.x semantic breaks (FoVTree, `to_py4dgeo`, Csv/Las) are attested zero-call-site — Validated in Phase 2 (DEP-01/02/03/04)
 
@@ -49,18 +54,6 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - [ ] Review for code hygiene / tech debt (dead code, duplicate `joblib` pin, placeholder metadata, duplicate `convert_to_image`, matplotlib extra, `make_generator` factory)
 - [ ] Review for software design flaws (e.g. two divergent registries, in-place raster mutation, missing dependency-cycle guard)
 - [ ] Review implementations for mathematical / algorithmic soundness (projection geometry, Delaunay culling heuristics, NaN-aware smoothing, feature math)
-
-**Bug fixes (explicit, each with a proving test)**
-- [ ] `OrthographicProjection.project_raw` return-arity + column-indexing bug
-- [ ] `DiskBackedImageData.__array_ufunc__` raising the `NotImplemented` singleton
-- [ ] `TIGSettings.extend_cache_paths` storing `None` for `interp_kwargs`
-- [ ] `rrim.py` inert module docstring
-- [ ] Any additional correctness bugs surfaced by the algorithmic-soundness review
-
-**Test & coverage strengthening**
-- [ ] Add pytest configuration scoping discovery to `tests/` (stop collecting `third_party/`)
-- [ ] Establish coverage analysis / reporting
-- [ ] Add tests across untested modules: projection/interpolation math, derivative features, feature-name DSL, orchestration (`FeatureManager`, tiled generator), `util`
 
 **CI/CD (split)**
 - [ ] Early: lightweight CI that runs the test suite on PRs
@@ -125,4 +118,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-09 — Phase 2 (Dependency Adaptation & Reproducible Environment) complete: pc2img imports and runs against pchandler 2.x + GSEGUtils from a committed universal uv.lock.*
+*Last updated: 2026-07-11 — Phase 5 (Bug Fixes & Module Test Coverage) complete: all explicit bugs (BUG-01..05) fixed with proving tests, module coverage added (TEST-03..06), image store hardened onto GSEGUtils `DiskBackedStore` (DSN-09 sink eliminated), PERF-02/03 pulled forward; UAT 47/47 passed, security verified (threats_open: 0).*
