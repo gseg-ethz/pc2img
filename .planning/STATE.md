@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Completed 05-10-PLAN.md
-last_updated: "2026-07-11T05:22:44.490Z"
+last_updated: "2026-07-11T05:33:46.065Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 30
+  completed_plans: 31
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 11 of 12
+Plan: 12 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -87,6 +87,7 @@ Progress: [███████░░░] 69%
 | Phase 05 P09 | 13min | 4 tasks | 7 files |
 | Phase 05 P07 | 11min | 2 tasks | 6 files |
 | Phase 05 P10 | 16min | 2 tasks | 2 files |
+| Phase 05 P11 | 4min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -139,6 +140,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 05-07: FeatureRegistry.match() reads deps via overridable dependencies_for classmethod (no double __init__); Hillshade needed its own override None->range beyond the plan's Average/Sum/Norm list
 - [Phase ?]: 05-10: tiled DSN-07 uses lightweight 'or LazyDiskCacheConfig()' sentinel; DSN-07 now consistent across all sites (D-17)
 - [Phase ?]: 05-10: BUG-03 manifested as ValidationError (frozen pydantic dataclass re-validates replace(None)); fixed via build-dict-then-assign
+- [Phase ?]: 05-11: DSN-07 sensor asserts the FeatureManager __init__ signature default IS the None sentinel — config is decomposed by DiskBackedStore and never retained, so post-construction object identity is unobservable
+- [Phase ?]: 05-11: DSN-07 manager default uses 'or LazyDiskCacheConfig()' not coerce_lazy_cfg, to avoid a circular import (coerce_lazy_cfg lives in core.py which imports FeatureManager)
+- [Phase ?]: 05-11: DSN-06 fixed via body-level idempotent coerce_lazy_cfg — pydantic @validate_call never runs the BeforeValidator on an omitted default
 
 ### Pending Todos
 
@@ -168,6 +172,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T05:22:44.483Z
+Last session: 2026-07-11T05:32:28.362Z
 Stopped at: Completed 05-10-PLAN.md
 Resume file: None
