@@ -24,10 +24,6 @@ from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
 from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
 
-_XFAIL_REASON = (
-    "Phase 5 (BUG-02/DSN-09): image_cache not yet reparented onto GSEGUtils primitives"
-)
-
 _rng = np.random.default_rng(20260711)
 
 
@@ -35,7 +31,6 @@ def _gray(shape=(10, 10), dtype=np.float32):
     return _rng.random(shape).astype(dtype)
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_arithmetic_returns_plain_ndarray():
     """BUG-02 / DSN-02: dbid + dbid == arr + arr and the result is a plain ndarray."""
     arr = _gray()
@@ -48,7 +43,6 @@ def test_arithmetic_returns_plain_ndarray():
     assert type(result) is np.ndarray
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_store_source_has_no_arbitrary_deserialization_sink():
     """DSN-09: the store SOURCE must not call the arbitrary-object load sink.
 
@@ -64,28 +58,22 @@ def test_store_source_has_no_arbitrary_deserialization_sink():
     assert sink.search(src) is None, "store source still holds an arbitrary-object load sink"
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_legacy_pkl_refused_as_cache_miss(tmp_path: Path):
     """A legacy pre-Phase-2 `.pkl` must be refused (cache miss), never loaded."""
     legacy = tmp_path / "ghost.pkl"
     with open(legacy, "wb") as f:
         pickle.dump({"unexpected": "payload"}, f)
 
-    store = DiskBackedImageStore(
-        config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path)
-    )
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
 
     with pytest.raises(KeyError):
         _ = store["ghost"]
 
 
-@pytest.mark.xfail(strict=False, reason=_XFAIL_REASON)
 def test_offload_reload_round_trip(tmp_path: Path):
     """Blocker sensor: add -> offload -> re-fetch returns the correct array."""
     arr = _gray((6, 6))
-    store = DiskBackedImageStore(
-        config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path)
-    )
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", arr)
 
     store.offload_image_data_to_disk("range")
