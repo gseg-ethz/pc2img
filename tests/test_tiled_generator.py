@@ -41,14 +41,6 @@ def _settings_with_nested_cache_cfg() -> TIGSettings:
     )
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason=(
-        "Phase 5 (BUG-03 / DSN-01): extend_cache_paths assigns dict.update()->None "
-        "to interp_kwargs, nulling every per-tile interpolation kwarg. Flips to a "
-        "passing assert once the build-then-assign fix lands."
-    ),
-)
 def test_extend_cache_paths_preserves_interp_kwargs() -> None:
     """BUG-03: extending the cache path must keep ``interp_kwargs`` a live dict.
 

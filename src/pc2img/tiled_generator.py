@@ -16,8 +16,7 @@ from pchandler import PointCloudData
 from pydantic import ConfigDict, validate_call
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
-from pc2img import PointCloudImageGenerator
-from pc2img.core import ImgRes
+from pc2img.core import ImgRes, PointCloudImageGenerator
 from pc2img.image_cache import DiskBackedImageData
 from pc2img.strategies import (
     InterpolationName,
@@ -63,9 +62,14 @@ class TIGSettings:
         if "lazy_disk_cache_config" in self.interp_kwargs and isinstance(
             self.interp_kwargs["lazy_disk_cache_config"], LazyDiskCacheConfig
         ):
-            updates["interp_kwargs"] = dict(self.interp_kwargs).update(
-                {"lazy_disk_cache_config": self.interp_kwargs["lazy_disk_cache_config"].extend_cache_path(new_folder)}
-            )
+            # BUG-03/DSN-01: build the extended dict first, then assign it. Assigning
+            # ``dict.update()`` (which returns None) would null every per-tile
+            # interpolation kwarg — the opposite of the intended path extension.
+            extended_interp_kwargs = dict(self.interp_kwargs)
+            extended_interp_kwargs["lazy_disk_cache_config"] = self.interp_kwargs[
+                "lazy_disk_cache_config"
+            ].extend_cache_path(new_folder)
+            updates["interp_kwargs"] = extended_interp_kwargs
         if self.lazy_disk_cache_config is not None:
             updates["lazy_disk_cache_config"] = self.lazy_disk_cache_config.extend_cache_path(new_folder)
 
@@ -93,7 +97,7 @@ class TiledPointCloudImageGenerator:
         *,
         proj_kwargs: Mapping[str, Any] | None = None,
         interp_kwargs: Mapping[str, Any] | None = None,
-        lazy_disk_cache_config: Mapping[str, Any] | LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        lazy_disk_cache_config: Mapping[str, Any] | LazyDiskCacheConfig | None = None,
     ) -> None: ...
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
@@ -106,7 +110,7 @@ class TiledPointCloudImageGenerator:
         *,
         proj_kwargs: Mapping[str, Any] | None = None,
         interp_kwargs: Mapping[str, Any] | None = None,
-        lazy_disk_cache_config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        lazy_disk_cache_config: LazyDiskCacheConfig | None = None,
     ):
         self.pcd_tiles = pcd_tiles
         self._img_res = img_res
@@ -114,7 +118,9 @@ class TiledPointCloudImageGenerator:
         self.interp_cls: type[InterpolationStrategy] = cast(type[InterpolationStrategy], interp_cls)
         self._proj_kwargs = proj_kwargs or {}
         self._interp_kwargs = interp_kwargs or {}
-        self._lazy_disk_cache_config = lazy_disk_cache_config
+        # DSN-07: None-sentinel default (no shared mutable LazyDiskCacheConfig()),
+        # consistent with core.py / manager.py / interpolation.py:141.
+        self._lazy_disk_cache_config = lazy_disk_cache_config or LazyDiskCacheConfig()
         self.image_generators: dict[str, PointCloudImageGenerator] = {}
 
     def generate(
