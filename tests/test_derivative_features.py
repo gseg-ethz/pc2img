@@ -132,3 +132,42 @@ def test_hillshade_azimuth_sweep_is_self_consistent(fetch_stub) -> None:
     dark = HillshadeFeature(base_feature="range", azimuth="180").compute(None, fetch_dark)
 
     assert np.nanmean(bright) > np.nanmean(dark)
+
+
+# --------------------------------------------------------------------------- #
+# G8 — percentile-bounds validation centralized (strict/non-strict preserved)  #
+#                                                                              #
+# NormalizedFeature keeps its strict low < high contract (a zero range divides #
+# by zero) while ClipPercentileFeature and rrim keep the non-strict low <= high #
+# contract. The rule now lives in one shared _validate_percentile_bounds, but  #
+# NO observable validation outcome changes — these characterization tests are  #
+# green before and after the refactor.                                         #
+# --------------------------------------------------------------------------- #
+def test_normalized_rejects_equal_percentiles_strict() -> None:
+    with pytest.raises(ValueError):
+        NormalizedFeature(base_feature="range", low="50", high="50")
+
+
+def test_clip_percentile_accepts_equal_percentiles_non_strict() -> None:
+    from pc2img.features.derivative_features import ClipPercentileFeature
+
+    # low == high is allowed under the non-strict contract; must not raise.
+    ClipPercentileFeature(base_feature="range", low="50", high="50")
+
+
+def test_rrim_validate_clip_accepts_equal_percentiles_non_strict() -> None:
+    from pc2img.features import rrim
+
+    assert rrim._validate_clip("slope", (50.0, 50.0)) == (50.0, 50.0)
+
+
+@pytest.mark.xfail(reason="Phase 5 (G8): the shared _validate_percentile_bounds helper does not exist yet", strict=False)
+def test_shared_percentile_validator_strict_and_non_strict_contract() -> None:
+    from pc2img.features.derivative_features import _validate_percentile_bounds
+
+    _validate_percentile_bounds(10.0, 20.0, strict=True)  # ok
+    _validate_percentile_bounds(20.0, 20.0, strict=False)  # equal allowed
+    with pytest.raises(ValueError):
+        _validate_percentile_bounds(20.0, 20.0, strict=True)  # equal rejected (zero range)
+    with pytest.raises(ValueError):
+        _validate_percentile_bounds(10.0, 120.0, strict=False)  # out of [0, 100]

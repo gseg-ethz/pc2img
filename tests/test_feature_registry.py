@@ -166,6 +166,54 @@ def test_match_derives_deps_via_dependencies_for_without_construction(monkeypatc
     assert spec.dependencies == ["range", "range"]
 
 
+# --------------------------------------------------------------------------- #
+# G5 — one shared default dependency helper (both ABCs delegate, still override)#
+# --------------------------------------------------------------------------- #
+def test_dependencies_for_stays_overridable_after_unification() -> None:
+    """G5: the shared default must not break subclass / family overrides."""
+    from pc2img.features.derivative_features import AverageFeature, GradientFeature
+
+    # single-base_feature grammar → the shared default helper
+    assert GradientFeature.dependencies_for(
+        GradientFeature.regex_pattern.fullmatch("gradient_x_range").groupdict()
+    ) == ["range"]
+    # split-list family override still wins over the default
+    assert AverageFeature.dependencies_for(
+        AverageFeature.regex_pattern.fullmatch("average_(range,scalar_field_x)").groupdict()
+    ) == ["range", "scalar_field_x"]
+
+
+@pytest.mark.xfail(reason="Phase 5 (G5): the shared _default_dependencies_for helper does not exist yet", strict=False)
+def test_both_feature_abcs_share_one_default_dependency_helper() -> None:
+    """G5: both ABCs derive the single-base_feature default via one helper."""
+    from pc2img.features import core
+    from pc2img.features.core import BaseFeatureStrategy, DerivativeFeatureStrategy
+
+    params = {"base_feature": "range"}
+    assert BaseFeatureStrategy.dependencies_for(params) == core._default_dependencies_for(params)
+    assert DerivativeFeatureStrategy.dependencies_for(params) == core._default_dependencies_for(params)
+    assert BaseFeatureStrategy.dependencies_for({}) == []
+
+
+# --------------------------------------------------------------------------- #
+# G6 — FeatureSpec no longer self-derives dependencies (match is single writer)#
+# --------------------------------------------------------------------------- #
+@pytest.mark.xfail(reason="Phase 5 (G6): FeatureSpec.__init__ still derives self.dependencies from base_feature", strict=False)
+def test_feature_spec_does_not_self_derive_dependencies() -> None:
+    from pc2img.features.derivative_features import GradientFeature
+    from pc2img.features.registry import FeatureSpec
+
+    spec = FeatureSpec("gradient_x_range", GradientFeature.regex_pattern)
+    assert spec.dependencies == []
+
+
+def test_match_is_single_writer_of_dependencies() -> None:
+    """G6 characterization (green before and after): match derives deps via dependencies_for."""
+    from pc2img.features.registry import FEATURES
+
+    assert FEATURES.match("gradient_x_range").dependencies == ["range"]
+
+
 def test_registry_lookup_error_str_is_not_repr_wrapped() -> None:
     # WR-02 (05-REVIEW): RegistryLookupError subclasses KeyError, whose __str__
     # repr-wraps the message (adds quotes). The FeatureRegistry sites used to
