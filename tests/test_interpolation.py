@@ -29,6 +29,7 @@ Grid geometry
 from __future__ import annotations
 
 import numpy as np
+import pytest
 from numpy.typing import NDArray
 from scipy.interpolate import LinearNDInterpolator
 
@@ -131,3 +132,49 @@ def test_interior_culling_stamps_extra_nans_inside_hull():
     # And every oracle-NaN (outside the hull) is also NaN in the culled output:
     # culling only ever *adds* NaNs, never removes hull-exterior NaNs.
     assert np.all(np.isnan(out)[np.isnan(oracle)])
+
+
+# --------------------------------------------------------------------------- #
+# Opt-in thresholds — defaults byte-identical, disable matches oracle (D-06)  #
+# --------------------------------------------------------------------------- #
+def test_explicit_default_thresholds_reproduce_default_output():
+    """Passing the culling knobs at their documented defaults is byte-identical (PERF-03)."""
+    pts = _holed_points()
+    values = _linear_field(pts)
+    grid_x, grid_y = _query_mesh()
+
+    default = DelaunayInterpolation().interpolate(values, pts, grid_x, grid_y)
+    explicit = DelaunayInterpolation(
+        interior_culling=True,
+        area_scale=10.0,
+        aspect_ratio_mad_factor=6.0,
+        aspect_ratio_fallback_scale=10.0,
+    ).interpolate(values, pts, grid_x, grid_y)
+
+    # Byte-identical: NaN mask and finite values match exactly (NaN==NaN under assert_array_equal).
+    np.testing.assert_array_equal(default, explicit)
+
+
+def test_culling_disabled_matches_scipy_oracle_over_hole():
+    """With ``interior_culling=False`` the hole is filled — NaN placement == scipy oracle."""
+    pts = _holed_points()
+    values = _linear_field(pts)
+    grid_x, grid_y = _query_mesh()
+
+    out = DelaunayInterpolation(interior_culling=False).interpolate(values, pts, grid_x, grid_y)
+    oracle = _scipy_oracle(values, pts, grid_x, grid_y)
+
+    # No interior culling: NaN iff outside the convex hull, exactly like scipy.
+    np.testing.assert_array_equal(np.isnan(out), np.isnan(oracle))
+    both = ~np.isnan(out) & ~np.isnan(oracle)
+    np.testing.assert_allclose(out[both], oracle[both], atol=1e-12, rtol=0)
+
+
+def test_invalid_threshold_params_raise():
+    """Out-of-domain culling knobs fail fast in the constructor (eager validation)."""
+    with pytest.raises(ValueError):
+        DelaunayInterpolation(area_scale=0.0)
+    with pytest.raises(ValueError):
+        DelaunayInterpolation(aspect_ratio_mad_factor=-1.0)
+    with pytest.raises(ValueError):
+        DelaunayInterpolation(aspect_ratio_fallback_scale=0.0)
