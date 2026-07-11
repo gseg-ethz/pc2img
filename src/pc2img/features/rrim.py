@@ -482,6 +482,13 @@ class RRIMPackFeature(DerivativeFeatureStrategy):
 
     regex_pattern = re.compile(r"^rrim_pack_\((?P<args>.+)\)$")
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # DSN-05/G1: mirror __init__ (self.dependencies = [config.base_feature])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules the base raster WITHOUT constructing the feature.
+        return [_parse_rrim_config(params.get("args")).base_feature]
+
     def __init__(self, args: str) -> None:
         self.config = _parse_rrim_config(args)
         self.dependencies = [self.config.base_feature]
@@ -515,6 +522,14 @@ class RRIMFeature(DerivativeFeatureStrategy):
 
     regex_pattern = re.compile(r"^rrim(?:_\((?P<args>.+)\))?$")
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # DSN-05/G1: mirror __init__ (self.dependencies = [base_feature, pack_name])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules both the base raster and the pack raster WITHOUT construction.
+        cfg = _parse_rrim_config(params.get("args"))
+        return [cfg.base_feature, cfg.pack_feature_name()]
+
     def __init__(self, args: str | None = None) -> None:
         self.config = _parse_rrim_config(args)
         self._pack_name = self.config.pack_feature_name()
@@ -545,6 +560,14 @@ class RRIMComponentFeature(DerivativeFeatureStrategy):
     """
 
     regex_pattern = re.compile(r"^rrim_component_\((?P<args>.+)\)$")
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # DSN-05/G1: mirror __init__ (slope → [base_feature], else → [pack_name])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules the correct raster WITHOUT constructing the feature.
+        component, cfg = _parse_rrim_component(params["args"] or "")
+        return [cfg.base_feature] if component == "slope" else [cfg.pack_feature_name()]
 
     def __init__(self, args: str) -> None:
         self.component, self.config = _parse_rrim_component(args)
