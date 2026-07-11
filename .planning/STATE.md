@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T04:39:02.038Z"
+last_updated: "2026-07-11T04:58:05.254Z"
 last_activity: 2026-07-11
 last_activity_desc: Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 27
+  completed_plans: 28
   percent: 71
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 8 of 12
+Plan: 9 of 12
 Status: Ready to execute
 Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
@@ -84,6 +84,7 @@ Progress: [███████░░░] 69%
 | Phase 05 P04 | 3min | 2 tasks | 2 files |
 | Phase 05 P05 | 6min | 2 tasks | 2 files |
 | Phase 05 P06 | 8min | 2 tasks | 2 files |
+| Phase 05 P09 | 13min | 4 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -128,6 +129,10 @@ Recent decisions affecting current work:
 - [Phase ?]: M-06 Delaunay interior-culling kept as default (D-06); thresholds surfaced as opt-in kwargs with byte-identical defaults
 - [Phase ?]: interior_culling=False admits all in-hull triangles, matching scipy.LinearNDInterpolator NaN placement (oracle path for TEST-03)
 - [Phase ?]: 05-06: rrim.py header reordered (docstring first, __future__ second) to populate __doc__ and clear E402x9 (BUG-04); M-13 deferred/logged per D-16, RRIM math untouched
+- [Phase ?]: [Phase 05 P09] Finished the image_cache migration: DiskBackedImageData reparented onto GSEGUtils DiskBackedNDArray (BUG-02/DSN-02 fixed — arithmetic returns a plain ndarray via inherited __array_ufunc__; dropped __array_priority__ A1)
+- [Phase ?]: [Phase 05 P09] DiskBackedImageStore is a thin WRAPPER over DiskBackedStore[DiskBackedImageData]; DSN-09 deserialization sink + .pkl paths deleted (security-by-construction, .npy+JSON allow_pickle=False codec); legacy names re-aliased, overwrite semantics preserved (pre-del)
+- [Phase ?]: [Phase 05 P09] Delivered the 05-08 hook to CI via [tool.uv.sources] git-rev bridge @ 2cf80835 + re-locked uv.lock (git build 0.5.2.post4 satisfies GSEGUtils ~= 0.5); PyPI ~=0.6 conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
+- [Phase ?]: [Phase 05 P09] BC (D-17): cache format .pkl -> .npy+.meta.json (legacy .pkl refused as cache miss); DiskBackedImageData arithmetic surface now live (returns ndarray, previously raised)
 
 ### Pending Todos
 
@@ -157,6 +162,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T04:38:32.092Z
+Last session: 2026-07-11T04:57:21.734Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md

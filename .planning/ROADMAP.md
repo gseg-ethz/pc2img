@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 7/12 plans executed
+**Plans**: 8/12 plans executed
 
 **Wave 1**
 
@@ -192,7 +192,7 @@ Plans:
 - [x] 05-05-PLAN.md — interpolation.py: M-06 kept-behavior culling thresholds (D-06/PERF-03) + oracle [BUG-05, TEST-03]
 - [x] 05-06-PLAN.md — rrim.py: BUG-04 docstring/E402 reorder; M-13 defer/log (D-16) [BUG-04, BUG-05]
 - [ ] 05-07-PLAN.md — registry unification: RegistryLookupError + dependencies_for + DSN-11 (D-14) [BUG-05, TEST-04]
-- [ ] 05-09-PLAN.md — image_cache reparent (D-04/BUG-02) + DiskBackedStore WRAPPER + pickle-sink removal (D-05/DSN-09) [BUG-02, BUG-05]
+- [x] 05-09-PLAN.md — image_cache reparent (D-04/BUG-02) + DiskBackedStore WRAPPER + pickle-sink removal (D-05/DSN-09) [BUG-02, BUG-05]
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -227,5 +227,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 7/12 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 8/12 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
