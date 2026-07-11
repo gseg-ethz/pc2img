@@ -4,11 +4,10 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 6
 current_phase_name: Publication Hardening & Downstream Migration Record
-status: ready-to-plan
+status: "Phase 05 shipped — PR #12"
 stopped_at: Phase 05 complete, ready to plan Phase 6
-last_updated: "2026-07-11T15:31:09.933Z"
+last_updated: "2026-07-11T15:39:14.625Z"
 last_activity: 2026-07-11
-last_activity_desc: Phase 05 complete, transitioned to Phase 6
 progress:
   total_phases: 7
   completed_phases: 6
@@ -30,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 Phase: 6 — Publication Hardening & Downstream Migration Record
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-07-11 — Phase 05 complete (UAT 47/47, security verified), transitioned to Phase 6
+Status: Phase 05 shipped — PR #12
+Last activity: 2026-07-11
 
 Progress: [████████████████████] 32/32 plans (100%)
 
