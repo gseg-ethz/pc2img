@@ -31,7 +31,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 - [x] **BUG-01**: `OrthographicProjection.project_raw` returns correct arity and column indexing; orthographic projection produces correct output
 - [ ] **BUG-02**: `DiskBackedImageData.__array_ufunc__` behaves correctly (supports arithmetic or raises a proper `NotImplementedError`)
 - [ ] **BUG-03**: `TIGSettings.extend_cache_paths` preserves `interp_kwargs` (no `None` overwrite)
-- [ ] **BUG-04**: `rrim.py` module docstring is present and accessible (`__doc__` populated)
+- [x] **BUG-04**: `rrim.py` module docstring is present and accessible (`__doc__` populated)
 - [x] **BUG-05**: Correctness bugs surfaced by the QUAL-03 review are fixed, each with a proving test
 
 ### Test & Coverage
@@ -98,7 +98,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-01 | Phase 5 | Complete |
 | BUG-02 | Phase 5 | Pending |
 | BUG-03 | Phase 5 | Pending |
-| BUG-04 | Phase 5 | Pending |
+| BUG-04 | Phase 5 | Complete |
 | BUG-05 | Phase 5 | Pending (multi-plan; 05-08 contributed the GSEGUtils public class-registration hook unblocking the store consolidation — final closure at phase verification) |
 | TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 3 | Complete |
