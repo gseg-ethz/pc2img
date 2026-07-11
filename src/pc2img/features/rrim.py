@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 RRIM utilities and feature registrations.
 
@@ -9,6 +7,8 @@ shifts, which keeps border handling explicit and avoids wrap-around artefacts.
 That shift kernel is also a clean target for future CuPy/CUDA acceleration if
 RRIM becomes a benchmarking bottleneck.
 """
+
+from __future__ import annotations
 
 import re
 from collections.abc import Callable

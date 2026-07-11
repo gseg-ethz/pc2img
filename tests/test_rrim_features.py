@@ -15,20 +15,12 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 _RRIM_SRC = "src/pc2img/features/rrim.py"
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-04): rrim.py docstring not the first statement; __doc__ unset",
-    strict=False,
-)
 def test_rrim_module_docstring_is_populated() -> None:
-    """BUG-04 proving test: the module docstring must be the first statement so __doc__ populates."""
+    """BUG-04: the module docstring is the first statement, so __doc__ populates."""
     assert isinstance(rrim_module.__doc__, str)
     assert rrim_module.__doc__.strip()
 
 
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-04): rrim.py imports precede the docstring, tripping E402x9",
-    strict=False,
-)
 def test_rrim_module_docstring_clears_e402() -> None:
     """BUG-04 proving test: reordering the header so the docstring leads clears the E402 findings."""
     ruff = Path(sys.executable).with_name("ruff")
