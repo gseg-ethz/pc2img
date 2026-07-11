@@ -99,7 +99,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BUG-02 | Phase 5 | Pending |
 | BUG-03 | Phase 5 | Pending |
 | BUG-04 | Phase 5 | Pending |
-| BUG-05 | Phase 5 | Pending |
+| BUG-05 | Phase 5 | Pending (multi-plan; 05-08 contributed the GSEGUtils public class-registration hook unblocking the store consolidation — final closure at phase verification) |
 | TEST-01 | Phase 3 | Complete |
 | TEST-02 | Phase 3 | Complete |
 | TEST-03 | Phase 5 | Complete |

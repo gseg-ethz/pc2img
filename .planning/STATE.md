@@ -6,15 +6,15 @@ current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
 stopped_at: Phase 5 context gathered
-last_updated: "2026-07-11T03:07:16.712Z"
+last_updated: "2026-07-11T03:57:45.048Z"
 last_activity: 2026-07-11
-last_activity_desc: Phase 05 execution started
+last_activity_desc: Completed 05-08 (GSEGUtils public class-registration hook, owner-approved, git-rev bridge)
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 32
-  completed_plans: 21
-  percent: 66
+  completed_plans: 22
+  percent: 69
 ---
 
 # Project State
@@ -29,11 +29,11 @@ See: .planning/PROJECT.md (updated 2026-07-08)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 2 of 12
+Plan: 3 of 12
 Status: Ready to execute
-Last activity: 2026-07-11 — Phase 05 execution started
+Last activity: 2026-07-11 — Completed 05-08 (GSEGUtils public hook, owner-approved, git-rev bridge)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
@@ -114,6 +114,8 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 04 P07] Synthesized canonical 04-FINDINGS.md: 24 active findings (M-01..M-13 + DSN-01..DSN-11) merged most-severe-first, per-entry schema-linted (8 D-06 fields + file:line anchor); BUG-01=M-01 recorded once cross-referenced; DSN-02/BUG-02 states TypeError->NotImplementedError; no per-finding BUG-05 ids (D-07)
 - [Phase 04]: [Phase 04 P07] Rule-1: plan Task-2 linter regex (mid-pattern (?im)) fails to compile on Python >=3.11 incl project .venv 3.12.13; validated with semantically-identical hoisted-flag form -> 24/24 schema-valid; Phase 5/verifier must use hoisted-flag linter
 - [Phase 04 gap-closure]: Closed SC1 partial gap from 04-VERIFICATION.md — deleted the ~37 lines of commented-out dead code ERA001's heuristic could not flag (orphaned class/def/decorator headers left by 04-04's ERA001-only sweep) across 6 src files + stale DeSpAn pyproject leftovers (commit 4192da5); explanatory prose preserved; suite still 19 passed / 11 xfailed / 0 xpassed, ruff format + hygiene gate clean; appended forward-only correction to 04-04-SUMMARY (18cf7e7 did NOT fully remove TriangulationData/BarycentricInterpolation)
+- [Phase 05]: [Phase 05 P08] Landed owner-approved D-05 Option A — GSEGUtils public `register_lazy_disk_cache_class` hook (function + decorator) turning the closed reload allow-list into an extension point; D-02 posture preserved (explicit allow-list, no importlib, idempotent, TypeError on non-subclass, ValueError on name collision); 4 hook tests (incl. decorator form), full file 24 passed; landed on GSEGUtils branch `gsd/register-lazy-disk-cache-class` off main (commits aad300c + 2cf8083), pushed to origin
+- [Phase 05]: [Phase 05 P08] Delivery route changed at the approved checkpoint from version tag to git-rev bridge — hand-rolled v0.6.0 tag REMOVED (release-please collision + open 0.5.3 PR); setuptools_scm build reports 0.5.2.post4, satisfying existing `GSEGUtils ~= 0.5`; pc2img consumes the hook via [tool.uv.sources] git-rev @ 2cf80835aa724f64a83853c8e35c91cb7640a919 + re-lock (05-09); PyPI `~= 0.6` conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
 
 ### Pending Todos
 
@@ -143,6 +145,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T03:07:10.389Z
+Last session: 2026-07-11T03:57:19.682Z
 Stopped at: Phase 5 context gathered
 Resume file: .planning/phases/05-bug-fixes-module-test-coverage/05-CONTEXT.md

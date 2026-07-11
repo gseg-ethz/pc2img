@@ -177,12 +177,12 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 1/12 plans executed
+**Plans**: 2/12 plans executed
 
 **Wave 1**
 
 - [x] 05-01-PLAN.md — Shared synthetic fixture factory in tests/conftest.py (D-11) [TEST-03..06]
-- [ ] 05-08-PLAN.md — GSEGUtils Option A public class-registration hook + owner-approval checkpoint (D-05) [BUG-05]
+- [x] 05-08-PLAN.md — GSEGUtils Option A public class-registration hook + owner-approval checkpoint (D-05) [BUG-05]
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -227,5 +227,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 1/12 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 2/12 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
