@@ -1,5 +1,6 @@
 ---
-status: diagnosed
+status: complete
+gaps_resolved: 8/8 via gap plan 05-13 (commits f799ada..46d679e); re-verified suite 135 passed, RRIM blocker reproduced-fixed end-to-end
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
@@ -356,7 +357,10 @@ review_gaps: 8
 ## Gaps
 
 <!-- Surfaced by post-UAT high-effort code review of PR #12 (develop-gsd...HEAD).
-     All root-caused; the blocker (G1) was reproduced end-to-end. Feeds gap-closure. -->
+     All root-caused; the blocker (G1) was reproduced end-to-end. Feeds gap-closure.
+     RESOLVED 2026-07-11 by gap plan 05-13 (all 8 fixed with proving/characterization
+     tests; suite 135 passed; RRIM blocker independently reproduced-fixed). Gap entries
+     below are retained as the historical work-list. -->
 
 - truth: "generate([\"rrim\"]) (and rrim_pack_/rrim_component_) produces a correct RRIM raster"
   status: failed

@@ -1,10 +1,12 @@
 ---
 phase: 05-bug-fixes-module-test-coverage
 verified: 2026-07-11T08:00:00Z
+reverified: 2026-07-11T16:40:00Z
 status: passed
 score: 8/8 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+gap_closure: 05-13 (8 post-UAT code-review gaps closed; suite 111→135 passed)
 ---
 
 # Phase 5: Bug Fixes & Module Test Coverage — Verification Report
@@ -112,5 +114,22 @@ No gaps. All 5 ROADMAP Success Criteria are observably true in the codebase, eac
 
 ---
 
-_Verified: 2026-07-11_
-_Verifier: Claude (gsd-verifier)_
+## Re-verification — Post-UAT Code-Review Gap Closure (05-13)
+
+**Trigger:** UAT passed 47/47, but a post-UAT high-effort code review of PR #12 surfaced **8 defects** the phase's own tests missed — including a **release-blocker**: the DSN-05 registry refactor (05-07) broke the entire RRIM feature family. `FeatureRegistry.match()` was changed to derive dependencies via `dependencies_for()` instead of constructing the instance, but the three RRIM classes (`args` regex group, no override) resolved to `[]` deps, so the base raster was never scheduled — `generate(["rrim"])` raised `ValueError`. It slipped through because 05-06 only tested `rrim.__doc__`/E402, never RRIM computation.
+
+**Closure:** gap plan `05-13` (test-first, 4 tasks) closed all 8 (G1 RRIM blocker; G2 PerspectiveProjection K-validation; G3 store on-disk codec purge on overwrite; G4 float64 rotation check; G5/G6 dependency-grammar single-sourcing + dead `FeatureSpec` removal; G7 `np.ix_` orthographic gather; G8 shared percentile-bounds validator). Commits `f799ada`→`46d679e`.
+
+**Independent re-verification (orchestrator, not just executor report):**
+- RRIM family reproduced END-TO-END on the fixed code: `generate(["rrim"])` → deps `['range','rrim_pack_(range,r16,d8,z1)']`, `(48,48,3)` raster, 100% finite; `rrim_pack_(range)` and `rrim_component_(slope,range)` likewise finite. The pre-fix `ValueError` is gone.
+- New proving tests exercise the full `generate()` path with the opt-in `import pc2img.features.rrim` registration (`tests/test_rrim_features.py`), so this regression class is now guarded.
+- **Full suite: 135 passed** (baseline 111 + 24 new proving/characterization tests), 0 residual xfail from this plan.
+
+**Deviations (executor, non-behavioral):** G4's RED wasn't constructible (the float32 check doesn't actually false-reject valid scipy rotations within 1e-6 across 20k seeds) → landed as a passing characterization test plus the float64-robustness refactor. G8 unified three divergent message strings (no test asserts message text; accept/reject outcomes unchanged).
+
+**Status after closure: PASSED.** No shipped 05-01..05-12 plan was modified; the fixes are additive.
+
+---
+
+_Verified: 2026-07-11 · Re-verified after 05-13 gap closure: 2026-07-11_
+_Verifier: Claude (gsd-verifier + orchestrator independent end-to-end re-check)_

@@ -56,6 +56,11 @@ All auth / session / access-control / crypto ASVS categories are **N/A** — pc2
 | T-05-11c | Denial of Service | shared-mutable default config (DSN-07) | low | mitigate | None-sentinel default | closed |
 | T-05-12b | Denial of Service | coverage floor overshoot blocking CI | low | mitigate | Ratchet to measured baseline minus documented xfail-volatility margin | closed |
 | T-05-SC | Tampering | pip/uv installs | low | accept | No new packages installed this phase (05-RESEARCH.md Package Legitimacy Audit); GSEGUtils consumed via PyPI 0.5.3 pin (see Accepted Risks) | closed |
+| T-05-13a | Denial of Service | RRIM feature family dependency resolution (gap G1) | high | mitigate | `dependencies_for` overrides on all three RRIM classes schedule the base+pack rasters; end-to-end `generate([...])` proving tests guard the regression class (05-13) | closed |
+| T-05-13b | Tampering | PerspectiveProjection intrinsics K (gap G2) | high | mitigate | K validated 3×3 + pinhole bottom-row so the perspective divisor stays sign-aligned with the M-02 depth cull (no phantom mislocation) (05-13) | closed |
+| T-05-13c | Tampering | DiskBackedImageStore overwrite/delete (gap G3) | medium | mitigate | `__delitem__` purges the `<key>.npy`+`.meta.json` codec pair so a re-scanned store never serves a stale raster (05-13) | closed |
+| T-05-13d | Tampering | rotation orthonormality accept/reject boundary (gap G4) | low | mitigate | check moved to float64 so a valid double-precision rotation is not false-rejected (05-13) | closed |
+| T-05-13e | Repudiation | duplicated dependency-grammar / percentile-bounds logic (gaps G5/G6/G8) | low | mitigate | single-sourced each rule so semantics cannot silently drift between call sites (05-13) | closed |
 
 *Status: open · closed · open — below high threshold (non-blocking)*
 *Severity: critical > high > medium > low — only open threats at or above `block_on: high` count toward `threats_open`*
@@ -80,6 +85,7 @@ All auth / session / access-control / crypto ASVS categories are **N/A** — pc2
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-07-11 | 23 | 23 | 0 | /gsd-secure-phase (L1 short-circuit: register_authored_at_plan_time=true, asvs_level=1, threats_open=0) |
+| 2026-07-11 | 28 | 28 | 0 | gap-closure 05-13 folded in (+5 threats T-05-13a..e, all mitigated; verified in-code + suite 135 passed) |
 
 **Material security deliverable of the phase:** T-05-09a — elimination of the DSN-09
 arbitrary-object deserialization sink by reparenting `DiskBackedImageData`/`DiskBackedImageStore`

@@ -4,15 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 6
 current_phase_name: Publication Hardening & Downstream Migration Record
-status: "Phase 05 shipped — PR #12"
-stopped_at: Phase 05 complete, ready to plan Phase 6
-last_updated: "2026-07-11T15:39:14.625Z"
+status: ready-to-plan
+stopped_at: Phase 05 complete + gap-closure 05-13 (post-review blocker fixed), ready to plan Phase 6
+last_updated: "2026-07-11T16:42:00Z"
 last_activity: 2026-07-11
+last_activity_desc: Phase 05 gap-closure 05-13 executed (8 review gaps closed, suite 135 passed)
 progress:
   total_phases: 7
   completed_phases: 6
-  total_plans: 32
-  completed_plans: 32
+  total_plans: 33
+  completed_plans: 33
   percent: 86
 ---
 
@@ -29,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 Phase: 6 — Publication Hardening & Downstream Migration Record
 Plan: Not started
-Status: Phase 05 shipped — PR #12
-Last activity: 2026-07-11
+Status: Ready to plan (Phase 05 complete; 05-13 gap-closure fixed the post-review RRIM blocker + 7 findings)
+Last activity: 2026-07-11 — Phase 05 gap-closure 05-13 (8 review gaps closed, suite 135 passed)
 
 Progress: [████████████████████] 32/32 plans (100%)
 
