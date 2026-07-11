@@ -90,7 +90,6 @@ def test_offload_reload_round_trip(tmp_path: Path):
 # `<key>.meta.json` remain, and a fresh store re-scans `*.npy` on construction #
 # — so it re-adopts and serves the stale pre-overwrite raster.                 #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(reason="Phase 5 (G3): base __delitem__ leaves the stale codec pair on disk; a re-scanned store serves it", strict=False)
 def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
     a = _gray((6, 6))
     b = (a + 10.0).astype(np.float32)
@@ -113,7 +112,6 @@ def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
         assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
 
 
-@pytest.mark.xfail(reason="Phase 5 (G3): base __delitem__ does not purge the on-disk codec pair", strict=False)
 def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", _gray((6, 6)))
