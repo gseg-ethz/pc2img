@@ -1,9 +1,10 @@
 ---
-status: complete
+status: diagnosed
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-07-11T15:33:00Z
+updated: 2026-07-11T16:05:00Z
+gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
 ---
 
 ## Current Test
@@ -350,7 +351,110 @@ issues: 0
 pending: 0
 skipped: 0
 blocked: 0
+review_gaps: 8
 
 ## Gaps
 
-[none yet]
+<!-- Surfaced by post-UAT high-effort code review of PR #12 (develop-gsd...HEAD).
+     All root-caused; the blocker (G1) was reproduced end-to-end. Feeds gap-closure. -->
+
+- truth: "generate([\"rrim\"]) (and rrim_pack_/rrim_component_) produces a correct RRIM raster"
+  status: failed
+  reason: "Code review: DSN-05 registry refactor broke the entire RRIM feature family; reproduced `ValueError: Scalar field 'rrim' not found on PointCloudData.`"
+  severity: blocker
+  test: review-G1
+  root_cause: "FeatureRegistry.match now calls cls.dependencies_for(params) instead of constructing the instance; RRIMPackFeature/RRIMFeature/RRIMComponentFeature use a regex group named `args` (not `base_feature`) and do NOT override dependencies_for, so the inherited base returns [] and the base raster (e.g. range) is never scheduled."
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "three RRIM classes lack a dependencies_for override"
+    - path: "src/pc2img/features/registry.py"
+      issue: "match() relies on dependencies_for (line 71)"
+  missing:
+    - "Add dependencies_for override to RRIMPackFeature, RRIMFeature, RRIMComponentFeature mirroring _parse_rrim_config (base_feature + pack_feature_name derivation)"
+    - "Proving test that runs generate([\"rrim\"]) end-to-end (not just docstring/E402) so it can never silently regress"
+
+- truth: "PerspectiveProjection validates the intrinsics matrix K like it validates the rotation matrix"
+  status: failed
+  reason: "Code review: K (projection_matrix) shape/pinhole-form is never validated while rotation is validated strictly"
+  severity: major
+  test: review-G2
+  root_cause: "Constructor validates rotation (3x3, orthonormal, det+1) but stores _intrinsics = asarray(K) unchecked; a wrong-shape K gives an opaque matmul crash, and a non-pinhole K (bottom row != [0,0,1]) makes the perspective divisor uv_h[:,2] diverge in sign from depth=camera_xyz[:,2], defeating the M-02 behind-camera cull (phantom mislocation)."
+  artifacts:
+    - path: "src/pc2img/strategies/projection.py"
+      issue: "K stored without shape/pinhole validation (~line 333); project() divide vs M-02 cull can disagree"
+  missing:
+    - "Validate K is 3x3 (and ideally pinhole bottom-row ~ [0,0,1]) at construction with a clear error; add proving test"
+
+- truth: "Overwriting an already-offloaded key does not leave a stale on-disk raster that can later be served"
+  status: failed
+  reason: "Code review: add_image_to_store overwrite deletes only the in-memory key; stale .npy/.meta.json remain and a re-scanned store serves them"
+  severity: major
+  test: review-G3
+  root_cause: "add_image_to_store does `if k in self: del self[k]` then add_data_to_store; base __delitem__ only does `del self._store[k]` (no disk purge); base __init__ re-scans *.npy on construction, so a fresh store over the same cache_dir loads the stale codec pair."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "overwrite path (lines 57-58) leaves stale on-disk codec pair"
+  missing:
+    - "On delete/overwrite, purge the on-disk .npy + .meta.json for the key (or reuse a base purge API); add proving test with two store instances over one cache_dir"
+
+- truth: "A valid double-precision rotation matrix is accepted by PerspectiveProjection"
+  status: failed
+  reason: "Code review: orthonormality/det check runs in float32 at atol=1e-6 and can falsely reject valid float64 rotations"
+  severity: minor
+  test: review-G4
+  root_cause: "rot is cast to float32 (eps ~1.2e-7); np.allclose(rot@rot.T, I, atol=1e-6) and np.isclose(det, 1, atol=1e-6) can exceed 1e-6 after the round-trip for legitimate rotations (e.g. scipy Rotation)."
+  artifacts:
+    - path: "src/pc2img/strategies/projection.py"
+      issue: "float32 orthonormality check with atol=1e-6 (~line 314)"
+  missing:
+    - "Perform the check in float64 or loosen tolerance (e.g. atol=1e-5); add a proving test using a scipy-generated rotation"
+
+- truth: "The default single-base-feature dependency grammar lives in one place"
+  status: failed
+  reason: "Code review (cleanup): dependencies_for default is byte-identical in both feature ABCs"
+  severity: minor
+  test: review-G5
+  root_cause: "core.py:19 (BaseFeatureStrategy) and core.py:48 (DerivativeFeatureStrategy) duplicate the same body."
+  artifacts:
+    - path: "src/pc2img/features/core.py"
+      issue: "duplicated dependencies_for default (lines 19 and 48)"
+  missing:
+    - "Extract one shared helper/mixin both ABCs use"
+
+- truth: "FeatureSpec has no dead dependency-derivation code"
+  status: failed
+  reason: "Code review (cleanup): FeatureSpec.__init__ computes self.dependencies that match() overwrites on every path"
+  severity: minor
+  test: review-G6
+  root_cause: "FeatureRegistry.match is the sole FeatureSpec constructor and overwrites spec.dependencies (line 71 or 79) unconditionally."
+  artifacts:
+    - path: "src/pc2img/features/registry.py"
+      issue: "dead dependency derivation in FeatureSpec.__init__ (lines 26-29)"
+  missing:
+    - "Drop the derivation; leave self.dependencies = [] (dependencies_for is the single source)"
+
+- truth: "OrthographicProjection.project_raw does not allocate a discarded out-of-plane column"
+  status: failed
+  reason: "Code review (efficiency): pcd.xyz[mask][:, cols] materializes an (M,3) intermediate then an (M,2) copy"
+  severity: minor
+  test: review-G7
+  root_cause: "Two-step index (correct for the diagonal-index fix) but double-copies; np.ix_(mask, cols) does a single (M,2) gather."
+  artifacts:
+    - path: "src/pc2img/strategies/projection.py"
+      issue: "double array copy in project_raw (~line 232)"
+  missing:
+    - "Use pcd.xyz[np.ix_(mask, cols)] (keep behavior identical; add/keep the existing indexing proving test)"
+
+- truth: "Percentile-bounds validation is consistent and centralized across features"
+  status: failed
+  reason: "Code review (cleanup/consistency): NormalizedFeature uses strict low<high while ClipPercentileFeature and rrim allow low<=high; triplicated inline"
+  severity: minor
+  test: review-G8
+  root_cause: "Three separate inline checks; semantics differ (strict vs non-strict) with no shared validator."
+  artifacts:
+    - path: "src/pc2img/features/derivative_features.py"
+      issue: "NormalizedFeature ~line 93 strict; ClipPercentileFeature ~line 313 non-strict"
+    - path: "src/pc2img/features/rrim.py"
+      issue: "percentile bounds ~line 90 non-strict"
+  missing:
+    - "Extract _validate_percentile_bounds(low, high, *, strict) and call from all three; document the intended contract (NormalizedFeature strict is correct: zero range divides by zero)"
