@@ -48,7 +48,6 @@ def _nanconv_float64_reference(a: np.ndarray, k: np.ndarray) -> np.ndarray:
 # --------------------------------------------------------------------------- #
 # M-07 — nanconv must not mutate the caller's input                            #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(reason="Phase 5 (BUG-05): M-07 nanconv mutates input in place, not yet fixed", strict=False)
 def test_nanconv_does_not_mutate_input_nan_mask() -> None:
     a = np.array([[1.0, np.nan, 3.0], [np.nan, 5.0, 6.0], [7.0, 8.0, np.nan]], dtype=np.float32)
     snapshot = a.copy()
@@ -64,7 +63,6 @@ def test_nanconv_does_not_mutate_input_nan_mask() -> None:
 # --------------------------------------------------------------------------- #
 # M-08 — nanconv must stay finite and float32-accurate on realistic magnitudes #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(reason="Phase 5 (BUG-05): M-08 nanconv float16 overflows to inf, not yet fixed", strict=False)
 @pytest.mark.parametrize("magnitude", [5e3, 1.2e4, 5e4])
 @pytest.mark.parametrize("kernel_size", [3, 5, 7])
 def test_nanconv_finite_and_within_float32_tolerance(magnitude: float, kernel_size: int) -> None:
@@ -79,11 +77,37 @@ def test_nanconv_finite_and_within_float32_tolerance(magnitude: float, kernel_si
 
 
 # --------------------------------------------------------------------------- #
+# PERF-02 / D-03 — reduced-precision opt-in on nanconv                          #
+# --------------------------------------------------------------------------- #
+def test_nanconv_default_reproduces_float32_output_byte_for_byte() -> None:
+    # The default (compute_dtype=np.float32) must equal the mandatory M-08 fix path.
+    a = np.array([[1.0, np.nan, 3.0], [4.0, 5.0, np.nan], [7.0, 8.0, 9.0]], dtype=np.float32)
+    k = np.ones((3, 3), dtype=np.float32)
+
+    default_out = nanconv(a, k)
+    explicit_f32 = nanconv(a, k, compute_dtype=np.float32)
+
+    assert default_out.dtype == np.float32
+    assert np.array_equal(default_out, explicit_f32, equal_nan=True)
+
+
+def test_nanconv_reduced_precision_engages_only_when_requested() -> None:
+    a = np.full((16, 16), 12000.0, dtype=np.float32)
+    k = np.ones((7, 7), dtype=np.float32)
+
+    # Explicit opt-in to reduced precision engages float16 (and, per M-08, overflows).
+    reduced = nanconv(a, k, compute_dtype=np.float16)
+    assert reduced.dtype == np.float16
+
+    # Default keeps the finite float32 correctness path.
+    default_out = nanconv(a, k)
+    assert default_out.dtype == np.float32
+    assert np.all(np.isfinite(default_out))
+
+
+# --------------------------------------------------------------------------- #
 # M-09 — convert_to_image on all-NaN + normalize=True must not raise           #
 # --------------------------------------------------------------------------- #
-@pytest.mark.xfail(
-    reason="Phase 5 (BUG-05): M-09 convert_to_image all-NaN normalize raises, not yet fixed", strict=False
-)
 def test_convert_to_image_all_nan_normalize_returns_constant_image() -> None:
     x = np.full((4, 4), np.nan, dtype=np.float32)
 

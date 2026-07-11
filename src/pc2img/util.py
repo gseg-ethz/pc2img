@@ -1,7 +1,7 @@
 from typing import Literal
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import DTypeLike, NDArray
 from scipy.signal import convolve2d
 
 ALL_CMAPS = Literal[
@@ -190,17 +190,55 @@ ALL_CMAPS = Literal[
 NAN_REPLACEMENT_STR = Literal["max", "min", "random"]
 
 
-def nanconv(a: NDArray, k: NDArray, replace_nan: float | None = None) -> NDArray:
-    on = np.ones(a.shape, dtype=a.dtype)
+def nanconv(
+    a: NDArray,
+    k: NDArray,
+    replace_nan: float | None = None,
+    *,
+    compute_dtype: DTypeLike = np.float32,
+) -> NDArray:
+    """NaN-aware normalized 2D convolution.
+
+    Convolves ``a`` with kernel ``k`` while ignoring NaN entries (normalized
+    convolution: the kernel is applied to a zero-filled copy and re-normalized by
+    the convolved validity mask), so NaNs neither propagate nor bias the result.
+
+    Parameters
+    ----------
+    a:
+        2D input array; NaNs mark invalid samples.
+    k:
+        2D convolution kernel.
+    replace_nan:
+        If given, output NaNs (pixels with no valid support) are replaced with
+        this value in place of the accumulator.
+    compute_dtype:
+        Accumulation/division dtype (PERF-02 reduced-precision opt-in, D-03). The
+        default ``np.float32`` is the correctness path: it never overflows on
+        realistic range/elevation magnitudes and reproduces the mandatory M-08 fix
+        byte-for-byte. Pass a reduced-precision dtype (e.g. ``np.float16``) only
+        when the caller explicitly wants to trade accuracy/range for memory.
+
+    Notes
+    -----
+    The caller's ``a`` is never mutated: NaNs are zeroed on a fresh copy (M-07).
+    """
+    dtype = np.dtype(compute_dtype)
 
     n = np.isnan(a)
-    a[n] = 0
+    # M-07: fill NaNs on a fresh buffer so the caller's array is left untouched.
+    a_filled = np.where(n, 0.0, a).astype(dtype, copy=False)
+    on = np.ones(a.shape, dtype=dtype)
     on[n] = 0
 
-    flat = convolve2d(on, k, mode="same").astype(np.float16)
+    # M-08 / D-09: accumulate + divide in ``compute_dtype`` (float32 by default).
+    # float16's ~65504 ceiling overflows to inf on ordinary summed range values;
+    # float32 buys correctness at no CPU cost. Reduced precision engages only when
+    # the caller opts in via ``compute_dtype`` (PERF-02).
+    flat = convolve2d(on, k, mode="same").astype(dtype)
 
-    c = np.full(flat.shape, np.nan, dtype=np.float16)
-    np.divide(convolve2d(a, k, mode="same").astype(np.float16), flat, out=c, where=(flat != 0))
+    c = np.full(flat.shape, np.nan, dtype=dtype)
+    np.divide(convolve2d(a_filled, k, mode="same").astype(dtype), flat, out=c, where=(flat != 0))
     if replace_nan is not None:
         np.nan_to_num(c, copy=False, nan=replace_nan)
     return c
@@ -374,12 +412,17 @@ def convert_to_image(
     # Normalize if requested or out of [0,1]
     finite = np.isfinite(x)
     if normalize or (x[finite].min(initial=0.0) < 0.0) or (x[finite].max(initial=1.0) > 1.0):
-        lo = x[finite].min()
-        hi = x[finite].max()
-        if hi > lo:
-            x = (x - lo) / (hi - lo)
+        # M-09: an all-invalid raster has no finite values to reduce over; degrade
+        # to a constant/zero image instead of crashing on the empty min/max.
+        if not finite.any():
+            x = np.zeros_like(x, dtype=np.float32)  # constant image (no finite data)
         else:
-            x = np.zeros_like(x, dtype=np.float32)  # constant image
+            lo = x[finite].min()
+            hi = x[finite].max()
+            if hi > lo:
+                x = (x - lo) / (hi - lo)
+            else:
+                x = np.zeros_like(x, dtype=np.float32)  # constant image
 
     if colormap is not None:
         try:
