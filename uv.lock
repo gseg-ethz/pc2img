@@ -719,13 +719,17 @@ wheels = [
 
 [[package]]
 name = "gsegutils"
-version = "0.5.2.post4"
-source = { git = "https://github.com/gseg-ethz/GSEGUtils.git?rev=2cf80835aa724f64a83853c8e35c91cb7640a919#2cf80835aa724f64a83853c8e35c91cb7640a919" }
+version = "0.5.3"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
     { name = "numpydantic" },
     { name = "psutil" },
     { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/48/a5/936883c893bac85d14fb7841065310b5193d644abe8cc828dc36b504be64/gsegutils-0.5.3.tar.gz", hash = "sha256:6de3288b09a87a56bba489577d1677cba84e0121c933dc6f31d84db0f8dd24f9", size = 115829, upload-time = "2026-07-11T13:36:19.005Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/6c/cba2ad25b1c095a694ec15792f5dd3dcf17fa647799476b686bbbb56b154/gsegutils-0.5.3-py3-none-any.whl", hash = "sha256:bbdfca22fcd394296da9ae79c9470cad569607d0b2886379df65000fc4556f71", size = 52896, upload-time = "2026-07-11T13:36:17.614Z" },
 ]
 
 [[package]]
@@ -1603,7 +1607,7 @@ doc = [
 
 [package.metadata]
 requires-dist = [
-    { name = "gsegutils", git = "https://github.com/gseg-ethz/GSEGUtils.git?rev=2cf80835aa724f64a83853c8e35c91cb7640a919" },
+    { name = "gsegutils", specifier = ">=0.5.3,<1.0" },
     { name = "imageio", specifier = "~=2.31" },
     { name = "joblib", specifier = "~=1.5" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = "~=3.9" },
