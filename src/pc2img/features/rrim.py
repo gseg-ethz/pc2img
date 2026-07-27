@@ -40,7 +40,9 @@ _MAX_DISTANCE_RE = re.compile(r"^r(?P<value>\d+)$")
 _DIRECTIONS_RE = re.compile(r"^d(?P<value>\d+)$")
 _SLOPE_CLIP_RE = re.compile(r"^sclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
 _STRUCTURE_CLIP_RE = re.compile(r"^oclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
-_Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?)$")
+# G9: the exponent group is purely ADDITIVE — every token accepted before is
+# still accepted — and is what makes a sub-1e-4 z_factor expressible at all.
+_Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$")
 _RED_STRENGTH_RE = re.compile(r"^red(?P<value>[+-]?\d+(?:\.\d+)?)$")
 
 
@@ -53,6 +55,12 @@ class RRIMConfig:
     orthographic height rasters and scanner-centred range images. For spherical
     range images the result is an approximation because pixel spacing is angular
     rather than Euclidean.
+
+    Name grammar note (G9): the ``zF`` option token accepts exponent notation
+    (``z1e-05``, ``z1E-05``, ``z1e+20``) in addition to plain decimals, and
+    :meth:`pack_feature_name` emits ``z`` in the shortest form that re-parses to
+    the identical double. A ``z_factor`` therefore round-trips exactly through
+    the derived pack-feature name, which is also the cache key.
     """
 
     base_feature: str = DEFAULT_BASE_FEATURE
@@ -81,9 +89,19 @@ class RRIMResult:
 
 
 def _format_number(value: float) -> str:
+    """Emit the shortest string that re-parses to the identical double (G9).
+
+    The previous 6-significant-figure general format broke the round trip in two
+    ways: it switched to exponent notation below 1e-4 (a token the grammar
+    rejected outright) and it truncated above 6 significant figures, which made
+    the derived cache key NON-injective — two distinct configs collided on one
+    pack name and shared one cached raster. ``repr`` is the shortest exactly
+    round-tripping form, and it is byte-identical to the old output for every
+    value that already encoded correctly, so no valid cache key churns.
+    """
     if float(value).is_integer():
         return str(int(value))
-    return format(value, "g")
+    return repr(float(value))
 
 
 def _validate_clip(name: str, clip: tuple[float, float]) -> tuple[float, float]:
