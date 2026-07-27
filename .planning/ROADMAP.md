@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
 - [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [x] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings (completed 2026-07-10)
-- [x] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules (completed 2026-07-11)
+- [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules (REOPENED 2026-07-27 — round-2 review gaps G9-G12; the 2026-07-11 completion is superseded)
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
 
 ## Phase Details

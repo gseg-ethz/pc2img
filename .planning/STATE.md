@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 6
-current_phase_name: Publication Hardening & Downstream Migration Record
-status: ready-to-plan
-stopped_at: Phase 05 complete + gap-closure 05-13 (post-review blocker fixed), ready to plan Phase 6
-last_updated: "2026-07-11T16:42:00Z"
-last_activity: 2026-07-11
-last_activity_desc: Phase 05 gap-closure 05-13 executed (8 review gaps closed, suite 135 passed)
+current_phase: 5
+current_phase_name: Bug Fixes & Module Test Coverage
+status: executing
+stopped_at: Phase 05 reopened on round-2 review gaps G9-G12; gap plan 05-14 written and plan-checker passed, awaiting execution
+last_updated: "2026-07-27T13:30:00Z"
+last_activity: 2026-07-27
+last_activity_desc: Phase 05 round-2 gap plan 05-14 created and verified (G9-G12; 2 blockers introduced by the 05-13 fixes)
 progress:
   total_phases: 7
-  completed_phases: 6
-  total_plans: 33
+  completed_phases: 5
+  total_plans: 34
   completed_plans: 33
-  percent: 86
+  percent: 71
 ---
 
 # Project State
@@ -24,16 +24,19 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 6 — Publication Hardening & Downstream Migration Record
+**Current focus:** Phase 5 (REOPENED) — Bug Fixes & Module Test Coverage, round-2 gap closure
 
 ## Current Position
 
-Phase: 6 — Publication Hardening & Downstream Migration Record
-Plan: Not started
-Status: Ready to plan (Phase 05 complete; 05-13 gap-closure fixed the post-review RRIM blocker + 7 findings)
-Last activity: 2026-07-11 — Phase 05 gap-closure 05-13 (8 review gaps closed, suite 135 passed)
+Phase: 5 — Bug Fixes & Module Test Coverage (REOPENED 2026-07-27 on round-2 review gaps)
+Plan: 05-14 (gap closure, round 2) — written and plan-checker PASSED, not yet executed
+Status: Executing — 05-14 planned and verified, awaiting execution (4 open gaps G9-G12; 2 blocker-severity defects introduced by the 05-13 gap-closure fixes)
+Last activity: 2026-07-27 — 05-14 gap plan created and verified (commits a058b3b, ab52f46)
 
-Progress: [████████████████████] 32/32 plans (100%)
+Progress: [███████████████████░] 33/34 plans (97%)
+
+**Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
+that has since been superseded; it cannot start until Phase 5 re-verifies.
 
 ## Performance Metrics
 
@@ -153,7 +156,11 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
-- **Phase 5 reopened 2026-07-27 — NOT shippable.** `05-VERIFICATION.md` flipped `passed` → `gaps_found`; `05-UAT.md` → `status: diagnosed` with 4 open round-2 gaps (G9-G12). Two are blocker-severity correctness defects **introduced by the 05-13 gap-closure fixes** and reproduced against HEAD (`27687c6`): the RRIM `z_factor` cannot round-trip through the derived pack-feature name (`z<1e-4` raises, high-precision z silently drifts), and `DiskBackedImageStore.__delitem__` destroys the on-disk codec pair before `super()` validates membership, so a `KeyError` delete wipes another store's raster. Neither is caught by the 135-test suite; PR #12 is green with both present. Next: `/gsd-plan-phase 05 --gaps`. Note `current_phase` still reads 6 — decide whether to move it back to 5 for the gap round.
+- **Phase 5 reopened 2026-07-27 — NOT shippable.** `05-VERIFICATION.md` flipped `passed` → `gaps_found`; `05-UAT.md` → `status: diagnosed` with 4 open round-2 gaps (G9-G12). Two are blocker-severity correctness defects **introduced by the 05-13 gap-closure fixes** and reproduced against HEAD (`27687c6`): the RRIM `z_factor` cannot round-trip through the derived pack-feature name (`z<1e-4` raises, high-precision z silently drifts), and `DiskBackedImageStore.__delitem__` destroys the on-disk codec pair before `super()` validates membership, so a `KeyError` delete wipes another store's raster. Neither is caught by the 135-test suite; PR #12 is green with both present. **Planned 2026-07-27:** `/gsd-plan-phase 05 --gaps` produced `05-14-PLAN.md` (3 tasks, plan-checker PASSED; commits a058b3b, ab52f46). `current_phase` moved back 6 → 5 and the ROADMAP Phase-5 checkbox un-ticked on 2026-07-27 to match the reopening. Next: `/gsd-execute-phase 05 --gaps-only`, then a review of the gap diff (global review-discipline rule — this is the loop whose absence let G9/G10 through), then re-verify.
+
+  Reproduction refined while planning (both verified at HEAD, beyond what the review recorded): G9's `%g` truncation also makes the cache key **non-injective** — `z=1.2345678` and `z=1.2345681` both emit `rrim_pack_(range,r16,d8,z1.23457)` and share one cached raster. G10 destroys the raster for the **owning** store too, not just a fresh re-scanning one, because the owner cleared its in-memory ref on offload. Note the G10 precondition requires `offload_image_data_to_disk(...)` (`pickle_container=True`); a plain `offload()` writes `<key>.dat` and does not reproduce the defect.
+
+  **G9 owner decision (2026-07-27):** do BOTH halves — widen `_Z_FACTOR_RE` to accept exponent notation AND switch `_format_number`'s non-integer branch from `format(v,"g")` to `repr(float(v))`. Chosen over regex-only because the emitted token stays byte-identical for every z that works correctly today; only already-mis-encoded names change.
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
 
 ### Quick Tasks Completed
@@ -176,6 +183,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T15:33:00Z
-Stopped at: Phase 05 complete (UAT 47/47 passed, security verified), ready to plan Phase 6
+Last session: 2026-07-27T13:30:00Z
+Stopped at: Phase 05 REOPENED on round-2 gaps G9-G12; gap plan 05-14 written + plan-checker PASSED, not yet executed
 Resume file: None
