@@ -153,6 +153,7 @@ Recent decisions affecting current work:
 
 ### Blockers/Concerns
 
+- **Phase 5 reopened 2026-07-27 — NOT shippable.** `05-VERIFICATION.md` flipped `passed` → `gaps_found`; `05-UAT.md` → `status: diagnosed` with 4 open round-2 gaps (G9-G12). Two are blocker-severity correctness defects **introduced by the 05-13 gap-closure fixes** and reproduced against HEAD (`27687c6`): the RRIM `z_factor` cannot round-trip through the derived pack-feature name (`z<1e-4` raises, high-precision z silently drifts), and `DiskBackedImageStore.__delitem__` destroys the on-disk codec pair before `super()` validates membership, so a `KeyError` delete wipes another store's raster. Neither is caught by the 135-test suite; PR #12 is green with both present. Next: `/gsd-plan-phase 05 --gaps`. Note `current_phase` still reads 6 — decide whether to move it back to 5 for the gap round.
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
 
 ### Quick Tasks Completed
