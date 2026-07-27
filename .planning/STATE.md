@@ -2,19 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 5
-current_phase_name: Bug Fixes & Module Test Coverage
+current_phase: 05
+current_phase_name: bug-fixes-module-test-coverage
 status: executing
-stopped_at: Phase 05 reopened on round-2 review gaps G9-G12; gap plan 05-14 written and plan-checker passed, awaiting execution
-last_updated: "2026-07-27T13:30:00Z"
+stopped_at: Phase 05 gap plan 05-14 EXECUTED (G9/G10 blockers fixed, G11/G12 recorded); awaiting a review of the gap diff, then re-verification
+last_updated: "2026-07-27T13:47:17.289Z"
 last_activity: 2026-07-27
-last_activity_desc: Phase 05 round-2 gap plan 05-14 created and verified (G9-G12; 2 blockers introduced by the 05-13 fixes)
+last_activity_desc: Executed 05-14 — round-2 gaps G9-G12 closed
 progress:
-  total_phases: 7
+  total_phases: 6
   completed_phases: 5
   total_plans: 34
-  completed_plans: 33
-  percent: 71
+  completed_plans: 34
 ---
 
 # Project State
@@ -24,16 +23,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 5 (REOPENED) — Bug Fixes & Module Test Coverage, round-2 gap closure
+**Current focus:** Phase 05 — bug-fixes-module-test-coverage
 
 ## Current Position
 
-Phase: 5 — Bug Fixes & Module Test Coverage (REOPENED 2026-07-27 on round-2 review gaps)
-Plan: 05-14 (gap closure, round 2) — written and plan-checker PASSED, not yet executed
-Status: Executing — 05-14 planned and verified, awaiting execution (4 open gaps G9-G12; 2 blocker-severity defects introduced by the 05-13 gap-closure fixes)
-Last activity: 2026-07-27 — 05-14 gap plan created and verified (commits a058b3b, ab52f46)
+Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
+Plan: 14 of 14 (all plans executed)
+Status: Phase 05 plans complete — gap diff awaiting its own review, then re-verification
+Last activity: 2026-07-27 — Executed 05-14 (round-2 gaps G9-G12 closed)
 
-Progress: [███████████████████░] 33/34 plans (97%)
+Progress: [████████████████████] 34/34 plans (100%)
 
 **Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
 that has since been superseded; it cannot start until Phase 5 re-verifies.
@@ -93,6 +92,11 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 | Phase 05 P10 | 16min | 2 tasks | 2 files |
 | Phase 05 P11 | 4min | 2 tasks | 5 files |
 | Phase 05 P12 | 12min | 2 tasks | 4 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 05 P14 | 15min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -148,6 +152,10 @@ Recent decisions affecting current work:
 - [Phase ?]: 05-11: DSN-07 sensor asserts the FeatureManager __init__ signature default IS the None sentinel — config is decomposed by DiskBackedStore and never retained, so post-construction object identity is unobservable
 - [Phase ?]: 05-11: DSN-07 manager default uses 'or LazyDiskCacheConfig()' not coerce_lazy_cfg, to avoid a circular import (coerce_lazy_cfg lives in core.py which imports FeatureManager)
 - [Phase ?]: 05-11: DSN-06 fixed via body-level idempotent coerce_lazy_cfg — pydantic @validate_call never runs the BeforeValidator on an omitted default
+- [Phase ?]: [Phase 05 P14] Landed BOTH halves of the owner-locked G9 fix — widened _Z_FACTOR_RE with an optional exponent group AND switched _format_number's non-integer branch to repr(float(v)); neither half alone closes the gap, and repr is byte-identical for every currently-correct z (14-value characterization test), so cache-key churn is paid only where the key was already WRONG
+- [Phase ?]: [Phase 05 P14] G9's %g truncation was also making the RRIM cache key NON-INJECTIVE (z=1.2345678 and z=1.2345681 collided on one pack name and shared a raster) — beyond what 05-UAT.md recorded; now guarded by a dedicated non-collision test
+- [Phase ?]: [Phase 05 P14] G10 fixed by delegating to super().__delitem__ BEFORE the unlink (not by an 'if key in self' pre-check), keeping the base store as the single membership authority; dead cache_dir guard removed. The defect destroyed the OWNING store's raster too, not just a fresh re-scanning one — live data loss
+- [Phase ?]: [Phase 05 P14] Deliberately left out of scope and logged as verified follow-ups: a successful delete still leaves <key>.dat behind (inert residue — a fresh store re-scans *.npy and never re-adopts it), and a non-finite z_factor still breaks the round trip (zinf rejected) because _validate_config has no finiteness check
 
 ### Pending Todos
 
@@ -158,9 +166,12 @@ Recent decisions affecting current work:
 
 - **Phase 5 reopened 2026-07-27 — NOT shippable.** `05-VERIFICATION.md` flipped `passed` → `gaps_found`; `05-UAT.md` → `status: diagnosed` with 4 open round-2 gaps (G9-G12). Two are blocker-severity correctness defects **introduced by the 05-13 gap-closure fixes** and reproduced against HEAD (`27687c6`): the RRIM `z_factor` cannot round-trip through the derived pack-feature name (`z<1e-4` raises, high-precision z silently drifts), and `DiskBackedImageStore.__delitem__` destroys the on-disk codec pair before `super()` validates membership, so a `KeyError` delete wipes another store's raster. Neither is caught by the 135-test suite; PR #12 is green with both present. **Planned 2026-07-27:** `/gsd-plan-phase 05 --gaps` produced `05-14-PLAN.md` (3 tasks, plan-checker PASSED; commits a058b3b, ab52f46). `current_phase` moved back 6 → 5 and the ROADMAP Phase-5 checkbox un-ticked on 2026-07-27 to match the reopening. Next: `/gsd-execute-phase 05 --gaps-only`, then a review of the gap diff (global review-discipline rule — this is the loop whose absence let G9/G10 through), then re-verify.
 
+  **EXECUTED 2026-07-27 (plan 05-14):** all 3 tasks landed test-first — `5dbd93e` (G9: grammar widened + shortest-round-trip emission; round trip, injectivity, dependency chain and generate() end-to-end now proven), `f776011` (G10: `super().__delitem__` before the unlink; a failed cross-store delete leaves the codec pair intact and both the fresh AND owning store still serve the key), `eeb0e5f` (BC-NOTES 12-14 + COVERAGE.md). Suite 162 passed / 0 failed / 0 residual xfail, coverage 61.63% (floor 55). **Still open:** the gap diff has not yet had its own review, and Phase 5 has not re-verified — the phase remains NOT shippable until both happen.
+
   Reproduction refined while planning (both verified at HEAD, beyond what the review recorded): G9's `%g` truncation also makes the cache key **non-injective** — `z=1.2345678` and `z=1.2345681` both emit `rrim_pack_(range,r16,d8,z1.23457)` and share one cached raster. G10 destroys the raster for the **owning** store too, not just a fresh re-scanning one, because the owner cleared its in-memory ref on offload. Note the G10 precondition requires `offload_image_data_to_disk(...)` (`pickle_container=True`); a plain `offload()` writes `<key>.dat` and does not reproduce the defect.
 
   **G9 owner decision (2026-07-27):** do BOTH halves — widen `_Z_FACTOR_RE` to accept exponent notation AND switch `_format_number`'s non-integer branch from `format(v,"g")` to `repr(float(v))`. Chosen over regex-only because the emitted token stays byte-identical for every z that works correctly today; only already-mis-encoded names change.
+
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
 
 ### Quick Tasks Completed
@@ -183,6 +194,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T13:30:00Z
-Stopped at: Phase 05 REOPENED on round-2 gaps G9-G12; gap plan 05-14 written + plan-checker PASSED, not yet executed
+Last session: 2026-07-27T13:50:00Z
+Stopped at: Executed 05-14 — G9 (z_factor round trip + injective cache key) and G10 (KeyError delete is now a genuine no-op) fixed test-first; G11/G12/G9 recorded as BC-NOTES 12-14; COVERAGE.md created. Suite 162 passed, coverage 61.63%. NEXT: review the gap diff (global review-discipline rule), then re-verify Phase 5.
 Resume file: None
