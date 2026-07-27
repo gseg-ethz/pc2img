@@ -2,18 +2,21 @@
 phase: 05-bug-fixes-module-test-coverage
 verified: 2026-07-11T08:00:00Z
 reverified: 2026-07-11T16:40:00Z
-status: passed
-score: 8/8 must-haves verified
+status: gaps_found
+status_history: passed (2026-07-11T16:40:00Z) → gaps_found (2026-07-27T10:05:00Z)
+score: 8/8 must-haves verified as of 2026-07-11; superseded — see Round-2 Gaps below
 behavior_unverified: 0
 overrides_applied: 0
 gap_closure: 05-13 (8 post-UAT code-review gaps closed; suite 111→135 passed)
+gaps_open: 4 (G9-G12 in 05-UAT.md) — 2 blocker-severity correctness defects INTRODUCED by the 05-13 gap-closure fixes, plus 2 BC-record entries
+next_action: "/gsd-plan-phase 05 --gaps — then execute, re-review the fix diff, and re-verify before /gsd-ship"
 ---
 
 # Phase 5: Bug Fixes & Module Test Coverage — Verification Report
 
 **Phase Goal:** All known and review-surfaced correctness bugs fixed, each with a proving test, and the previously untested core modules covered.
 **Verified:** 2026-07-11
-**Status:** passed
+**Status:** gaps_found — the `passed` verdict below is superseded; see "Round-2 Gaps" at the end of this report
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -133,3 +136,34 @@ No gaps. All 5 ROADMAP Success Criteria are observably true in the codebase, eac
 
 _Verified: 2026-07-11 · Re-verified after 05-13 gap closure: 2026-07-11_
 _Verifier: Claude (gsd-verifier + orchestrator independent end-to-end re-check)_
+
+---
+
+## Round-2 Gaps (recorded 2026-07-27) — supersedes the `passed` verdict above
+
+The 8/8 verdict above was correct for what it examined: the phase implementation plus the
+05-13 gap-closure work, judged against the ROADMAP success criteria. It did not examine the
+05-13 diff *as code*. Nothing did — `05-REVIEW.md` is stamped `2026-07-11T00:00:00Z` and the
+gap-closure commits (`f799ada`..`46d679e`) landed after it. GSD's re-review loop exists only
+inside `/gsd-code-review --fix --auto`; fixes routed through `plan-phase --gaps` skip it.
+
+`/code-review 1295c2b high` (2026-07-12, session `32af2599-d24a-4113-af77-85196232cb2a`)
+reviewed exactly that diff across 8 finder angles and found two correctness defects the
+round-1 fixes introduced. Both were re-reproduced on 2026-07-27 against HEAD (`27687c6`)
+before being recorded:
+
+| Gap | Severity | Defect | Reproduced |
+| --- | --- | --- | --- |
+| G9 | blocker | RRIM `z_factor` cannot round-trip through the derived pack-feature name — `%g` emits exponent notation `_Z_FACTOR_RE` rejects | `z=1e-05` → `ValueError`; `z=1.2345678` → silent drift to `1.23457` |
+| G10 | blocker | `DiskBackedImageStore.__delitem__` unlinks the codec pair *before* `super()` validates membership, breaking the base no-side-effect-on-`KeyError` contract | `del A['range']` raises `KeyError` **and** destroys store B's persisted raster; a fresh store no longer recovers it |
+| G11 | minor | RRIM validation moved from compute time to request time with a bare `ValueError` — unrecorded in the BC notes | n/a (release-note item) |
+| G12 | minor | The `K` pinhole-form refusal is a real downstream breaking change (3×4 `P`, up-to-scale `K`) — unrecorded in the BC notes | n/a (release-note item) |
+
+Neither correctness defect is caught by the current suite: the G1 end-to-end tests all use
+default-ish `z` values, and no test exercises a cross-store delete. CI on PR #12 is green
+and remains green with both defects present — a reminder that a green gate bounds only what
+the tests reach.
+
+**Phase 5 is therefore not shippable as it stands.** Full detail, root causes, reproduction
+transcripts, and the owner decision required on the G9 fix shape are in `05-UAT.md`
+§"Gaps — Round 2".

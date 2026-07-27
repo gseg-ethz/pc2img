@@ -1,11 +1,13 @@
 ---
-status: complete
-gaps_resolved: 8/8 via gap plan 05-13 (commits f799ada..46d679e); re-verified suite 135 passed, RRIM blocker reproduced-fixed end-to-end
+status: diagnosed
+gaps_resolved: 8/8 round-1 gaps closed via gap plan 05-13 (commits f799ada..46d679e); re-verified suite 135 passed, RRIM blocker reproduced-fixed end-to-end
+gaps_open: 4 round-2 gaps (G9-G12) surfaced 2026-07-12 by a code review OF the 05-13 gap-closure diff; 2 are correctness defects introduced by the round-1 fixes, both reproduced 2026-07-27 and still present at HEAD (27687c6)
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-07-11T16:05:00Z
+updated: 2026-07-27T10:05:00Z
 gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
+gaps_source_round2: "/code-review 1295c2b high (session 32af2599-d24a-4113-af77-85196232cb2a, 2026-07-12) — 8 finder angles over `git diff 1295c2b HEAD`, i.e. the 05-13 gap-closure commits themselves. No GSD review ever covered that diff: 05-REVIEW.md predates it. Findings re-reproduced 2026-07-27 against HEAD before recording."
 ---
 
 ## Current Test
@@ -352,7 +354,8 @@ issues: 0
 pending: 0
 skipped: 0
 blocked: 0
-review_gaps: 8
+review_gaps: 8 (round 1 — closed by 05-13)
+review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
 
 ## Gaps
 
@@ -462,3 +465,75 @@ review_gaps: 8
       issue: "percentile bounds ~line 90 non-strict"
   missing:
     - "Extract _validate_percentile_bounds(low, high, *, strict) and call from all three; document the intended contract (NormalizedFeature strict is correct: zero range divides by zero)"
+
+<!-- ══════════════ ROUND 2 (OPEN) ══════════════
+     NOTE: deliberately NOT under its own `## Gaps — Round 2` heading. The
+     audit parser (`uat.cjs` parseGapsItems) matches the section heading with
+     /^gaps$/i, so any variant heading makes these entries invisible to
+     `gsd-tools query audit-uat`. They must live inside the one `## Gaps`
+     section to be counted. -->
+
+<!-- Surfaced 2026-07-12 by `/code-review 1295c2b high` (session
+     32af2599-d24a-4113-af77-85196232cb2a): 8 finder angles over `git diff 1295c2b HEAD`
+     — the 05-13 gap-closure commits. That diff was never reviewed by GSD: 05-REVIEW.md
+     (2026-07-11T00:00:00Z) covers the phase implementation, and the round-1 fixes landed
+     after it. G9 and G10 are correctness defects INTRODUCED by the round-1 fixes.
+     Both re-reproduced 2026-07-27 against HEAD (27687c6) before being recorded here.
+     G11/G12 are release-note items, not code fixes — they belong in 05-BC-NOTES.md and
+     feed Phase 6 BC-01. -->
+
+- truth: "A z_factor accepted by the RRIM name grammar round-trips through the derived pack-feature name"
+  status: failed
+  reason: "Code review (G1 follow-on): pack_feature_name() formats z_factor with _format_number ('g'), which emits exponential notation that _Z_FACTOR_RE rejects — so the pack dependency name the new dependencies_for derives cannot be re-parsed"
+  severity: blocker
+  test: review-G9
+  root_cause: "_format_number (rrim.py:83) returns format(value,'g') for non-integers; %g switches to exponential below 1e-4 and truncates to 6 significant figures. _Z_FACTOR_RE (rrim.py:43) is ^z([+-]?\\d+(?:\\.\\d+)?)$ — no exponent accepted. The G1 dependencies_for overrides build the pack dep via pack_feature_name(), FeatureManager re-matches that name, and RRIMPackFeature.dependencies_for re-parses it."
+  reproduced: "2026-07-27 — z=1e-05 -> token 'z1e-05' -> REJECTED (ValueError: Unknown RRIM option); z=1.2345678 -> token 'z1.23457' -> SILENT DRIFT to 1.23457; z=0.0001 and z=2.5 round-trip fine."
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "_format_number ('g' formatting) at line 83 vs _Z_FACTOR_RE at line 43; pack name built at line 70"
+  missing:
+    - "Make the derived pack name round-trippable. Two shapes with different blast radius — OWNER DECISION: (a) widen _Z_FACTOR_RE to accept exponent notation (purely additive; no cache-key churn; every name valid today stays valid), or (b) change _format_number to a fixed-point round-trippable form (cleaner, but feature names ARE the public API and the cache key, so previously-cached names change = a new BC event)."
+    - "The 6-significant-figure truncation is NOT fixed by (a) alone — decide explicitly whether to accept it as the documented z precision limit or raise %g precision. Domain call: how much z_factor precision is meaningful for RRIM openness."
+    - "Proving test: round-trip property over the config space (parse(pack_feature_name(cfg)) == cfg) including z < 1e-4 and a high-precision fractional z. Note the existing G1 end-to-end tests all use default-ish z, which is why they pass."
+
+- truth: "A delete that raises KeyError leaves the on-disk codec pair untouched (base-class no-side-effect-on-KeyError contract)"
+  status: failed
+  reason: "Code review (G3 follow-on): __delitem__ performs the destructive unlink BEFORE super() validates key membership, so a KeyError-raising delete still irreversibly purges another store's raster"
+  severity: blocker
+  test: review-G10
+  root_cause: "disk_backed_image_store.py __delitem__ unlinks .npy + .meta.json, then calls super().__delitem__(key), whose entire body is `del self._store[key]` — it raises KeyError for an untracked key with no side effect. The override inverts that ordering. Corroborated independently by three review angles."
+  reproduced: "2026-07-27 — store A built over an empty cache_dir; store B add+offloads 'range' (range.npy + range.meta.json on disk). `del A['range']` raises KeyError('range') AND leaves the dir empty; a fresh store C no longer recovers 'range'."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "unlink-before-super() ordering in __delitem__ (~line 85)"
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "dead `if self.cache_dir is not None` guard that contradicts the method's own docstring (cache_dir always resolves to a Path via the base temp-dir fallback)"
+  missing:
+    - "Call super().__delitem__(key) FIRST and unlink after, so the KeyError path is a genuine no-op (preferred over an `if key in self` pre-check: it keeps one membership authority)."
+    - "Drop the dead cache_dir guard — the docstring already argues at length that it should not exist."
+    - "Proving test: two stores over one cache_dir; assert KeyError AND that the codec pair survives AND that a fresh store still serves it."
+
+- truth: "The RRIM request-time validation shift is recorded in the phase BC record"
+  status: failed
+  reason: "Code review (G1 follow-on, release-note item — not a code fix): the new dependencies_for fully validates RRIM args during dependency-graph analysis, moving the failure from compute time to request time and changing the exception surface"
+  severity: minor
+  test: review-G11
+  root_cause: "FeatureRegistry.match (registry.py:71) calls cls.dependencies_for on every matched path; FeatureManager.request (manager.py:49/56) calls match on user-supplied names. RRIM's override parses via _parse_rrim_config -> _validate_config, so a malformed name in a batch — e.g. generate(['range','rrim_(r0)']) — now raises a bare ValueError from inside request(), aborting the whole batch before any feature computes. Previously it raised at construction, i.e. compute time. Arguably a fail-fast improvement, but both the timing and the exception type shifted: callers catching RegistryLookupError around request(), or wrapping only the compute phase, will not catch it."
+  artifacts:
+    - path: ".planning/phases/05-bug-fixes-module-test-coverage/05-BC-NOTES.md"
+      issue: "no entry for the request-time validation shift"
+  missing:
+    - "Add a 05-BC-NOTES.md entry (surface-only breaking change, same class as entry 11 for the DSN-08 cycle ValueError); carry into Phase 6 BC-01."
+
+- truth: "The PerspectiveProjection K-matrix refusal is recorded in the phase BC record"
+  status: failed
+  reason: "Code review (G2 follow-on, release-note item — not a code fix): the new K validation is a genuine breaking change for downstream callers, not an in-repo no-op"
+  severity: minor
+  test: review-G12
+  root_cause: "PerspectiveProjection is reachable via the 'perspective' string API / PROJECTIONS.create(...), so an external caller passing a full 3x4 projection matrix P = K[R|t] (shape mismatch) or an up-to-scale / unnormalized K with K[2,2] != 1 (common in some calibration exports) now raises where it previously constructed. The refusal is INTENTIONAL — non-pinhole K would desync the perspective divisor sign from the behind-camera cull — so this is a migration/doc concern, not a defect. Skew in K[0,1] is still accepted (only the bottom row is checked), so that is a non-issue."
+  artifacts:
+    - path: ".planning/phases/05-bug-fixes-module-test-coverage/05-BC-NOTES.md"
+      issue: "no entry for the K pinhole-form refusal"
+  missing:
+    - "Add a 05-BC-NOTES.md entry alongside the D-17 4x4-rotation breaking change; carry into Phase 6 BC-01 with explicit migration guidance (normalize K by K[2,2]; pass K and [R|t] separately rather than a composed P)."
