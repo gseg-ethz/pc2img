@@ -149,6 +149,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - [Phase 4] Guard module-level private pchandler `_TransformArray` import in `projection.py:12` — a future pchandler drop/rename would break importing the whole projection module (spherical/orthographic included), not just perspective. Source: Phase 1 review IN-03. (`.planning/todos/pending/2026-07-09-guard-transformarray-module-import.md`, `resolves_phase: 4`)
+- [Phase 6] Adopt the PCHandler **security floor** (OIDC trusted publisher, PEP 740 attestations, branch-protection rulesets, required checks, self-merge guard) but DEFER the redundant-CI flow mechanics (`workflow_run` chaining, full suite on release-please PRs, reconcile-PR promotion) — the pchandler template is itself under redesign via dormant **SEED-001**, planted 2026-07-11 after the GSEGUtils 0.5.3 ship ran lint+pytest ~4-5x on unchanged source. Record the divergence from Success Criterion 1 explicitly. (`.planning/todos/pending/2026-07-27-phase-6-adopt-pchandler-security-floor-defer-redundant-ci.md`, `resolves_phase: 6`)
 
 ### Blockers/Concerns
 
