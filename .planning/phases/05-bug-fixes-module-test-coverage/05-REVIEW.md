@@ -1,246 +1,424 @@
 ---
 phase: 05-bug-fixes-module-test-coverage
-reviewed: 2026-07-11T00:00:00Z
+reviewed: 2026-07-27T14:02:28Z
 depth: deep
-files_reviewed: 15
+files_reviewed: 4
 files_reviewed_list:
-  - src/pc2img/strategies/projection.py
-  - src/pc2img/util.py
-  - src/pc2img/features/derivative_features.py
-  - src/pc2img/strategies/interpolation.py
   - src/pc2img/features/rrim.py
-  - src/pc2img/strategies/registry.py
-  - src/pc2img/features/registry.py
-  - src/pc2img/features/core.py
-  - src/pc2img/errors.py
-  - src/pc2img/image_cache/disk_backed_image_data.py
   - src/pc2img/image_cache/disk_backed_image_store.py
-  - src/pc2img/image_cache/__init__.py
-  - src/pc2img/tiled_generator.py
-  - src/pc2img/features/manager.py
-  - src/pc2img/core.py
+  - tests/test_image_store.py
+  - tests/test_rrim_features.py
 findings:
-  critical: 0
-  warning: 2
-  info: 7
-  total: 9
-status: issues
+  critical: 1
+  warning: 6
+  info: 3
+  total: 10
+status: issues_found
 ---
 
-# Phase 5: Code Review Report
+# Phase 05: Code Review Report (round-2 gap closure, plan 05-14)
 
-**Reviewed:** 2026-07-11
-**Depth:** deep (cross-file: import graph, registry/allow-list, call chains)
-**Files Reviewed:** 15
+**Reviewed:** 2026-07-27T14:02:28Z
+**Depth:** deep
+**Files Reviewed:** 4
+**Diff base:** `c8521f3` (170 insertions, 16 deletions)
 **Status:** issues_found
 
 ## Summary
 
-I traced every Phase-5 bug fix against its finding, cross-checked the
-GSEGUtils primitives the image-cache reparent depends on (read the installed
-`DiskBackedNDArray` / `DiskBackedStore` source), and verified the security
-posture of the DSN-09 removal empirically.
+Both G9 (RRIM `z_factor` round trip) and G10 (`__delitem__` ordering) are genuinely fixed,
+and both proving tests are genuine RED sensors — I verified that by monkeypatching the
+pre-fix code back in and re-running:
 
-**The core fixes are correct and the "kept-behavior" claims hold up.** I
-independently confirmed against `git show`:
+- Reverting `_Z_FACTOR_RE` + `_format_number` to the 05-13 versions turns 6 rrim tests RED
+  (`round_trips[1e-06]`, `[1e-05]`, `[1.2345678]`, `is_injective_for_nearby_z`,
+  `dependency_chain_resolves_for_sub_1e4_z`, `generate_rrim_small_z_end_to_end`).
+- Reverting `__delitem__` to the unlink-then-`super()` ordering turns
+  `test_failed_delete_preserves_codec_pair_and_both_stores` RED with exactly the intended
+  message ("failed delete destroyed the .npy").
+- The characterization guard `test_z_factor_token_unchanged_for_currently_valid_values`
+  passes under BOTH formatters, so it is a real characterization test and not a
+  post-hoc-fitted assertion.
 
-- **Orthographic indexing (M-01):** `pcd.xyz[mask][:, cols]` is the right
-  two-step index; the old `xyz[mask, cols]` diagonal broadcast is gone.
-- **`nanconv` (M-07/M-08):** input array is no longer mutated (fresh
-  `np.where` buffer), float32 accumulation is the default, `compute_dtype`
-  is a clean opt-in.
-- **GradientFeature `pixel_size` (D-07):** default `100.0` is byte-for-byte
-  vs the old hardcoded `np.gradient(img, 100, …)`.
-- **Delaunay culling (D-06/PERF-03):** the surfaced kwargs
-  (`area_scale=10`, `mad_factor=6`, `fallback=10`) reproduce the previously
-  hardcoded constants exactly; only the always-`None` `max_edge_thresh`
-  dead branch was dropped.
-- **RegistryLookupError dual-inheritance:** empirically verified that both
-  `except KeyError` and `except RuntimeError` still catch it — handler
-  semantics are preserved.
-- **Security (DSN-09):** confirmed there is **no residual deserialization
-  sink** in pc2img. Array reload goes through GSEGUtils'
-  `np.load(..., allow_pickle=False)` + JSON sidecar, class resolution is an
-  explicit allow-list with no `importlib`, and
-  `register_lazy_disk_cache_class(DiskBackedImageData)` is a supervised,
-  idempotent, subclass-checked registration. `pickle_container=True` writes
-  the codec pair (no actual pickle). No blocker here.
+I also verified the plan's locked zero-cache-churn requirement rather than trusting it.
+Exhaustive sweep of all ≤6-significant-digit decimals across `[1e-4, 1e6)` (9,000,000
+values) plus 300k structured/random/bit-pattern floats: **zero** values exist where the old
+token was valid-and-correctly-encoded and the new token differs. Byte-identity holds. A
+separate 50k-value fuzz of `RRIMConfig → pack_feature_name → FEATURES.match → _parse_rrim_config`
+(including subnormals, 2^-53, 2^53±1, 1.797e308, 17-significant-digit values) found zero
+round-trip failures and zero double-matches in the registry.
 
-**No BLOCKER-severity defects were found.** Two WARNING-level issues remain,
-both concrete: a latent crash on `SphericalProjection.inverse_projection`'s
-own default argument, and a diagnostics regression from the `KeyError`
-`__str__` quoting on the unified registry error. The rest are INFO.
+On the store: I read the GSEGUtils source rather than the docstring's claim about it.
+`DiskBackedStore.__delitem__` really is `del self._store[key]` and nothing else, `_cache_dir`
+really can never be `None` (temp-dir fallback), so the removed guard was genuinely dead, and
+nothing inside GSEGUtils evicts via `__delitem__` (so the override cannot be triggered as a
+memory-pressure eviction and silently destroy a cache entry). The DSN-09 posture is intact:
+no `pickle.load*` sink, no new deserialization surface.
+
+What is **not** sound: the regex widening was treated as "purely additive", and it is not.
+It admits decimal-exponent overflow (`z1e400`), which `float()` turns into `inf`,
+`_validate_config` accepts (`inf > 0`), and the slope path then renders as a silently
+all-NaN raster — a token that raised a clear `ValueError` before this diff. That is
+CR-01 and it is the reason this review is not clean. Six further warnings cover an
+overclaimed cross-store safety guarantee (with a confirmed data-loss repro through the
+*successful*-delete path the new test does not exercise), an unvalidated key → `unlink()`
+path escape, a silent base-feature reinterpretation caused by the same widening, and three
+test-strength gaps.
+
+Every finding below was reproduced by running code unless marked PLAUSIBLE. Nothing is
+marked PLAUSIBLE.
+
+## Narrative Findings (AI reviewer)
+
+## Critical Issues
+
+### CR-01 (BLOCKER): Widened `z` grammar admits decimal-exponent overflow → `inf` → silent all-NaN raster
+
+**Status:** CONFIRMED (reproduced).
+**File:** `src/pc2img/features/rrim.py:45` (regex), `src/pc2img/features/rrim.py:122-123` (missing finiteness guard)
+
+**Issue:**
+The widened `_Z_FACTOR_RE` now accepts any exponent, including exponents that overflow
+`float()` to `inf`. `_validate_config` only checks `z_factor <= 0`, so `inf` passes
+validation. The consequence differs per feature, and one branch is silent:
+
+Reproduction (`/scratch/31_pc2img/.venv/bin/python`):
+
+```
+old regex accepts z1e400 : False        <- pre-diff: rejected at the user's own token
+new regex accepts z1e400 : True
+match ok, deps: ['range']
+parsed z_factor: inf  (validated OK -> no error)
+slope raster all-NaN: True   finite count: 0
+NO EXCEPTION RAISED -> silent all-NaN raster
+pre-diff behaviour: ValueError -> Unknown RRIM option 'z1e400'. Supported tokens are rN, dN, sclipA-B, oclipA-B, zF and redF.
+```
+
+- `generate(["rrim_component_(slope,range,z1e400)"])` — `dependencies_for` returns
+  `[base_feature]` for the slope component, so the pack name (and its `zinf` token) is never
+  built. `compute_slope` does `raster * inf` → `inf` → `np.gradient` → NaN. The generator
+  returns a **fully NaN raster with no error**, and caches it under a distinct key.
+- `generate(["rrim_(range,z1e400)"])` / `rrim_pack_` — `pack_feature_name()` emits
+  `repr(inf)` = `"inf"`, producing the machine-derived dependency
+  `rrim_pack_(range,r16,d8,zinf)`, which then fails with
+  `ValueError: Unknown RRIM option 'zinf'` — an error naming a token the user never wrote.
+- Same for `z9e999`, `z1E400`, `z1e309`. (`z1e-400` → `0.0` → correctly rejected by the
+  existing `z_factor > 0` check.)
+
+Before this diff none of these tokens parsed at all, so the non-finite `z_factor` hazard was
+reachable only through the Python API (`compute_rrim(z_factor=float("inf"))`), never through
+the public feature-name grammar. This is the deferred "no finiteness check in
+`_validate_config`" item, but the diff **materially worsened it on both axes the deferral
+assumed fixed**: unreachable → reachable from the public name DSL, and loud rejection →
+silent all-NaN output. The in-code comment at line 43-44 ("purely ADDITIVE — every token
+accepted before is still accepted") is true about tokens but hid this consequence: the
+widening also admits a value class the validator does not cover.
+
+**Fix** — one line, and it also closes the deferred item outright:
+
+```python
+import math
+
+def _validate_config(config: RRIMConfig) -> RRIMConfig:
+    ...
+    if not math.isfinite(config.z_factor) or config.z_factor <= 0:
+        raise ValueError(f"z_factor must be a finite value > 0, got {config.z_factor}.")
+```
+
+Add a defensive assertion in `_format_number` so a non-finite value can never be emitted
+into a cache key even if it arrives by another route:
+
+```python
+def _format_number(value: float) -> str:
+    v = float(value)
+    if not math.isfinite(v):
+        raise ValueError(f"cannot encode non-finite value {v!r} in a feature name.")
+    if v.is_integer():
+        return str(int(v))
+    return repr(v)
+```
+
+Proving test to add:
+
+```python
+@pytest.mark.parametrize("token", ["z1e400", "z9e999", "z1E400"])
+def test_overflowing_z_token_is_rejected_not_silently_infinite(token):
+    with pytest.raises(ValueError, match="finite"):
+        FEATURES.match(f"rrim_component_(slope,range,{token})")
+```
 
 ## Warnings
 
-### WR-01: `SphericalProjection.inverse_projection` crashes on its own default `field_of_view=None`
+### WR-01 (WARNING): `__delitem__` docstring overclaims cross-store safety; a *successful* delete still destroys another live store's raster
 
-**File:** `src/pc2img/strategies/projection.py:150-172`
-**Issue:** The full `inverse_projection` body was newly written in 05-02
-(pre-05-02 it was the empty stub `def inverse_projection(self): ...`). The
-wrapping-FoV guard is applied **only** when a FoV exists:
+**Status:** CONFIRMED (reproduced).
+**File:** `src/pc2img/image_cache/disk_backed_image_store.py:72-78`, `tests/test_image_store.py:152-177`
+
+**Issue:**
+The docstring states the reorder means a delete "cannot destroy a raster that another store
+over the same cache directory still owns (G10)". That holds only for the KeyError path. The
+base `__init__` re-scans `*.npy` and adopts every key it finds, so a store constructed
+*after* another store offloaded **tracks** that key — the delete then succeeds and unlinks
+the shared codec pair:
+
+```
+npy exists: True
+a tracks range (adopted from disk): True     <- store_a constructed AFTER store_b offloaded
+npy after a-delete: False
+b LOST DATA -> KeyError 'range'
+```
+
+The new test picks the one construction order (store_a built *before* the offload) that
+yields the KeyError branch, so it asserts a strictly weaker property than the docstring
+claims. Swapping two lines in the test's setup makes the same data loss reappear while the
+suite stays green — i.e. the sensor would not catch a regression that reintroduced the
+hazard through the adoption route. Mitigating context: `TiledPointCloudImageGenerator`
+gives each tile its own `extend_cache_path(tile_id)` subdirectory, so this needs two
+generators explicitly configured with the same `cache_path`.
+
+**Fix:** narrow the docstring to the property actually held ("a delete that raises
+`KeyError` is a no-op; a delete of a key this store tracks — including one adopted from
+disk on construction — does purge the shared codec pair"), and add the second sensor so the
+real semantics are pinned:
 
 ```python
-if self._field_of_view is not None:
-    _reject_wrapping_fov(self._field_of_view)
-...
-horizontal_range = np.linspace(self._field_of_view.left, self._field_of_view.right, ...)
+def test_adopted_key_delete_purges_shared_pair(tmp_path):
+    b = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    b.add_image_to_store("range", _gray((6, 6)))
+    b.offload_image_data_to_disk("range")
+    a = DiskBackedImageStore(config=_two_store_config(tmp_path))  # adopts from disk
+    assert "range" in a
+    del a["range"]
+    assert not b._get_npy_path("range").exists()   # documented, intentional (G3)
 ```
 
-But the constructor default is `field_of_view=None`, and the `linspace`
-calls immediately below dereference `self._field_of_view.left/.right/.top/
-.bottom` unconditionally. Constructing `SphericalProjection()` (no FoV) and
-calling `inverse_projection(range_img)` raises a bare
-`AttributeError: 'NoneType' object has no attribute 'left'` instead of a
-clear "inverse requires a field_of_view" message. The guard already proves
-awareness of the `None` case, so the body is internally inconsistent. This
-path is untested — `test_spherical_inverse_roundtrip_shapes` always passes an
-explicit `FoV` (line 129-132), and `project_raw`'s None path works only
-because it falls back to `pcd.fov`, which `inverse_projection` does not do.
-**Fix:** Fail fast with a domain message, mirroring the other refusals in
-this file:
+### WR-02 (WARNING): `__delitem__` unlinks a path built from an unvalidated key — `../` escapes the cache directory
+
+**Status:** CONFIRMED (reproduced).
+**File:** `src/pc2img/image_cache/disk_backed_image_store.py:92-93`
+
+**Issue:**
+`_get_npy_path(key)` is `cache_dir / f"{key}.npy"` with no validation that the result stays
+inside `cache_dir`. `DiskBackedImageStore` is exported from the public barrel
+(`pc2img.image_cache.__all__`), and the new code path performs an unconditional `unlink`:
+
+```
+victim exists before: True
+npy path for key: /tmp/tmpXXXX/cache/../victim.npy
+victim content after offload: b'\x93NUMPY'      <- pre-existing file overwritten
+victim exists after delete: False               <- deleted outside cache_dir
+```
+
+I traced reachability from the feature-name DSL and it is **not** currently reachable that
+way: every registered `regex_pattern` anchors on a literal prefix (`range`,
+`scalar_field_`, `rrim`, `sqrt_`, …), so no store key can begin with `..` or `/`, and an
+embedded `a/../..` cannot traverse because the leading component is not an existing
+directory. So this is a hardening gap on the public store API, not an exploitable path from
+untrusted point-cloud metadata today. It is worth closing because this diff is what made
+`__delitem__` a file-deletion primitive, and the module docstring asserts the purge is safe.
+
+**Fix:**
+
 ```python
-if self._field_of_view is None:
-    raise ValueError(
-        "SphericalProjection.inverse_projection requires an explicit "
-        "field_of_view; none was configured."
-    )
-_reject_wrapping_fov(self._field_of_view)
+def _resolved_within_cache(self, path: Path) -> Path:
+    resolved = path.resolve()
+    if not resolved.is_relative_to(self._cache_dir.resolve()):
+        raise ValueError(f"cache key escapes the cache directory: {path}")
+    return resolved
+
+def __delitem__(self, key: str) -> None:
+    super().__delitem__(key)
+    self._resolved_within_cache(self._get_npy_path(key)).unlink(missing_ok=True)
+    self._resolved_within_cache(self._get_meta_path(key)).unlink(missing_ok=True)
 ```
 
-### WR-02: Unified `RegistryLookupError` double-quotes every registry error message (KeyError `__str__` regression)
+### WR-03 (WARNING): Regex widening silently reinterprets base-feature names — it is additive for tokens, not for names
 
-**File:** `src/pc2img/errors.py:28`; message sites
-`src/pc2img/strategies/registry.py:39,64,93`,
-`src/pc2img/features/registry.py:45,53,62,82`
-**Issue:** Because `RegistryLookupError` subclasses `KeyError`, it inherits
-`KeyError.__str__`, which returns `repr(args[0])`. I verified empirically:
+**Status:** CONFIRMED (reproduced).
+**File:** `src/pc2img/features/rrim.py:43-45`, consumed at `src/pc2img/features/rrim.py:461, 482`
+
+**Issue:**
+`_parse_rrim_config` uses `_looks_like_option_token(tokens[0])` to decide whether the first
+token is the base feature. Widening `_Z_FACTOR_RE` moved names into the option class:
 
 ```
-str(RegistryLookupError("No strategy registered under x")) == "'No strategy registered under x'"
+PRE-DIFF  rrim_pack_(z1e5) -> base_feature='z1e5', z=1.0
+POST-DIFF rrim_pack_(z1e5) -> base_feature='range', z=100000.0
+POST-DIFF rrim_pack_(z1E5) -> base_feature='range', z=100000.0
 ```
 
-Every registry miss/duplicate message is now wrapped in an extra pair of
-quotes when rendered (logs, tracebacks, `str(e)`). This is a genuine
-diagnostics regression for the **FeatureRegistry** paths, which previously
-raised `RuntimeError` with clean, unquoted messages (e.g.
-`Multiple patterns match 'x'`, `No pattern for 'x' and no default registered`,
-`Pattern … already registered`). Those now render as
-`'Multiple patterns match \'x\''`. Handler semantics are fine; only the
-human-readable message quality degrades — across all seven message sites.
-**Fix:** Give the unified error a stable `__str__` so both registries render
-cleanly regardless of the `KeyError` base:
+Feature names are both public API and the on-disk cache key, so for any base feature whose
+name matches `z\d+(\.\d+)?[eE][+-]?\d+`, the same string now denotes a different
+computation while resolving to the same cache key. The comment on line 43-44 ("purely
+ADDITIVE — every token accepted before is still accepted") is accurate at the token level
+and misleading at the name level; it should not be the sole record of the BC analysis.
+
+Likelihood is low (a scalar field literally named `z1e5`), but this is exactly the class of
+BC event CLAUDE.md flags for the feature-name grammar, and it is currently undocumented and
+untested.
+
+**Fix:** correct the comment to state the actual scope of the change, and pin the new
+precedence so a future edit cannot flip it silently:
+
 ```python
-class RegistryLookupError(KeyError, RuntimeError):
-    def __str__(self) -> str:
-        return self.args[0] if self.args else ""
+# G9: additive at the TOKEN level. Note the side effect at the NAME level: a
+# first token matching the widened z grammar (e.g. `z1e5`) is now read as an
+# option, not as a base feature. Option tokens take precedence over base names.
+def test_exponent_token_takes_precedence_over_base_feature_name():
+    assert rrim_module._parse_rrim_config("z1e5").base_feature == "range"
+    assert rrim_module._parse_rrim_config("z1e5").z_factor == 100000.0
+```
+
+### WR-04 (WARNING): The G9 end-to-end test cannot detect `z_factor` being dropped from the computation
+
+**Status:** CONFIRMED (reproduced).
+**File:** `tests/test_rrim_features.py:221-227`
+
+**Issue:**
+`test_generate_rrim_small_z_end_to_end` asserts only `raster.shape == (16, 16, 3)` and
+`np.isfinite(raster).all()`. Neither depends on `z_factor` reaching the math. I verified
+that `z` genuinely changes the output:
+
+```
+slope differs: True
+rgb differs: True     (compute_rrim(z=1.0) vs compute_rrim(z=1e-5))
+```
+
+so a regression that parsed `z` into the cache key but stopped threading it into
+`compute_openness` / `compute_slope` would leave the whole suite green — which is precisely
+the failure mode this phase exists to prevent. The test proves the *name* survives
+`generate()`; it does not prove the *value* does.
+
+**Fix:** make the assertion value-sensitive.
+
+```python
+def test_generate_rrim_small_z_differs_from_default_z(synthetic_pcd):
+    gen = _rrim_generator(synthetic_pcd)
+    images = gen.generate(["rrim", "rrim_(range,z1e-05)"])
+    a = np.asarray(images["rrim"])
+    b = np.asarray(images["rrim_(range,z1e-05)"])
+    assert np.isfinite(b).all()
+    assert not np.allclose(a, b, equal_nan=True), "z_factor did not reach the computation"
+```
+
+### WR-05 (WARNING): Round-trip coverage omits the upper `%g` exponent boundary, half of the same defect class
+
+**Status:** CONFIRMED (reproduced).
+**File:** `tests/test_rrim_features.py:186` (`_ROUND_TRIP_Z_VALUES`)
+
+**Issue:**
+`%g` switches to exponent notation at *both* ends: below `1e-4` **and** at or above its
+6-digit precision. The tests only cover the lower end (`1e-06`, `1e-05`, `0.0001`); the
+largest value in the list is `100.0`. The upper end was broken identically pre-diff and is
+fixed by the diff, but nothing guards it:
+
+```
+1234567.5           old: 1.23457e+06  old_regex_ok: False  | new: 1234567.5
+12345678.25         old: 1.23457e+07  old_regex_ok: False  | new: 12345678.25
+999999.5            old: 1e+06        old_regex_ok: False  | new: 999999.5
+1000000000000000.5  old: 1e+15        old_regex_ok: False  | new: 1000000000000000.5
+```
+
+`999999.5` is the sharpest case: `%g` collapses it to `1e+06`, which is both unparseable
+*and* a collision with `z_factor=1000000.0`.
+
+**Fix:** extend the parametrization so both boundaries are pinned.
+
+```python
+_ROUND_TRIP_Z_VALUES = [
+    1e-06, 1e-05, 0.0001, 0.5, 1.0, 1.2345678, 2.5, 10.0, 100.0,
+    999999.5, 1234567.5, 12345678.25, 1e15 + 0.5,   # upper %g exponent boundary
+]
+```
+
+### WR-06 (WARNING): `test_delete_absent_key_does_not_raise` encodes the contract the fix just inverted
+
+**Status:** CONFIRMED (read + traced; the test body does not do what its name says).
+**File:** `tests/test_image_store.py:128-134`
+
+**Issue:**
+The test name asserts that deleting an absent key does not raise. After the G10 fix, that is
+the **opposite** of the contract: `super().__delitem__(key)` runs first specifically so an
+untracked key raises `KeyError` (and the new G10 test asserts exactly that with
+`pytest.raises(KeyError)`). The body does not test an absent key at all — it adds `"range"`,
+then deletes a key that is present but never offloaded. Two adjacent tests in one file now
+state contradictory contracts by name, and a future maintainer reading only the name could
+"fix" the code back into the G10 defect.
+
+**Fix:** rename to describe the actual scenario, and let the G10 test own the absent-key
+contract.
+
+```python
+def test_delete_tracked_but_never_offloaded_key_does_not_raise(tmp_path: Path):
+    # Present in memory, no on-disk codec pair: unlink(missing_ok=True) carries the safety.
 ```
 
 ## Info
 
-### IN-01: `RegistryLookupError` docstring states the wrong MRO
+### IN-01: Dead module-level `logger`, bound to the root package rather than the module
 
-**File:** `src/pc2img/errors.py:14-16`
-**Issue:** The docstring claims the MRO is
-`RegistryLookupError → KeyError → RuntimeError → LookupError → Exception`.
-The actual C3 linearization (verified) is
-`RegistryLookupError → KeyError → LookupError → RuntimeError → Exception →
-BaseException → object` — `LookupError` precedes `RuntimeError`, not the
-reverse. The dual-catch guarantee still holds, but the documented ordering is
-inaccurate.
-**Fix:** Correct the docstring ordering to
-`KeyError → LookupError → RuntimeError → Exception`.
+**File:** `src/pc2img/image_cache/disk_backed_image_store.py:9`
+**Issue:** `logger` is never used anywhere in the module (verified by grep), and it binds
+`logging.getLogger(__name__.split(".")[0])` — the root `pc2img` logger — contrary to the
+project convention `logging.getLogger(__name__)` documented in CLAUDE.md. Dead code that
+also models the wrong pattern.
+**Fix:** delete the `logger` binding and the now-unused `import logging`, or use it (a
+`logger.debug("purged codec pair for %s", key)` in `__delitem__` would be genuinely useful
+given the destructive semantics) and correct it to `getLogger(__name__)`.
 
-### IN-02: Non-greedy base-feature regexes silently reinterpret names ending in a numeric suffix
+### IN-02: `_validate_clip` ignores its `name` parameter, so the error cannot say which clip failed
 
-**File:** `src/pc2img/features/derivative_features.py:32-35` (Gradient),
-`77-80` (Normalized)
-**Issue:** The regex switched from greedy `(?P<base_feature>.+)` to
-non-greedy `.+?` plus an optional trailing group (`_px<n>` / `_<low>_<high>`).
-For a base feature whose name legitimately ends in `_px5` or `_10_20`, the
-parser now peels that suffix off as `pixel_size`/percentiles rather than
-treating it as part of the base name — a silent semantic shift. The `$`
-anchor makes this byte-identical for the common case (names without such
-suffixes), so risk is low and it is documented as opt-in, but it is a latent
-ambiguity for exotic feature names.
-**Fix:** None required for current names; if defensive, document that a base
-feature name may not end in the reserved `_px<digits>` /
-`_<num>_<num>` shapes.
+**File:** `src/pc2img/features/rrim.py:107-112`
+**Issue:** `name` is accepted and never read. `_validate_percentile_bounds` raises
+`"percentiles must lie within [0, 100], got low=…, high=…"` with no indication of whether
+`sclip` or `oclip` was at fault — the whole point of passing the name.
+**Fix:** either drop the parameter, or wrap: `raise ValueError(f"{name}_clip: {e}") from e`.
 
-### IN-03: Diamond dependencies double-append base features (redundant compute)
+### IN-03: `ruff check` fails B008 on the store constructor; CI does not run ruff
 
-**File:** `src/pc2img/features/manager.py:38-58,63-70`
-**Issue:** `visit` appends a `BaseFeatureStrategy` to `self._base_features`
-every time it is reached, and the cycle `visiting` set is discarded on
-backtrack (correctly, to avoid false cycle flags). But a diamond within a
-single request — e.g. `sum_(range,log_range)`, where both arms reach `range`
-— appends `range` twice. `get_base_features` then constructs and runs
-`inst.compute` on `range` twice; the returned dict dedups by name so the
-final raster and interpolation are correct, only the 1-D per-point
-computation is wasted. Correctness is preserved; this is efficiency only
-(out of v1 scope, noted for completeness).
-**Fix:** De-dup while appending: `if spec.name not in seen: self._base_features.append(spec)` guarded by a per-request set.
+**File:** `src/pc2img/image_cache/disk_backed_image_store.py:31`
+**Issue:** `[tool.ruff.lint] select` includes `B`, and `ruff check` on the reviewed files
+reports `B008` for `config: LazyDiskCacheConfig = LazyDiskCacheConfig()`. `.github/workflows/ci.yml`
+runs only `uv run --frozen pytest`, so the lint failure is ungated. The runtime risk is nil
+(`LazyDiskCacheConfig` is a frozen pydantic dataclass — GSEGUtils carries a `# noqa: B008`
+with that justification), but this leaves the repo's own lint config red while CI is green,
+which is the pattern CLAUDE.md warns about.
+**Fix:** mirror the upstream suppression with the same justification, or add a ruff step to CI.
 
-### IN-04: `TIGSettings` (and `extend_cache_paths`/`as_kwargs`) is dead in the runtime path
+```python
+config: LazyDiskCacheConfig = LazyDiskCacheConfig(),  # noqa: B008  # frozen pydantic dataclass — safe as default
+```
 
-**File:** `src/pc2img/tiled_generator.py:49-86`
-**Issue:** The BUG-03/DSN-01 fix (build-then-assign instead of
-`dict.update()` returning `None`) is correct, but it lands on
-`TIGSettings.extend_cache_paths`, which `TiledPointCloudImageGenerator` never
-calls — the generator stores fields directly and does its own per-tile
-extension in `_process_tile` (lines 161-171), which is independently correct
-(fresh `dict(...)` copy, reassigned). `TIGSettings` is instantiated only by
-`tests/test_tiled_generator.py`. So the runtime fix is really the
-`_process_tile` logic; `TIGSettings` is a parallel, unused settings
-abstraction.
-**Fix:** Either wire `TIGSettings` into `__init__`/`_process_tile` as the
-single source of per-tile settings, or move it out of the production module
-if it is test-only scaffolding.
+## Verified-Sound (no finding — recorded so a re-review need not redo the work)
 
-### IN-05: `PerspectiveProjection` is registered but not exported from `strategies.__init__`
-
-**File:** `src/pc2img/strategies/__init__.py:1-32`
-**Issue:** `@PROJECTIONS.register("perspective")` runs at import (via the
-`from .projection import …` side effect), so the `"perspective"` key works.
-But unlike `SphericalProjection`/`OrthographicProjection`, the
-`PerspectiveProjection` class is absent from `__all__` and the re-export
-list, so `from pc2img.strategies import PerspectiveProjection` fails. This is
-an inconsistent public surface for a newly added strategy.
-**Fix:** Add `PerspectiveProjection` to the `.projection` import and
-`__all__` for parity with the other projections.
-
-### IN-06: `DiskBackedImageData` uses `assert` to validate raster shape (stripped under `-O`; rejects valid non-3-channel features)
-
-**File:** `src/pc2img/image_cache/disk_backed_image_data.py:31`
-**Issue:** `assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or
-image_data.shape[-1] == 3)` validates externally-shaped data (feature raster
-output) with an `assert`, which CLAUDE.md reserves for internal invariants
-(and which `python -O` strips). It also rejects legitimate feature outputs
-with a channel count other than 3 — notably
-`multigradocc_<base>_<sigmas>_mask`, which returns an `(H, W, 2)` stack
-(`derivative_features.py:701-703`) and would `AssertionError` when submitted
-to the store. The assertion is carried verbatim from the pre-reparent class,
-so this is pre-existing rather than a Phase-5 regression, but the reparent
-(05-09) touched this file and left it unaddressed.
-**Fix:** Convert to an explicit `raise ValueError(...)` and either widen the
-channel check to `shape[-1] >= 1` or explicitly enumerate supported channel
-counts.
-
-### IN-07: `NormalizedFeature.compute` lacks the all-NaN guard its sibling has
-
-**File:** `src/pc2img/features/derivative_features.py:96-104`
-**Issue:** `ClipPercentileFeature.compute` early-returns on
-`if not np.isfinite(values).any(): return values` (line 322), but the
-sibling `NormalizedFeature.compute` does not. On an all-NaN raster,
-`np.nanpercentile` yields `nan` bounds, `high_bound - low_bound` is `nan`
-(`!= 0` is `True`), and the divide produces an all-`nan` output silently
-rather than short-circuiting. No crash, but the two percentile features
-handle the degenerate case inconsistently.
-**Fix:** Mirror the guard:
-`if not np.isfinite(img).any(): return img`.
+- **Zero cache-key churn (plan's locked requirement): HOLDS.** 9,000,000 exhaustive
+  ≤6-significant-digit decimals across `[1e-4, 1e6)` plus ~300k structured/random/bit-pattern
+  floats: no value where the old token was valid-and-correctly-encoded and the new token
+  differs. `repr` and `%g` cannot diverge on a correctly-encoded value because `%g`'s
+  plain-decimal window is a strict subset of `repr`'s and `repr` is the shortest exact form.
+- **Round trip: exact over all finite positive doubles tested.** 50k-value fuzz through
+  `RRIMConfig → pack_feature_name → FEATURES.match → _parse_rrim_config`, including `5e-324`,
+  `1e-320`, `2**-53`, `2**53`, `2**53+2`, `1.7976931348623157e308`, and 17-digit values —
+  zero mismatches, zero registry double-matches, `repr` never emits `+` or uppercase `E` in
+  the non-integer branch (positive-exponent floats are all integral and take the `int` branch).
+- **Exactly one membership authority in `__delitem__`.** No `if key in self` pre-check was
+  reintroduced; `super().__delitem__` is the sole gate.
+- **The `super()` claim checks out against GSEGUtils source.** `DiskBackedStore.__delitem__`
+  is `del self._store[key]` and nothing more; `_cache_dir` is never `None` (temp-dir
+  fallback), so the removed guard was genuinely dead; no GSEGUtils code path evicts via
+  `__delitem__`, so the override cannot fire as a memory-pressure eviction.
+- **G3 stays closed.** `test_delete_purges_on_disk_codec_pair` and
+  `test_overwrite_does_not_leave_stale_on_disk_raster` both still pass with the new ordering;
+  a successful delete purges both `.npy` and `.meta.json`.
+- **DSN-09 posture intact.** No `pickle.load*` sink; overwrite-then-serve returns the new
+  raster (verified: `2.0`, not the stale `1.0`), and a fresh store re-scans only `*.npy`, so
+  the residual `<key>.dat` is inert as the deferred note states — the diff did not worsen it.
+- **Fixtures are deterministic** (`conftest.py` `_DEFAULT_SEED = 0`), so the new end-to-end
+  tests are not flaky.
+- **Full suite: 162 passed** on the reviewed tree.
 
 ---
 
-_Reviewed: 2026-07-11_
+_Reviewed: 2026-07-27T14:02:28Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_
