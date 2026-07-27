@@ -193,6 +193,86 @@ downstream consumers.)
 - **Migration note:** Callers catching `RecursionError` on a malformed feature
   graph should catch `ValueError` instead. Well-formed graphs are unaffected.
 
+## 12. RRIM feature-name validation moved from compute time to request time — BREAKING (surface only) (G11, 05-14)
+
+- **Symbol:** the `pc2img.features.rrim` name grammar, surfaced through
+  `pc2img.features.registry.FeatureRegistry.match` and
+  `pc2img.features.manager.FeatureManager.request`
+- **Old → new:** RRIM argument validation previously ran when the feature was
+  **constructed**, i.e. at **compute time**. `FeatureRegistry.match`
+  (`registry.py:71`) now calls `cls.dependencies_for(spec.params)` on **every**
+  matched path, and the RRIM overrides parse through `_parse_rrim_config` →
+  `_validate_config`. Because `FeatureManager.request` calls `match` on
+  user-supplied names, a malformed RRIM name inside a batch — e.g.
+  `generate(["range", "rrim_(r0)"])` — now raises a bare **`ValueError` from
+  inside `request()`**, aborting the **entire batch** before any feature
+  computes. **Both the timing and the exception type shifted.**
+- **Migration note:** Arguably a fail-fast improvement — an unusable RRIM name no
+  longer costs a full base-raster computation before failing. But callers that
+  catch `RegistryLookupError` around `request()`, or that wrap only the compute
+  phase, will **not** catch it: catch `ValueError` around the request call
+  instead. Same class as entry 11 (the DSN-08 cycle `ValueError`).
+- **Carry into Phase 6 BC-01:** yes.
+
+## 13. PerspectiveProjection rejects a non-3×3 or non-pinhole intrinsics matrix K — BREAKING (G12, 05-14)
+
+- **Symbol:** `pc2img.strategies.projection.PerspectiveProjection(projection_matrix=...)`,
+  reachable via the `"perspective"` string API and `PROJECTIONS.create(...)`
+- **Old → new:** `K` was previously **stored unchecked**. It is now **validated at
+  construction**, so an external caller passing a full 3×4 composed projection
+  matrix `P = K[R|t]` (shape mismatch) or an up-to-scale / unnormalized `K` with
+  `K[2,2] != 1` (common in some calibration exports) now **raises** where it
+  previously constructed. The refusal is **INTENTIONAL**, not a defect: a
+  non-pinhole `K` desyncs the sign of the perspective divisor from the
+  behind-camera depth cull, which would **mislocate** points instead of culling
+  them — silently wrong pixels rather than a loud refusal.
+- **Migration note:** Two concrete steps — (1) **normalize `K` by `K[2,2]`** so the
+  bottom row is `[0, 0, 1]`; (2) **pass `K` and `[R|t]` separately** (`K` as
+  `projection_matrix`, the extrinsic via `rotation_matrix=` + `translation=`)
+  rather than a composed `P`. Note explicitly that **skew in `K[0,1]` is still
+  accepted** — only the bottom row is checked — so skewed intrinsics are a
+  non-issue. Sibling of entry 2, the D-17 4×4-rotation breaking change.
+- **Carry into Phase 6 BC-01:** yes.
+
+## 14. RRIM `z_factor` token: grammar widened + shortest-round-trip formatting — ADDITIVE + BREAKING (narrow) (G9, 05-14)
+
+- **Symbol:** the `zF` option token of the RRIM feature-name DSL
+  (`pc2img.features.rrim._Z_FACTOR_RE`) and the derived cache key
+  `RRIMConfig.pack_feature_name()`
+- **Old → new**, two halves:
+  - **(a) ADDITIVE** — the `zF` token now accepts **exponent notation**
+    (`z1e-05`, `z1E-05`, `z1e+20`) in addition to plain decimals. Every feature
+    name valid before stays valid, and names like `rrim_(range,z1e-05)` become
+    expressible at all. `z_factor` is a plain scale multiplier
+    (`raster * z_factor`, validated `> 0`), so sub-1e-4 values are legitimate
+    unit conversions (µm → m = 1e-06).
+  - **(b) BREAKING but narrow** — the **emitted** `z` token switched from
+    6-significant-figure general formatting (`format(v, "g")`) to the **shortest
+    exactly round-tripping form** (`repr(float(v))`; integers still emit
+    `str(int(v))`).
+- **Owner's accepted rationale (verified before the change landed):** the emitted
+  token is **byte-identical** for every `z` that works correctly today — 0.5, 2.5,
+  0.0001, 0.001, 0.01, 0.1, 0.25, 0.75, 1.5, 1.0, 2.0, 10, 100, 1234567 and every
+  integer `z`. The **only** tokens that change are exactly those already
+  **mis-encoding their config** (`1.23457` from 1.2345678; `3.33333` from
+  3.3333333333). **Cache-key churn is therefore ~zero and is paid only where the
+  key was WRONG.** Full precision is fixed, not documented around.
+- **Defects this closes (both reproduced at HEAD):**
+  1. Below 1e-4 the derived pack name (`rrim_pack_(range,r16,d8,z1e-05)`) was
+     **unparseable** — `FEATURES.match` raised
+     `ValueError: Unknown RRIM option 'z1e-05'` at **request time**, aborting the
+     whole feature batch.
+  2. Above 6 significant figures two **distinct** configs collided on **one**
+     name — `z=1.2345678` and `z=1.2345681` both emitted
+     `rrim_pack_(range,r16,d8,z1.23457)` — making the cache key
+     **non-injective**, so a caller could receive a raster computed under
+     parameters it never requested.
+- **Migration note:** No API call changes. A persisted cache directory holding a
+  truncated `rrim_pack_(...,z1.23457)` entry simply **degrades to a cache miss**
+  and is recomputed under the now-correct key; the stale entry is inert, never
+  mis-served.
+- **Carry into Phase 6 BC-01:** yes.
+
 ---
 
 ## Cross-cutting: mutable-default elimination (D-02 / D-17 consistency, 05-10 / 05-11)
@@ -220,6 +300,12 @@ change; prevents cross-instance config aliasing.
 | 9 | `DiskBackedImageData` arithmetic → plain `ndarray` | was `NotImplementedError` | BREAKING |
 | 10 | GSEGUtils `register_lazy_disk_cache_class` + git-rev bridge | dependency; **Phase-6 conversion** | BREAKING (dependency) |
 | 11 | `FeatureManager` dependency cycle → `ValueError` | was `RecursionError` | BREAKING (surface) |
+| 12 | RRIM name validation at request time | now raises `ValueError` from `request()` | BREAKING (surface) |
+| 13 | `PerspectiveProjection(projection_matrix=non-pinhole or non-3×3)` | now raises | BREAKING |
+| 14 | RRIM `zF` token (exponent accepted; shortest round-trip emission) | grammar widened + key formatting | ADDITIVE + BREAKING (narrow) |
 
 *Collated 2026-07-11 (plan 05-12) from the D-17 running notes recorded in each
 Phase-5 plan SUMMARY.*
+
+*Entries 12–14 added 2026-07-27 by plan 05-14 from the round-2 review gaps
+G9 / G11 / G12.*
