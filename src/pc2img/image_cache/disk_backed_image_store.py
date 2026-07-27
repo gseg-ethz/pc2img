@@ -67,25 +67,30 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     def __delitem__(self, key: str) -> None:
         """Drop ``key`` and purge its on-disk ``.npy`` + ``.meta.json`` codec pair.
 
-        The base :meth:`DiskBackedStore.__delitem__` removes only the in-memory
-        entry, leaving the offloaded codec pair on disk. Because the base
-        ``__init__`` re-scans ``*.npy`` on construction, a fresh store over the
-        same ``cache_dir`` would re-adopt and serve that stale raster (G3). We
-        unlink the codec pair first so the ``.npy`` + JSON pair stays the single
-        on-disk source of truth — no stale reload, and no new deserialization
-        surface is introduced (the DSN-09 posture is preserved). ``add_image_to_store``
+        Membership is validated by the base store FIRST: the entire body of
+        :meth:`DiskBackedStore.__delitem__` is an in-memory ``del``, so it raises
+        ``KeyError`` for an untracked key with no side effect. Delegating before
+        touching the disk keeps that contract intact — a failed delete leaves the
+        codec pair untouched and therefore cannot destroy a raster that another
+        store over the same cache directory still owns (G10). Ordering matters
+        here: the reverse order made a ``KeyError`` delete irreversibly
+        destructive.
+
+        Only once the key is confirmed ours is the pair purged. The base
+        ``__init__`` re-scans ``*.npy`` on construction, so leaving an offloaded
+        pair behind would let a fresh store over the same cache directory
+        re-adopt and serve a stale raster (G3); unlinking keeps the ``.npy`` +
+        JSON pair the single on-disk source of truth. ``add_image_to_store``
         routes its overwrite through this method, so both explicit-delete and
         overwrite are covered by this single override.
 
-        ``unlink(missing_ok=True)`` — not a ``cache_dir``-is-``None`` guard —
-        carries the safety for a key that was never offloaded: ``cache_dir``
-        always resolves to a ``Path`` (temp-dir fallback), so the purge is always
-        attempted and an absent file is simply a no-op.
+        ``unlink(missing_ok=True)`` carries the safety for a key that was tracked
+        but never offloaded — an absent file is simply a no-op. No new
+        deserialization surface is introduced (the DSN-09 posture is preserved).
         """
-        if self.cache_dir is not None:
-            self._get_npy_path(key).unlink(missing_ok=True)
-            self._get_meta_path(key).unlink(missing_ok=True)
         super().__delitem__(key)
+        self._get_npy_path(key).unlink(missing_ok=True)
+        self._get_meta_path(key).unlink(missing_ok=True)
 
     @property
     def image_data(self) -> dict[str, DiskBackedImageData | None]:

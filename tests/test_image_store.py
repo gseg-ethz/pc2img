@@ -132,3 +132,46 @@ def test_delete_absent_key_does_not_raise(tmp_path: Path):
     store.add_image_to_store("range", _gray((6, 6)))
     del store["range"]  # in memory only — no .npy on disk
     assert "range" not in store
+
+
+# --------------------------------------------------------------------------- #
+# G10 — a KeyError-raising delete must be a genuine no-op (round 2)            #
+#                                                                              #
+# The G3 fix above unlinked the codec pair BEFORE super() validated key        #
+# membership, inverting the base store's no-side-effect-on-KeyError contract   #
+# (its whole body is `del self._store[key]`). With two stores over one cache   #
+# directory, `del A["range"]` raises KeyError AND destroys the raster store B  #
+# owns — B cleared its in-memory reference on offload, so B itself can no      #
+# longer serve the key. That is live data loss, not a stale-cache concern.     #
+# --------------------------------------------------------------------------- #
+def _two_store_config(tmp_path: Path) -> LazyDiskCacheConfig:
+    """Shared cache dir; purge_disk_on_gc=False keeps on-disk state deterministic."""
+    return LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path, purge_disk_on_gc=False)
+
+
+def test_failed_delete_preserves_codec_pair_and_both_stores(tmp_path: Path):
+    arr = _gray((6, 6))
+
+    store_a = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    store_b = DiskBackedImageStore(config=_two_store_config(tmp_path))
+
+    # Only the pickle-container offload writes the `.npy` + `.meta.json` pair;
+    # a plain offload() writes `<key>.dat` and does NOT set up the precondition.
+    store_b.add_image_to_store("range", arr)
+    store_b.offload_image_data_to_disk("range")
+    assert store_b._get_npy_path("range").exists()
+    assert store_b._get_meta_path("range").exists()
+
+    with pytest.raises(KeyError):
+        del store_a["range"]  # A never tracked the key
+
+    # The failed delete must not have touched the shared cache directory.
+    assert store_b._get_npy_path("range").exists(), "failed delete destroyed the .npy"
+    assert store_b._get_meta_path("range").exists(), "failed delete destroyed the .meta.json"
+
+    # A fresh store re-scanning the cache dir still recovers the raster ...
+    store_c = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    np.testing.assert_array_equal(np.asarray(store_c["range"]), arr)
+
+    # ... and so does the OWNING store, which re-materializes it from disk.
+    np.testing.assert_array_equal(np.asarray(store_b["range"]), arr)
