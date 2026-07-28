@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 05
 current_phase_name: bug-fixes-module-test-coverage
 status: executing
-stopped_at: Phase 05 gap plan 05-14 EXECUTED (G9/G10 blockers fixed, G11/G12 recorded); awaiting a review of the gap diff, then re-verification
-last_updated: "2026-07-27T13:47:17.289Z"
-last_activity: 2026-07-27
-last_activity_desc: Executed 05-14 — round-2 gaps G9-G12 closed
+stopped_at: "Completed 05-15-PLAN.md (round-3 gap closure: WR-02 containment + WR-03 BC record + gap bookkeeping). NEXT: review this gap diff, then re-verify Phase 5."
+last_updated: "2026-07-28T11:33:38.576Z"
+last_activity: 2026-07-28
+last_activity_desc: Executed 05-15 (round-3 gaps closed)
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 34
-  completed_plans: 34
+  total_plans: 35
+  completed_plans: 35
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 05 (bug-fixes-module-test-coverage) — EXECUTING
-Plan: 14 of 14 (all plans executed)
-Status: Phase 05 plans complete — gap diff awaiting its own review, then re-verification
-Last activity: 2026-07-27 — Executed 05-14 (round-2 gaps G9-G12 closed)
+Plan: 15 of 15 (all plans executed)
+Status: Phase 05 plans complete — round-3 gap diff awaiting its own review, then re-verification
+Last activity: 2026-07-28 — Executed 05-15 (round-3 gaps closed)
 
-Progress: [████████████████████] 34/34 plans (100%)
+Progress: [████████████████████] 35/35 plans (100%)
 
 **Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
 that has since been superseded; it cannot start until Phase 5 re-verifies.
@@ -97,6 +97,7 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 05 P14 | 15min | 3 tasks | 6 files |
+| Phase 05 P15 | 46min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,11 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05 P14] G9's %g truncation was also making the RRIM cache key NON-INJECTIVE (z=1.2345678 and z=1.2345681 collided on one pack name and shared a raster) — beyond what 05-UAT.md recorded; now guarded by a dedicated non-collision test
 - [Phase ?]: [Phase 05 P14] G10 fixed by delegating to super().__delitem__ BEFORE the unlink (not by an 'if key in self' pre-check), keeping the base store as the single membership authority; dead cache_dir guard removed. The defect destroyed the OWNING store's raster too, not just a fresh re-scanning one — live data loss
 - [Phase ?]: [Phase 05 P14] Deliberately left out of scope and logged as verified follow-ups: a successful delete still leaves <key>.dat behind (inert residue — a fresh store re-scans *.npy and never re-adopts it), and a non-finite z_factor still breaks the round trip (zinf rejected) because _validate_config has no finiteness check
+- [Phase ?]: [Phase 05 P15] WR-02 closed by ONE containment authority inside _get_npy_path/_get_meta_path, not at the unlink sites — it covers all four disk-touching routes (insert, offload write, load, delete) and leaves __delitem__ byte-identical to ce14b28, so the twice-reviewed G10 ordering could not regress
+- [Phase ?]: [Phase 05 P15] Reproduced WR-02 wider than the finding recorded: the unpatched offload OVERWROTE a file one level above the cache dir with an NPY header before the delete removed it — arbitrary write, not only arbitrary unlink
+- [Phase ?]: [Phase 05 P15] Cache dir deliberately NOT cached on the instance (base store pickles __dict__ wholesale for the joblib/loky tiled path); measured cost 45us per path build, i.e. per raster not per pixel
+- [Phase ?]: [Phase 05 P15] WR-03 landed as BC record + two pinning tests with ZERO behaviour change per the locked owner decision: rrim_pack_(z1e5) means base_feature=range/z=1e5 where pre-05-14 it meant base_feature=z1e5/z=1.0; scalar_field_z1e5 verified as the migration path
+- [Phase ?]: [Phase 05 P15] Gap bookkeeping reconciled with cited evidence: audit-uat for 05-UAT.md 22 open -> 7 (1 deferred + 6 deliberately open); the float32 scaling overflow reads deferred (not resolved) so it stays visible to the ship gate by design
 
 ### Pending Todos
 
@@ -194,6 +200,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T13:50:00Z
-Stopped at: Executed 05-14 — G9 (z_factor round trip + injective cache key) and G10 (KeyError delete is now a genuine no-op) fixed test-first; G11/G12/G9 recorded as BC-NOTES 12-14; COVERAGE.md created. Suite 162 passed, coverage 61.63%. NEXT: review the gap diff (global review-discipline rule), then re-verify Phase 5.
+Last session: 2026-07-28T11:32:51.321Z
+Stopped at: Completed 05-15-PLAN.md (round-3 gap closure: WR-02 containment + WR-03 BC record + gap bookkeeping). NEXT: review this gap diff, then re-verify Phase 5.
 Resume file: None
