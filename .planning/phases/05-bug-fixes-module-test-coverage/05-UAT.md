@@ -5,7 +5,7 @@ gaps_open: 4 round-2 gaps (G9-G12) surfaced 2026-07-12 by a code review OF the 0
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-07-28T09:53:00Z
+updated: 2026-07-28T14:09:45Z
 gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
 gaps_source_round2: "/code-review 1295c2b high (session 32af2599-d24a-4113-af77-85196232cb2a, 2026-07-12) — 8 finder angles over `git diff 1295c2b HEAD`, i.e. the 05-13 gap-closure commits themselves. No GSD review ever covered that diff: 05-REVIEW.md predates it. Findings re-reproduced 2026-07-27 against HEAD before recording."
 ---
@@ -686,3 +686,172 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
       issue: "line 31: ruff B008 on the store constructor default; CI does not run ruff"
   missing: []
   debug_session: ""
+
+<!-- ROUND 2 — imported 2026-07-28T14:09:45Z by /gsd-consolidate-findings from gsd-code-reviewer-deep (conversation), range e6e5bcc87..3897237.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "A delete that raises leaves the store unchanged - a refused __delitem__ is a no-op in memory as well as on disk"
+  status: failed
+  severity: blocker
+  reason: "Independently reproduced by the orchestrator on 2026-07-28, not only by the reviewer. Introduced by 03eb715."
+  test: review-r2-70fb459066a6
+  root_cause: "Plan 05-15's scope_boundaries forbade editing __delitem__ in order to protect the round-2 G10 ordering, which forced the new containment guard downstream of super().__delitem__(). An exception raised after a mutation makes the operation non-atomic. The new proving test never asserts store state, so the suite is blind to it."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 126-158: super().__delitem__(key) runs before _get_npy_path(key) can refuse"
+    - path: "tests/test_image_store.py"
+      issue: "the delete proving test asserts only on-disk state, never store membership after the refusal"
+  missing:
+    - "build both paths before super().__delitem__() so a ValueError refusal precedes any mutation"
+    - "a test asserting the key is still tracked after a refused delete"
+  debug_session: ""
+  reviewer_severity: "BLOCKER"
+
+- truth: "The threat-posture docstring describes the reachability of escaping store keys accurately"
+  status: failed
+  severity: major
+  reason: "Confirmed end-to-end by the orchestrator on 2026-07-28, and the false claim has already been copied into records that carry to Phase 6."
+  test: review-r2-1a435f413f18
+  root_cause: "The threat posture was reasoned about from the anchored feature-name regexes without accounting for the registry's unanchored default fallback. Because the paragraph reads as 'this guard is not really needed', it invites a future reader to remove a load-bearing check."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 62-71: the false threat-posture paragraph"
+    - path: ".planning/phases/05-bug-fixes-module-test-coverage/05-BC-NOTES.md"
+      issue: "entry 15 duplicates the false paragraph and is marked carry into Phase 6 BC-01"
+    - path: ".planning/phases/05-bug-fixes-module-test-coverage/05-UAT.md"
+      issue: "gap review-r1-a239bdbfc017 duplicates the same claim"
+  missing:
+    - "correct the paragraph in all three places, naming the registry default-fallback route"
+    - "state that containment is load-bearing rather than defence-in-depth"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "A legitimate cache entry is never newly refused by the containment predicate, and store unpickling still succeeds"
+  status: failed
+  severity: major
+  reason: "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED. Round 4 must reproduce before fixing."
+  test: review-r2-9998f2b36d4c
+  root_cause: "Reviewer attributes it to resolving the full path including the final component, rather than resolving only the parent directory for the containment comparison."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 81-88: path.resolve() in the containment predicate"
+  missing:
+    - "reproduce the symlinked-entry read/delete/overwrite refusal before changing anything"
+    - "reproduce the pickle.loads failure on the loky path"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "Every containment proving test fails if the guard is removed"
+  status: failed
+  severity: major
+  reason: "Reviewer measured it against a guard-removed build: both sentinel assertions pass with and without the guard."
+  test: review-r2-af50d770d73d
+  root_cause: "The test asserts the absence of damage at a point in the sequence where no damage would have occurred anyway."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 279-290: sentinel assertions that pass with and without the guard"
+  missing:
+    - "assert the ValueError itself, or offload before asserting the sentinel, so the test is guard-sensitive"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "The containment invariant claimed in the class docstring holds for every public method declared in this file"
+  status: failed
+  severity: major
+  reason: "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED. The orchestrator's refutation attempt was invalid (a directly-constructed DiskBackedImageData whose offload was a no-op), so this is neither confirmed nor refuted."
+  test: review-r2-3f625b03fb03
+  root_cause: "Reviewer attributes it to the entry holding its own _cache_path, set at insertion, which later writes use directly without re-consulting the store's path builders."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 26-33 (class docstring invariant) and 165-171 (offload)"
+  missing:
+    - "reproduce the outside-cache-dir write via offload(pickle_container=False) before changing anything"
+    - "narrow the docstring invariant to what is actually enforced, or extend enforcement to the entry write path"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "The precedence BC event is pinned at the public surface where it actually bites"
+  status: failed
+  severity: minor
+  reason: "Coverage-shape issue: the pinned contract is not the one the BC record cites."
+  test: review-r2-d1c47843161c
+  root_cause: "The test targets the parser that implements the behaviour rather than the public entry point the BC note is written about."
+  artifacts:
+    - path: "tests/test_rrim_features.py"
+      issue: "lines 272-322: precedence assertions go through the private parser only"
+  missing:
+    - "assert the precedence through FEATURES.match, including the resulting dependencies and store key"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "The containment predicate resolves each path at most once per call"
+  status: failed
+  severity: cosmetic
+  reason: "Efficiency and clarity cleanup on an error path."
+  test: review-r2-2b9426a42695
+  root_cause: "The resolved value is recomputed inline rather than bound once."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 81-87"
+  missing:
+    - "bind the resolved path to a local and reuse it"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Every guarded path builder has a test that exercises its guard"
+  status: failed
+  severity: cosmetic
+  reason: "Dead-in-practice branch with no coverage."
+  test: review-r2-a7c7f4e498a6
+  root_cause: "Both builders were guarded symmetrically without checking whether both are reachable."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 94-96"
+  missing:
+    - "either cover the meta-path guard directly or document why it is a backstop"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "The docstring's enumeration of disk-touching routes matches the routes that exist"
+  status: failed
+  severity: cosmetic
+  reason: "Documentation completeness; the omitted path is covered transitively but not named."
+  test: review-r2-6f4507d8c33f
+  root_cause: "The enumeration was written from the store's own codec pair without accounting for the entry-level memmap suffix."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 52-61"
+  missing:
+    - "name the .dat memmap path and state that it inherits containment via cache_path"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Tests contain no unused bindings that imply an assertion which is not made"
+  status: failed
+  severity: cosmetic
+  reason: "Cleanup; an unused binding reads as a forgotten assertion."
+  test: review-r2-e3a76c7d3fd0
+  root_cause: "Leftover from an earlier draft of the test."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "line 310"
+  missing:
+    - "either assert on the sentinel or drop the binding"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "The delete route is pinned for every escape spelling the add route is pinned for"
+  status: failed
+  severity: cosmetic
+  reason: "Coverage asymmetry between the add and delete proving tests."
+  test: review-r2-7c8e11c81eed
+  root_cause: "The delete test was written before the add test was parametrised."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 241-247 and 250-276"
+  missing:
+    - "parametrise the delete proving test over the same three spellings"
+  debug_session: ""
+  reviewer_severity: "INFO"

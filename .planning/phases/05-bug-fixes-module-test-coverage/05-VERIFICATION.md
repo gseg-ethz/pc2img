@@ -8,7 +8,7 @@ score: 8/8 must-haves verified as of 2026-07-11; superseded — see Round-2 Gaps
 behavior_unverified: 0
 overrides_applied: 0
 gap_closure: 05-13 (8 post-UAT code-review gaps closed; suite 111→135 passed)
-gaps_open: "10 (round 1)"
+gaps_open: "11 (round 2)"
 next_action: "/gsd-plan-phase --gaps — then execute, re-review the fix diff, and re-verify before /gsd-ship"
 ---
 
@@ -232,3 +232,14 @@ matches it with `/^gaps$/i`, so a decorated `## Gaps — Round N` variant would 
 every entry below it invisible to the audit.
 
 Suite at the end of this plan: **175 passed, 0 failed, 0 residual xfail.**
+
+
+---
+
+## Round-2 findings (consolidated 2026-07-28T14:09:45Z)
+
+11 finding(s) imported from `gsd-code-reviewer-deep` over `e6e5bcc87..3897237`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
