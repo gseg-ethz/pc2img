@@ -175,3 +175,33 @@ def test_failed_delete_preserves_codec_pair_and_both_stores(tmp_path: Path):
 
     # ... and so does the OWNING store, which re-materializes it from disk.
     np.testing.assert_array_equal(np.asarray(store_b["range"]), arr)
+
+
+def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
+    """A SUCCESSFUL delete purges the shared pair even via the adoption route.
+
+    Companion sensor to the test above, pinning the other construction order.
+    The test above builds store_a BEFORE the offload, so store_a never tracks
+    the key and the delete takes the KeyError branch. Built AFTER the offload,
+    `__init__` re-scans `*.npy` and store_a ADOPTS the key — the delete then
+    succeeds and does purge the pair, leaving the offloaded peer unable to
+    serve it. That is intended G3 behaviour (a surviving pair would let a store
+    re-adopt and serve a stale raster), not the G10 defect, and it is the
+    property the docstring now claims. Without this test, swapping two lines of
+    setup above would silently reduce the suite to the weaker assertion.
+    """
+    arr = _gray((6, 6))
+
+    store_b = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    store_b.add_image_to_store("range", arr)
+    store_b.offload_image_data_to_disk("range")
+
+    store_a = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    assert "range" in store_a, "store built after the offload must adopt the key from disk"
+
+    del store_a["range"]  # succeeds — the key is genuinely store_a's to delete
+
+    assert not store_b._get_npy_path("range").exists()
+    assert not store_b._get_meta_path("range").exists()
+    with pytest.raises(KeyError):
+        _ = store_b["range"]  # documented consequence of sharing one cache_path

@@ -70,19 +70,25 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         Membership is validated by the base store FIRST: the entire body of
         :meth:`DiskBackedStore.__delitem__` is an in-memory ``del``, so it raises
         ``KeyError`` for an untracked key with no side effect. Delegating before
-        touching the disk keeps that contract intact — a failed delete leaves the
-        codec pair untouched and therefore cannot destroy a raster that another
-        store over the same cache directory still owns (G10). Ordering matters
-        here: the reverse order made a ``KeyError`` delete irreversibly
-        destructive.
+        touching the disk keeps that contract intact, and buys exactly one
+        property: **a delete that raises ``KeyError`` is a no-op on disk** (G10).
+        Ordering matters here — the reverse order made a ``KeyError`` delete
+        irreversibly destructive.
 
-        Only once the key is confirmed ours is the pair purged. The base
-        ``__init__`` re-scans ``*.npy`` on construction, so leaving an offloaded
-        pair behind would let a fresh store over the same cache directory
-        re-adopt and serve a stale raster (G3); unlinking keeps the ``.npy`` +
-        JSON pair the single on-disk source of truth. ``add_image_to_store``
-        routes its overwrite through this method, so both explicit-delete and
-        overwrite are covered by this single override.
+        That property is narrower than "one store cannot destroy another store's
+        raster", and deliberately so. The base ``__init__`` re-scans ``*.npy`` and
+        adopts every key it finds, so a store constructed *after* another store
+        offloaded ``key`` **tracks** it; the delete then succeeds, does purge the
+        shared codec pair, and the offloaded peer can no longer serve it. That is
+        the intended G3 semantics — leaving an offloaded pair behind would let a
+        store re-adopt and serve a stale raster, so unlinking keeps the ``.npy`` +
+        JSON pair the single on-disk source of truth. It is a reason two stores
+        must not share one ``cache_path`` unless the caller wants exactly that
+        aliasing; ``TiledPointCloudImageGenerator`` sidesteps it by giving each
+        tile its own ``extend_cache_path(tile_id)`` subdirectory.
+
+        ``add_image_to_store`` routes its overwrite through this method, so both
+        explicit-delete and overwrite are covered by this single override.
 
         ``unlink(missing_ok=True)`` carries the safety for a key that was tracked
         but never offloaded — an absent file is simply a no-op. No new
