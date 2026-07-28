@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 14/14 plans executed
+**Plans**: 15 plans (14 executed; 05-15 planned)
 
 **Wave 1**
 
@@ -207,6 +207,7 @@ Plans:
 
 - [x] 05-13-PLAN.md — Round 1: 8 review gaps G1-G8 (RRIM dependencies_for blocker, K validation, store purge, float64 rotation, single-sourcing) [BUG-05, TEST-03, TEST-04]
 - [x] 05-14-PLAN.md — Round 2: G9-G12 — RRIM z_factor round-trip blocker + store delete no-side-effect-on-KeyError blocker (both introduced by 05-13) + G11/G12 BC-record entries [BUG-05]
+- [ ] 05-15-PLAN.md — Round 3: WR-02 store-key path containment (unlink/write escape from the cache dir) + WR-03 base-feature-vs-option precedence BC record & pin + gap-status reconciliation [BUG-05]
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
 
