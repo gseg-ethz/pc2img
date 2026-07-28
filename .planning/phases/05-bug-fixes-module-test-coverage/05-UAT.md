@@ -366,7 +366,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
      below are retained as the historical work-list. -->
 
 - truth: "generate([\"rrim\"]) (and rrim_pack_/rrim_component_) produces a correct RRIM raster"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): fix f2e5b12 'schedule RRIM base/pack deps via dependencies_for (G1 blocker)' on RED tests f799ada; re-verified end-to-end in 05-VERIFICATION.md - generate(['rrim']) resolves deps ['range','rrim_pack_(range,r16,d8,z1)'] and returns a finite raster."
   reason: "Code review: DSN-05 registry refactor broke the entire RRIM feature family; reproduced `ValueError: Scalar field 'rrim' not found on PointCloudData.`"
   severity: blocker
   test: review-G1
@@ -381,7 +382,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Proving test that runs generate([\"rrim\"]) end-to-end (not just docstring/E402) so it can never silently regress"
 
 - truth: "PerspectiveProjection validates the intrinsics matrix K like it validates the rotation matrix"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): fix 80cb108 'validate K, check rotation in float64, single-pass ortho gather (G2/G4/G7)' on RED tests eca7499."
   reason: "Code review: K (projection_matrix) shape/pinhole-form is never validated while rotation is validated strictly"
   severity: major
   test: review-G2
@@ -393,7 +395,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Validate K is 3x3 (and ideally pinhole bottom-row ~ [0,0,1]) at construction with a clear error; add proving test"
 
 - truth: "Overwriting an already-offloaded key does not leave a stale on-disk raster that can later be served"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): fix 9148197 'purge on-disk codec pair on delete/overwrite (G3)' on RED tests 002e59d; pinned by test_overwrite_does_not_leave_stale_on_disk_raster and test_delete_purges_on_disk_codec_pair."
   reason: "Code review: add_image_to_store overwrite deletes only the in-memory key; stale .npy/.meta.json remain and a re-scanned store serves them"
   severity: major
   test: review-G3
@@ -405,7 +408,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "On delete/overwrite, purge the on-disk .npy + .meta.json for the key (or reuse a base purge API); add proving test with two store instances over one cache_dir"
 
 - truth: "A valid double-precision rotation matrix is accepted by PerspectiveProjection"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): fix 80cb108 (G2/G4/G7). DEVIATION recorded in 05-VERIFICATION.md - the RED was not constructible (the float32 check does not in fact false-reject valid scipy rotations within 1e-6 across 20k seeds), so it landed as a passing characterization test plus the float64-robustness refactor."
   reason: "Code review: orthonormality/det check runs in float32 at atol=1e-6 and can falsely reject valid float64 rotations"
   severity: minor
   test: review-G4
@@ -417,7 +421,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Perform the check in float64 or loosen tolerance (e.g. atol=1e-5); add a proving test using a scipy-generated rotation"
 
 - truth: "The default single-base-feature dependency grammar lives in one place"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): refactor 46d679e 'single-source dep grammar, drop dead FeatureSpec derivation, centralize percentile bounds (G5/G6/G8)' on consistency tests aedabcf."
   reason: "Code review (cleanup): dependencies_for default is byte-identical in both feature ABCs"
   severity: minor
   test: review-G5
@@ -429,7 +434,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Extract one shared helper/mixin both ABCs use"
 
 - truth: "FeatureSpec has no dead dependency-derivation code"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): refactor 46d679e (G5/G6/G8) dropped the dead FeatureSpec.__init__ dependency derivation; tests aedabcf."
   reason: "Code review (cleanup): FeatureSpec.__init__ computes self.dependencies that match() overwrites on every path"
   severity: minor
   test: review-G6
@@ -441,7 +447,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Drop the derivation; leave self.dependencies = [] (dependencies_for is the single source)"
 
 - truth: "OrthographicProjection.project_raw does not allocate a discarded out-of-plane column"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): fix 80cb108 (G2/G4/G7) replaced the double copy with a single np.ix_ gather; tests eca7499."
   reason: "Code review (efficiency): pcd.xyz[mask][:, cols] materializes an (M,3) intermediate then an (M,2) copy"
   severity: minor
   test: review-G7
@@ -453,7 +460,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Use pcd.xyz[np.ix_(mask, cols)] (keep behavior identical; add/keep the existing indexing proving test)"
 
 - truth: "Percentile-bounds validation is consistent and centralized across features"
-  status: failed
+  status: resolved
+  evidence: "Closed by gap plan 05-13 (commit range f799ada..46d679e): refactor 46d679e (G5/G6/G8) centralized the percentile-bounds validator; tests aedabcf. DEVIATION recorded in 05-VERIFICATION.md - unifying the validator also unified three divergent message strings; accept/reject outcomes are unchanged and no test asserts message text."
   reason: "Code review (cleanup/consistency): NormalizedFeature uses strict low<high while ClipPercentileFeature and rrim allow low<=high; triplicated inline"
   severity: minor
   test: review-G8
@@ -483,7 +491,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
      feed Phase 6 BC-01. -->
 
 - truth: "A z_factor accepted by the RRIM name grammar round-trips through the derived pack-feature name"
-  status: failed
+  status: resolved
+  evidence: "Closed by plan 05-14, commit 5dbd93e (grammar widened + shortest-round-trip emission). Proving tests: test_pack_feature_name_round_trips_z_factor, test_pack_feature_name_is_injective_for_nearby_z, test_rrim_dependency_chain_resolves_for_sub_1e4_z, test_generate_rrim_small_z_end_to_end; zero-churn characterization guard test_z_factor_token_unchanged_for_currently_valid_values. Recorded as BC-NOTES entry 14."
   reason: "Code review (G1 follow-on): pack_feature_name() formats z_factor with _format_number ('g'), which emits exponential notation that _Z_FACTOR_RE rejects — so the pack dependency name the new dependencies_for derives cannot be re-parsed"
   severity: blocker
   test: review-G9
@@ -498,7 +507,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Proving test: round-trip property over the config space (parse(pack_feature_name(cfg)) == cfg) including z < 1e-4 and a high-precision fractional z. Note the existing G1 end-to-end tests all use default-ish z, which is why they pass."
 
 - truth: "A delete that raises KeyError leaves the on-disk codec pair untouched (base-class no-side-effect-on-KeyError contract)"
-  status: failed
+  status: resolved
+  evidence: "Closed by plan 05-14, commit f776011 (super().__delitem__ delegated BEFORE the unlink, keeping one membership authority). Proving test: test_failed_delete_preserves_codec_pair_and_both_stores, plus test_adopted_key_delete_purges_shared_pair added by ce14b28 to pin the adoption route."
   reason: "Code review (G3 follow-on): __delitem__ performs the destructive unlink BEFORE super() validates key membership, so a KeyError-raising delete still irreversibly purges another store's raster"
   severity: blocker
   test: review-G10
@@ -515,7 +525,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Proving test: two stores over one cache_dir; assert KeyError AND that the codec pair survives AND that a fresh store still serves it."
 
 - truth: "The RRIM request-time validation shift is recorded in the phase BC record"
-  status: failed
+  status: resolved
+  evidence: "Closed as a record item: 05-BC-NOTES.md entry 12 'RRIM feature-name validation moved from compute time to request time', added by commit eeb0e5f and marked to carry into Phase 6 BC-01."
   reason: "Code review (G1 follow-on, release-note item — not a code fix): the new dependencies_for fully validates RRIM args during dependency-graph analysis, moving the failure from compute time to request time and changing the exception surface"
   severity: minor
   test: review-G11
@@ -527,7 +538,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "Add a 05-BC-NOTES.md entry (surface-only breaking change, same class as entry 11 for the DSN-08 cycle ValueError); carry into Phase 6 BC-01."
 
 - truth: "The PerspectiveProjection K-matrix refusal is recorded in the phase BC record"
-  status: failed
+  status: resolved
+  evidence: "Closed as a record item: 05-BC-NOTES.md entry 13 'PerspectiveProjection rejects a non-3x3 or non-pinhole intrinsics matrix K', added by commit eeb0e5f and marked to carry into Phase 6 BC-01."
   reason: "Code review (G2 follow-on, release-note item — not a code fix): the new K validation is a genuine breaking change for downstream callers, not an in-repo no-op"
   severity: minor
   test: review-G12
@@ -545,7 +557,9 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
      `## Gaps — Round N` would make every entry below invisible. -->
 
 - truth: "A z_factor that scales the raster beyond float32 range fails fast instead of returning and caching an all-NaN image"
-  status: failed
+  status: deferred
+  evidence: "DISPOSITIONED, NOT DONE. Owner decision 2026-07-27 recorded in 05-REVIEW.md CR-01 Correction block: severity blocker -> warning, and not a Phase-5 regression (the same all-NaN raster is reachable on the pre-05-14 grammar via the long-form spelling, z + ~40 digits), so 05-14 changed ergonomics only. The fail-fast invariant guard is designed and prototyped in the todo below (resolves_phase: 6). This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat - uat.cjs parseGapsItems skips only status: resolved, so a deferred item still surfaces at the ship gate, which is the intended outcome."
+  deferred_to: ".planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md"
   severity: minor
   reason: "DEFERRED, not a Phase 5 regression: the same all-NaN is reachable on the pre-05-14 grammar via the long-form spelling (z + 40 digits), so 05-14 changed ergonomics only. Design decided (fail-fast invariant guard, 2 call sites) and prototyped in .planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md. Audit confirmed the class is not systemic."
   test: review-r1-42a7c0c6f8c7
@@ -559,7 +573,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "The __delitem__ docstring claims only the property the ordering actually buys: a KeyError delete is a disk no-op"
-  status: failed
+  status: resolved
+  evidence: "Closed by commit ce14b28 'narrow the __delitem__ cross-store claim and pin the adopted-key path': the docstring was narrowed to the property the ordering actually buys (a KeyError delete is a disk no-op), and test_adopted_key_delete_purges_shared_pair was added to pin the adoption route the existing sensor missed."
   severity: minor
   reason: "RESOLVED in ce14b28: docstring narrowed to the held property and test_adopted_key_delete_purges_shared_pair added to pin the adoption route the existing test misses"
   test: review-r1-e7905decdd2c
@@ -573,7 +588,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "A store key can never cause unlink() to touch a file outside the configured cache directory"
-  status: failed
+  status: resolved
+  evidence: "Closed by Task 1 of plan 05-15, commit 03eb715: one containment authority (_assert_within_cache_dir routed through _get_npy_path / _get_meta_path) covering all four disk-touching routes, with __delitem__ left byte-identical. Proving tests (authored xfail-first, RED confirmed before the fix): test_escaping_key_delete_refuses_and_leaves_outside_file_intact, test_escaping_key_add_refuses_before_writing_outside_cache_dir; false-positive bound: test_containment_guard_accepts_realistic_feature_names. Recorded as 05-BC-NOTES.md entry 15."
   severity: major
   reason: "Not reachable from the feature-name DSL today (every registered regex_pattern anchors on a literal prefix, so no key can begin with .. or /), but DiskBackedImageStore is exported from the public barrel. Fix is an is_relative_to guard, ~6 lines."
   test: review-r1-a239bdbfc017
@@ -585,7 +601,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "The base-feature-vs-option precedence change introduced by the widened z grammar is documented as a BC event and pinned by a test"
-  status: failed
+  status: resolved
+  evidence: "Closed by Task 2 of plan 05-15, commit b9b6a2e: recorded as 05-BC-NOTES.md entry 16 (qualifying entry 14a) and pinned by test_exponent_token_takes_precedence_over_base_feature_name and test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name, both passing on their first run. The comment above _Z_FACTOR_RE was corrected to state the name-level precedence instead of claiming unqualified additivity. Behaviour unchanged (owner-accepted precedence)."
   severity: major
   reason: "Low likelihood (needs a scalar field literally named like z1e5) but feature names are both public API and cache key, so per CLAUDE.md this is a BC event; currently undocumented and untested. Belongs in 05-BC-NOTES.md under the D-17 running BC record."
   test: review-r1-a9b17bf97d8f

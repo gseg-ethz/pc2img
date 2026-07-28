@@ -178,3 +178,57 @@ transcripts, and the owner decision required on the G9 fix shape are in `05-UAT.
 The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
 
 Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-3 closure record (2026-07-28)
+
+Written by plan `05-15` (gap round 3). **Body-only append — the YAML frontmatter
+`status:` / `gaps_open:` fields are deliberately NOT updated here.** Re-verification
+owns those; this section records what changed underneath them so the next verifier
+does not have to reconstruct it.
+
+**Two `major` round-1 findings closed with code + record:**
+
+| Finding | Closed by | Evidence |
+| --- | --- | --- |
+| WR-02 — a store key could make `unlink()` (and, as reproduced, the offload *write*) touch a file outside the cache directory | `05-15` Task 1, commit `03eb715` | `DiskBackedImageStore._assert_within_cache_dir` routed through `_get_npy_path` / `_get_meta_path` — one authority over all four disk-touching routes, with `__delitem__` byte-identical to `ce14b28`. Proving tests authored xfail-first (RED confirmed): `test_escaping_key_delete_refuses_and_leaves_outside_file_intact`, `test_escaping_key_add_refuses_before_writing_outside_cache_dir`; false-positive bound by `test_containment_guard_accepts_realistic_feature_names`. BC-NOTES entry 15. |
+| WR-03 — the base-feature-vs-option precedence introduced by the widened `z` grammar was an unrecorded BC event | `05-15` Task 2, commit `b9b6a2e` | Owner-accepted as correct: **no behaviour change**. Recorded as BC-NOTES entry 16 (qualifying entry 14a by forward-only cross-reference) and pinned by `test_exponent_token_takes_precedence_over_base_feature_name` + `test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name`, both passing on their first run. The comment above `_Z_FACTOR_RE` no longer claims unqualified additivity. |
+
+**Stale bookkeeping reconciled (no code):** `gsd-tools query audit-uat` reported **22
+open items** for `05-UAT.md` before this plan and reports **7** after. Sixteen per-gap
+`status:` fields were flipped in place (the parser takes the FIRST occurrence of a key,
+so each existing line was edited, never duplicated), each gaining an `evidence:` line
+naming a commit SHA, a test function or a BC-NOTES entry number:
+
+- `review-G1`..`review-G8` (2026-07-11, round 1) → `resolved`, cited to the 05-13 range
+  `f799ada..46d679e` and the specific fix commit per gap (`f2e5b12` G1; `80cb108`
+  G2/G4/G7; `9148197` G3; `46d679e` G5/G6/G8). Every one tied to a commit — none was
+  left `failed` for lack of evidence. The G4 and G8 deviations already documented above
+  (G4's RED was not constructible; G8 unified three message strings) are carried into
+  their evidence lines rather than glossed.
+- `review-G9`..`review-G12` (round 2) → `resolved`, cited to `5dbd93e`, `f776011` +
+  `ce14b28`, and BC-NOTES entries 12 / 13 (`eeb0e5f`).
+- `review-r1-e7905decdd2c` (the `__delitem__` docstring overclaim) → `resolved`, cited
+  to `ce14b28`.
+
+**Deferred, not closed:** `review-r1-42a7c0c6f8c7` (the RRIM float32 scaling overflow)
+reads `status: deferred`, not `resolved`, with a `deferred_to:` pointing at
+`.planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md`
+(`resolves_phase: 6`). `uat.cjs parseGapsItems` skips only `resolved`, so this item
+**stays visible to the audit query by design** — the work is dispositioned, not done,
+and the ship gate should keep showing it.
+
+**Deliberately still open (6):** `review-r1-a8cd7b4707b0` (WR-04, z-insensitive
+end-to-end assertion), `review-r1-4939108716dd` (WR-05, upper exponent-boundary
+coverage), `review-r1-c2b69f0885e7` (WR-06, misnamed store test),
+`review-r1-ab91c4469087` (IN-01, dead logger), `review-r1-8fb6b87813d1` (IN-02,
+`_validate_clip` ignores its name parameter), `review-r1-8ff7171c6ca4` (IN-03, ruff
+B008 on the store constructor default). These were untouched by this plan and are not
+regressions — a future reviewer should not re-report them as new.
+
+All gap entries remain inside the single `## Gaps` heading: `uat.cjs parseGapsItems`
+matches it with `/^gaps$/i`, so a decorated `## Gaps — Round N` variant would make
+every entry below it invisible to the audit.
+
+Suite at the end of this plan: **175 passed, 0 failed, 0 residual xfail.**
