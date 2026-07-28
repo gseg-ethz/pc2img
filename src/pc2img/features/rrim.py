@@ -40,8 +40,18 @@ _MAX_DISTANCE_RE = re.compile(r"^r(?P<value>\d+)$")
 _DIRECTIONS_RE = re.compile(r"^d(?P<value>\d+)$")
 _SLOPE_CLIP_RE = re.compile(r"^sclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
 _STRUCTURE_CLIP_RE = re.compile(r"^oclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
-# G9: the exponent group is purely ADDITIVE — every token accepted before is
-# still accepted — and is what makes a sub-1e-4 z_factor expressible at all.
+# G9: the exponent group is additive at the TOKEN level — every token accepted
+# before is still accepted — and is what makes a sub-1e-4 z_factor expressible
+# at all. It is NOT additive at the NAME level: `_looks_like_option_token` is
+# consulted on the FIRST token of an RRIM argument list, so a leading token that
+# matches this widened grammar is now read as an OPTION rather than as a
+# base-feature name — option tokens take precedence over base-feature names.
+# `rrim_pack_(z1e5)` therefore means base_feature='range', z_factor=1e5, where
+# pre-05-14 it meant base_feature='z1e5', z_factor=1.0: same public name, same
+# cache key, different computation. Accepted as the correct precedence (owner
+# decision 2026-07-28) and recorded as a breaking change in
+# .planning/phases/05-bug-fixes-module-test-coverage/05-BC-NOTES.md entry 16;
+# pinned by tests/test_rrim_features.py.
 _Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$")
 _RED_STRENGTH_RE = re.compile(r"^red(?P<value>[+-]?\d+(?:\.\d+)?)$")
 
@@ -61,6 +71,13 @@ class RRIMConfig:
     :meth:`pack_feature_name` emits ``z`` in the shortest form that re-parses to
     the identical double. A ``z_factor`` therefore round-trips exactly through
     the derived pack-feature name, which is also the cache key.
+
+    Option tokens take precedence over base-feature names (WR-03): a *first*
+    argument token matching an option grammar — including the widened ``zF``
+    grammar above, so ``z1e5`` as well as ``z2`` — is parsed as an option, not
+    as ``base_feature``. To address a scalar field whose bare name would be read
+    as an option, spell it ``scalar_field_<name>`` (e.g.
+    ``rrim_pack_(scalar_field_z1e5)``), or rename the field.
     """
 
     base_feature: str = DEFAULT_BASE_FEATURE

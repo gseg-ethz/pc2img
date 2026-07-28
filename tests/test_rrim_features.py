@@ -256,3 +256,66 @@ def test_z_factor_token_unchanged_for_currently_valid_values(z_factor: float, ex
     assert rrim_module.RRIMConfig(base_feature="range", z_factor=z_factor).pack_feature_name() == (
         f"rrim_pack_(range,r16,d8,z{expected})"
     )
+
+
+# --------------------------------------------------------------------------- #
+# WR-03 — the widened z grammar is a NAME-level precedence change (round 3)    #
+#                                                                             #
+# Widening `_Z_FACTOR_RE` is additive at the TOKEN level, but `_looks_like_    #
+# option_token(tokens[0])` turns that into a NAME-level reinterpretation: a    #
+# first token matching the widened grammar is now read as an OPTION rather     #
+# than as a base-feature name. Same public name, same cache key, different     #
+# computation. Owner decision 2026-07-28: the new precedence is ACCEPTED as    #
+# correct — these are kept-behavior characterization tests (they pass on their #
+# first run, before any source edit), not a fix. Recorded as BC-NOTES 16.      #
+# --------------------------------------------------------------------------- #
+def test_exponent_token_takes_precedence_over_base_feature_name() -> None:
+    """A first token matching the widened z grammar is read as an option, not a base feature.
+
+    Measured 2026-07-28. PRE-05-14 (pattern `^z([+-]?\\d+(?:\\.\\d+)?)$`, which
+    does not match `z1e5`) the SAME name yielded ``base_feature='z1e5'`` and
+    ``z_factor=1.0``. That is the BC event this test pins.
+
+    Asserted through `_parse_rrim_config` / `_parse_rrim_component`, never on
+    `_Z_FACTOR_RE` directly: the regex is only the mechanism — the consequence
+    that matters is at the NAME level.
+    """
+    cfg = rrim_module._parse_rrim_config("z1e5")
+    assert cfg.base_feature == "range", "exponent z token was read as a base-feature name"
+    assert cfg.z_factor == 100000.0
+
+    # The widened group is case-insensitive in its exponent marker.
+    upper = rrim_module._parse_rrim_config("z1E5")
+    assert (upper.base_feature, upper.z_factor) == ("range", 100000.0)
+
+    # The precedence RULE predates the widening — only its EXTENT changed.
+    plain = rrim_module._parse_rrim_config("z1")
+    assert (plain.base_feature, plain.z_factor) == ("range", 1.0)
+
+    # The component form carries the identical precedence.
+    component, comp_cfg = rrim_module._parse_rrim_component("slope,z1e5")
+    assert component == "slope"
+    assert comp_cfg.base_feature == "range"
+    assert comp_cfg.z_factor == 100000.0
+
+
+def test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name() -> None:
+    """The precedence boundary, and the migration path out of it.
+
+    A near-miss token is still a base-feature name, so the reinterpretation is
+    narrowly scoped to tokens that fully match the widened grammar. And a scalar
+    field whose bare name would be read as an option remains addressable via the
+    `scalar_field_<name>` prefix — which is what makes the BC entry's migration
+    note a checked claim rather than a suggestion.
+    """
+    assert rrim_module._parse_rrim_config("z1e5x").base_feature == "z1e5x"
+    assert rrim_module._parse_rrim_config("zx1e5").base_feature == "zx1e5"
+
+    migrated = rrim_module._parse_rrim_config("scalar_field_z1e5")
+    assert migrated.base_feature == "scalar_field_z1e5"
+    assert migrated.z_factor == 1.0
+
+    # ... and the migration path still composes with trailing option tokens.
+    with_options = rrim_module._parse_rrim_config("scalar_field_z1e5,z2")
+    assert with_options.base_feature == "scalar_field_z1e5"
+    assert with_options.z_factor == 2.0

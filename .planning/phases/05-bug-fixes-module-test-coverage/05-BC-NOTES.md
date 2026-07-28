@@ -272,6 +272,11 @@ downstream consumers.)
   and is recomputed under the now-correct key; the stale entry is inert, never
   mis-served.
 - **Carry into Phase 6 BC-01:** yes.
+- **See also (added 2026-07-28, plan 05-15):** the additivity claim in **(a)**
+  above holds at the **token** level, not at the **name** level — widening the
+  grammar also moved a class of base-feature *names* into the option class. That
+  consequence is analysed separately in **entry 16**; the text above is preserved
+  as written.
 
 ## 15. DiskBackedImageStore refuses a key whose on-disk path escapes the cache directory — BREAKING (surface only) (WR-02, 05-15)
 
@@ -315,6 +320,49 @@ downstream consumers.)
   ordering and its single membership authority are preserved by construction.
 - **Carry into Phase 6 BC-01:** yes.
 
+## 16. Widened RRIM z grammar reinterprets a base-feature name shaped like an exponent z token — BREAKING (narrow) (WR-03, 05-15)
+
+- **Symbol:** the first-token precedence in
+  `pc2img.features.rrim._parse_rrim_config` (`:461`) and
+  `_parse_rrim_component` (`:482`), driven by `_looks_like_option_token` over
+  `_Z_FACTOR_RE`. Reachable through every RRIM feature name
+  (`rrim_(...)`, `rrim_pack_(...)`, `rrim_component_(...)`).
+- **Old → new** (both measured 2026-07-28):
+  - **new:** `_parse_rrim_config("z1e5")` → `base_feature='range'`,
+    `z_factor=100000.0` — the leading token is consumed as an **option**.
+  - **pre-05-14:** the narrower pattern `^z([+-]?\d+(?:\.\d+)?)$` does **not**
+    match `z1e5`, so the same name yielded `base_feature='z1e5'`,
+    `z_factor=1.0` — the leading token was consumed as a **base-feature name**.
+  - Stated plainly: **the same public name, resolving to the same cache key, now
+    denotes a different computation.** The component form carries the identical
+    precedence (`_parse_rrim_component("slope,z1e5")` → `z_factor=100000.0`).
+  - The precedence **rule** is older than the widening — only its **extent**
+    changed. `_parse_rrim_config("z1")` already yielded `base_feature='range'`
+    before 05-14.
+- **Scope / likelihood:** only a **first** token fully matching
+  `z\d+(\.\d+)?[eE][+-]?\d+`. A near-miss is unaffected — `z1e5x` and `zx1e5`
+  are both still read as base-feature names. Triggering it requires a scalar
+  field literally named like an exponent z token, so **likelihood is low**.
+- **Disposition: ACCEPTED** — the new precedence is correct (owner decision
+  2026-07-28); the grammar is **not** narrowed and no base-feature escape hatch
+  is added. It is recorded here because, per CLAUDE.md, feature names are both
+  **public API and cache key**, so any change in how they are *interpreted* is a
+  BC event. Pinned by
+  `test_exponent_token_takes_precedence_over_base_feature_name` and
+  `test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name`
+  (`tests/test_rrim_features.py`), both of which passed on their first run —
+  they characterize observed behaviour rather than chase a fix.
+- **Migration note:** address such a scalar field as **`scalar_field_z1e5`**
+  (verified: `_parse_rrim_config("scalar_field_z1e5").base_feature ==
+  'scalar_field_z1e5'`, and it still composes with trailing option tokens —
+  `"scalar_field_z1e5,z2"` yields that base feature with `z_factor=2.0`), or
+  rename the field. No API call changes.
+- **Relation to entry 14:** this entry **qualifies entry 14(a)**. The additivity
+  claimed there is real at the **token** level and does not hold at the **name**
+  level. The in-code comment above `_Z_FACTOR_RE` was corrected accordingly so
+  the module no longer carries the unqualified claim as the sole record.
+- **Carry into Phase 6 BC-01:** yes.
+
 ---
 
 ## Cross-cutting: mutable-default elimination (D-02 / D-17 consistency, 05-10 / 05-11)
@@ -346,6 +394,7 @@ change; prevents cross-instance config aliasing.
 | 13 | `PerspectiveProjection(projection_matrix=non-pinhole or non-3×3)` | now raises | BREAKING |
 | 14 | RRIM `zF` token (exponent accepted; shortest round-trip emission) | grammar widened + key formatting | ADDITIVE + BREAKING (narrow) |
 | 15 | `DiskBackedImageStore` key whose path escapes the cache dir | now raises `ValueError` at the first path build | BREAKING (surface) |
+| 16 | RRIM first-token precedence (`rrim_pack_(z1e5)`) | option token now wins over base-feature name | BREAKING (narrow) |
 
 *Collated 2026-07-11 (plan 05-12) from the D-17 running notes recorded in each
 Phase-5 plan SUMMARY.*
