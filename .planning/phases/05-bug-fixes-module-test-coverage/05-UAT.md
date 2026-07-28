@@ -5,7 +5,7 @@ gaps_open: 4 round-2 gaps (G9-G12) surfaced 2026-07-12 by a code review OF the 0
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-07-27T10:05:00Z
+updated: 2026-07-28T09:53:00Z
 gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
 gaps_source_round2: "/code-review 1295c2b high (session 32af2599-d24a-4113-af77-85196232cb2a, 2026-07-12) — 8 finder angles over `git diff 1295c2b HEAD`, i.e. the 05-13 gap-closure commits themselves. No GSD review ever covered that diff: 05-REVIEW.md predates it. Findings re-reproduced 2026-07-27 against HEAD before recording."
 ---
@@ -537,3 +537,135 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
       issue: "no entry for the K pinhole-form refusal"
   missing:
     - "Add a 05-BC-NOTES.md entry alongside the D-17 4x4-rotation breaking change; carry into Phase 6 BC-01 with explicit migration guidance (normalize K by K[2,2]; pass K and [R|t] separately rather than a composed P)."
+
+
+<!-- ROUND 1 — imported 2026-07-28T09:53:00Z by /gsd-consolidate-findings from gsd-code-reviewer-deep (conversation), range e6e5bcc87..9631ad3.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "A z_factor that scales the raster beyond float32 range fails fast instead of returning and caching an all-NaN image"
+  status: failed
+  severity: minor
+  reason: "DEFERRED, not a Phase 5 regression: the same all-NaN is reachable on the pre-05-14 grammar via the long-form spelling (z + 40 digits), so 05-14 changed ergonomics only. Design decided (fail-fast invariant guard, 2 call sites) and prototyped in .planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md. Audit confirmed the class is not systemic."
+  test: review-r1-42a7c0c6f8c7
+  root_cause: "compute_slope and compute_openness multiply the raster by z_factor and immediately store float32; the product (or, under NEP 50, the weak scalar itself) overflows to inf and np.gradient turns inf-inf into NaN. RuntimeWarning: overflow encountered in cast at rrim.py:236"
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "line 236: z_factor scaling overflows float32 and returns a silently all-NaN raster"
+    - path: ".planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md"
+      issue: "line 236: z_factor scaling overflows float32 and returns a silently all-NaN raster"
+  missing: []
+  debug_session: ""
+
+- truth: "The __delitem__ docstring claims only the property the ordering actually buys: a KeyError delete is a disk no-op"
+  status: failed
+  severity: minor
+  reason: "RESOLVED in ce14b28: docstring narrowed to the held property and test_adopted_key_delete_purges_shared_pair added to pin the adoption route the existing test misses"
+  test: review-r1-e7905decdd2c
+  root_cause: "The reorder guarantees only that the KeyError path is side-effect-free; the base __init__ re-scans *.npy and adopts keys, which the docstring's own next paragraph describes"
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 72: __delitem__ docstring overclaimed cross-store safety"
+    - path: "tests/test_image_store.py"
+      issue: "line 72: __delitem__ docstring overclaimed cross-store safety"
+  missing: []
+  debug_session: ""
+
+- truth: "A store key can never cause unlink() to touch a file outside the configured cache directory"
+  status: failed
+  severity: major
+  reason: "Not reachable from the feature-name DSL today (every registered regex_pattern anchors on a literal prefix, so no key can begin with .. or /), but DiskBackedImageStore is exported from the public barrel. Fix is an is_relative_to guard, ~6 lines."
+  test: review-r1-a239bdbfc017
+  root_cause: "_get_npy_path/_get_meta_path build cache_dir / f\"{key}.npy\" with no containment check, and this diff made __delitem__ perform an unconditional unlink"
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 92: __delitem__ unlinks a path built from an unvalidated key, escaping cache_dir"
+  missing: []
+  debug_session: ""
+
+- truth: "The base-feature-vs-option precedence change introduced by the widened z grammar is documented as a BC event and pinned by a test"
+  status: failed
+  severity: major
+  reason: "Low likelihood (needs a scalar field literally named like z1e5) but feature names are both public API and cache key, so per CLAUDE.md this is a BC event; currently undocumented and untested. Belongs in 05-BC-NOTES.md under the D-17 running BC record."
+  test: review-r1-a9b17bf97d8f
+  root_cause: "_parse_rrim_config uses _looks_like_option_token on the first token; widening _Z_FACTOR_RE moved names matching z\\d+(\\.\\d+)?[eE][+-]?\\d+ from the base-feature class into the option class"
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "line 43: Regex widening reinterprets base-feature names - additive for tokens, not for names"
+    - path: ".planning/phases/05-bug-fixes-module-test-coverage/05-BC-NOTES.md"
+      issue: "line 43: Regex widening reinterprets base-feature names - additive for tokens, not for names"
+  missing: []
+  debug_session: ""
+
+- truth: "The RRIM end-to-end test asserts that z_factor actually influences the output, not merely that the output has the right shape and is finite"
+  status: failed
+  severity: minor
+  reason: "Test-strength gap on the proving test for the G9 blocker; z was confirmed to change the output, but nothing in the suite asserts it"
+  test: review-r1-a8cd7b4707b0
+  root_cause: "The assertion set omits any comparison between rasters produced with different z_factor values"
+  artifacts:
+    - path: "tests/test_rrim_features.py"
+      issue: "G9 end-to-end test cannot detect z_factor being dropped from the computation"
+  missing: []
+  debug_session: ""
+
+- truth: "The z_factor round-trip tests cover the upper end of the exponent range as well as the sub-1e-4 lower end"
+  status: failed
+  severity: minor
+  reason: "Test-strength gap; cheap to close by extending the existing parametrisation"
+  test: review-r1-4939108716dd
+  root_cause: "The G9 plan scoped its proving cases to the reported sub-1e-4 failure, not to the whole exponent-notation boundary the fix actually changed"
+  artifacts:
+    - path: "tests/test_rrim_features.py"
+      issue: "Round-trip coverage omits the upper exponent boundary"
+  missing: []
+  debug_session: ""
+
+- truth: "Every store test's body asserts the behaviour its name claims"
+  status: failed
+  severity: minor
+  reason: "Test-strength / naming-accuracy gap; the stale name misdescribes the current, intended contract"
+  test: review-r1-c2b69f0885e7
+  root_cause: "The test predates the ordering fix and was not revisited when __delitem__ moved membership validation ahead of the unlink"
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "test_delete_absent_key_does_not_raise encodes the contract the fix inverted"
+  missing: []
+  debug_session: ""
+
+- truth: "rrim.py declares no unused logger, or declares one bound to __name__"
+  status: failed
+  severity: cosmetic
+  reason: "Cosmetic cleanup"
+  test: review-r1-ab91c4469087
+  root_cause: "Leftover from an earlier revision"
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "Dead module-level logger bound to the root package rather than the module"
+  missing: []
+  debug_session: ""
+
+- truth: "A clip validation error names which clip (slope_clip or structure_clip) failed"
+  status: failed
+  severity: minor
+  reason: "Small correctness/ergonomics issue in an error path; one-line fix"
+  test: review-r1-8fb6b87813d1
+  root_cause: "_validate_clip takes a name parameter that is unused in the raise"
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "_validate_clip ignores its name parameter so the error cannot say which clip failed"
+  missing: []
+  debug_session: ""
+
+- truth: "The store constructor's mutable default is either fixed or explicitly recorded as an accepted deferral"
+  status: failed
+  severity: cosmetic
+  reason: "Known, already-deferred breadcrumb; recorded for completeness"
+  test: review-r1-8ff7171c6ca4
+  root_cause: "One of the four B008 findings deferred at 04-04 as a visible breadcrumb (D-02); the 05-10/05-11 sweep replaced this pattern at the generator/manager sites but not at this store __init__"
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 31: ruff B008 on the store constructor default; CI does not run ruff"
+  missing: []
+  debug_session: ""
