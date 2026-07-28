@@ -273,6 +273,48 @@ downstream consumers.)
   mis-served.
 - **Carry into Phase 6 BC-01:** yes.
 
+## 15. DiskBackedImageStore refuses a key whose on-disk path escapes the cache directory — BREAKING (surface only) (WR-02, 05-15)
+
+- **Symbol:** `pc2img.image_cache.DiskBackedImageStore` (exported from the public
+  barrel `pc2img.image_cache.__all__`) — specifically the on-disk path builders
+  `_get_npy_path` / `_get_meta_path`, which every disk-touching route goes
+  through: `add_image_to_store` (insertion), the offload write
+  (`DiskBackedStore._store_entry`), the load (`DiskBackedStore._load_entry`) and
+  `del store[key]` (unlink).
+- **Old → new:** A key containing a parent-directory segment (`../victim`), an
+  absolute path (`/tmp/x/victim`) or an embedded traversal (`a/../../victim`)
+  previously produced a **real path outside the configured cache directory**, and
+  the store then used it. Reproduced 2026-07-28 on HEAD: with a sentinel file one
+  level above the cache directory, `add_image_to_store("../victim", arr)` +
+  `offload_image_data_to_disk("../victim")` **overwrote the sentinel with an NPY
+  header**, and `del store["../victim"]` then **deleted it**. Such a key now
+  raises **`ValueError` at the first path build** — for insertion, that is before
+  any file outside the cache directory is created or truncated.
+- **Reachability, stated honestly:** this was **NOT reachable through the
+  feature-name DSL**. Every registered `regex_pattern` anchors on a literal prefix
+  (`range`, `scalar_field_`, `rrim`, `sqrt_`, …), so no store key derived from a
+  feature name can begin with `..` or `/`. It is therefore **hardening of a public
+  store API**, not a live exploit path from untrusted point-cloud metadata. It is
+  recorded as breaking because the store is publicly exported and because Phase 5
+  (entry 14's sibling fix, 05-14 `f776011`) is what turned `__delitem__` into a
+  file-deletion primitive in the first place.
+- **Scope:** containment is about **escaping, not nesting**. A key that resolves
+  *inside* the cache directory is still accepted — `".."` becomes a file literally
+  named `...npy` inside it, and `"sub/nested"` stays under it. All six realistic
+  feature-name shapes (`range`, `rrim_pack_(range,r16,d8,z1.2345678)`,
+  `hillshade_range_315_45`, `norm_(range,2,98)`, `scalar_field_intensity`,
+  `grad_range_px0.5`) still complete add → offload → reload unchanged, pinned by
+  `test_containment_guard_accepts_realistic_feature_names`. Refusals are pinned by
+  `test_escaping_key_delete_refuses_and_leaves_outside_file_intact` and
+  `test_escaping_key_add_refuses_before_writing_outside_cache_dir`.
+- **Migration note:** Any caller passing a raster key that is not a plain name
+  must sanitize it before handing it to the store (strip `..` segments, reject
+  absolute paths, or hash the key). Nesting under the cache directory is still
+  allowed; only escaping is refused. `__delitem__` itself is unchanged — the
+  guard rides inside the path builders, so the 05-14 delegate-then-unlink
+  ordering and its single membership authority are preserved by construction.
+- **Carry into Phase 6 BC-01:** yes.
+
 ---
 
 ## Cross-cutting: mutable-default elimination (D-02 / D-17 consistency, 05-10 / 05-11)
@@ -303,6 +345,7 @@ change; prevents cross-instance config aliasing.
 | 12 | RRIM name validation at request time | now raises `ValueError` from `request()` | BREAKING (surface) |
 | 13 | `PerspectiveProjection(projection_matrix=non-pinhole or non-3×3)` | now raises | BREAKING |
 | 14 | RRIM `zF` token (exponent accepted; shortest round-trip emission) | grammar widened + key formatting | ADDITIVE + BREAKING (narrow) |
+| 15 | `DiskBackedImageStore` key whose path escapes the cache dir | now raises `ValueError` at the first path build | BREAKING (surface) |
 
 *Collated 2026-07-11 (plan 05-12) from the D-17 running notes recorded in each
 Phase-5 plan SUMMARY.*

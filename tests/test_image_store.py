@@ -205,3 +205,113 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
     assert not store_b._get_meta_path("range").exists()
     with pytest.raises(KeyError):
         _ = store_b["range"]  # documented consequence of sharing one cache_path
+
+
+# --------------------------------------------------------------------------- #
+# WR-02 — a store key must never build a path outside the cache directory      #
+# (round 3)                                                                    #
+#                                                                              #
+# `_get_npy_path` / `_get_meta_path` join the raw key onto the cache dir with  #
+# no containment check, and 05-14 turned `__delitem__` into an unconditional   #
+# `unlink`. Reproduced 2026-07-28 on HEAD with a sentinel one level above the  #
+# cache directory: `add_image_to_store("../victim", arr)` +                    #
+# `offload_image_data_to_disk` OVERWROTE the sentinel with an NPY header, and  #
+# `del store["../victim"]` then DELETED it. Not reachable from the             #
+# feature-name DSL (every registered `regex_pattern` anchors on a literal      #
+# prefix), but the store is exported from the public barrel.                   #
+# --------------------------------------------------------------------------- #
+_SENTINEL_BYTES = b"pc2img round-3 containment sentinel -- must not be touched"
+
+
+def _escape_layout(tmp_path: Path) -> tuple[Path, LazyDiskCacheConfig]:
+    """Build a cache subdirectory plus a sentinel file one level ABOVE it.
+
+    The cache directory must be a *subdirectory* of ``tmp_path`` — pointing the
+    config straight at ``tmp_path`` would leave an escaping key nowhere to
+    escape to and make the reproduction impossible.
+    """
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    sentinel = tmp_path / "victim.npy"
+    sentinel.write_bytes(_SENTINEL_BYTES)
+    cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+    return sentinel, cfg
+
+
+def _escaping_keys(tmp_path: Path) -> dict[str, str]:
+    """Three spellings of the same escape, all resolving to ``tmp_path/victim.npy``."""
+    return {
+        "parent_segment": "../victim",
+        "absolute": str(tmp_path / "victim"),
+        "embedded_traversal": "a/../../victim",
+    }
+
+
+def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Path):
+    """`del store[escaping_key]` must refuse, and the outside file must survive.
+
+    The key is made tracked through the mapping setter (`store[key] = value`),
+    which bypasses `add_data_to_store` entirely — that is the route that makes
+    the unlink reachable even once insertion is guarded, so it is the route the
+    proving test has to use.
+
+    The 05-14 G10 contract is pinned in the same test: an untracked *ordinary*
+    key still raises `KeyError` with no disk side effect.
+    """
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+
+    key = "../victim"
+    store[key] = DiskBackedImageData(_gray((4, 4)))
+    assert key in store
+
+    with pytest.raises(ValueError):
+        del store[key]
+
+    assert sentinel.exists(), "escaping delete removed a file outside the cache directory"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+    # 05-14 G10 contract, unchanged: an untracked ordinary key still raises KeyError.
+    with pytest.raises(KeyError):
+        del store["never-added"]
+
+
+@pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
+def test_escaping_key_add_refuses_before_writing_outside_cache_dir(tmp_path: Path, spelling: str):
+    """`add_image_to_store` must refuse before any outside file is created or truncated."""
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    key = _escaping_keys(tmp_path)[spelling]
+
+    with pytest.raises(ValueError):
+        store.add_image_to_store(key, _gray((4, 4)))
+
+    assert sentinel.exists(), "escaping insert removed a file outside the cache directory"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES, "escaping insert overwrote a file outside the cache directory"
+
+
+@pytest.mark.parametrize(
+    "feature_name",
+    [
+        "range",
+        "rrim_pack_(range,r16,d8,z1.2345678)",
+        "hillshade_range_315_45",
+        "norm_(range,2,98)",
+        "scalar_field_intensity",
+        "grad_range_px0.5",
+    ],
+)
+def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, feature_name: str):
+    """Characterization guard: the containment check refuses nothing legitimate.
+
+    Carries NO marker deliberately — it must pass both before and after the
+    guard lands, which is what bounds the false-positive risk of adding it.
+    """
+    _sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    arr = _gray((5, 5))
+
+    store.add_image_to_store(feature_name, arr)
+    store.offload_image_data_to_disk(feature_name)
+
+    np.testing.assert_array_equal(np.asarray(store[feature_name]), arr)

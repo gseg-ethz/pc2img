@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig
 from numpy.typing import NDArray
@@ -22,6 +23,13 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     deserialization sink (DSN-09) is eliminated by construction — there is no
     load-from-serialized-object path here anymore — and a stale legacy cache
     file degrades to a cache miss via the base loader's explicit refusal.
+
+    **Containment invariant (WR-02):** every on-disk path this store builds must
+    resolve *inside* the configured cache directory. A key whose path escapes it
+    is refused with :class:`ValueError` at the first path build, so no key can
+    make a write, a read or an unlink touch a file outside that directory.
+    Nesting *under* the cache directory is still allowed — only escaping is
+    refused.
     """
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -35,6 +43,57 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
             factory=DiskBackedImageData,
             value_type=DiskBackedImageData,
         )
+
+    # --- containment: one authority over every on-disk path (WR-02) ----------
+
+    def _assert_within_cache_dir(self, path: Path) -> Path:
+        """Return ``path`` unchanged, or raise if it escapes the cache directory.
+
+        This is the single containment authority for all four routes that touch
+        the disk, because every one of them builds its path through
+        :meth:`_get_npy_path` / :meth:`_get_meta_path`:
+
+        1. **insertion** — ``DiskBackedStore.add_data_to_store`` (so the refusal
+           lands *before* any file outside the cache directory is created),
+        2. **offload write** — ``DiskBackedStore._store_entry``,
+        3. **load** — ``DiskBackedStore._load_entry``,
+        4. **delete** — this class's :meth:`__delitem__` unlink.
+
+        Threat posture, stated honestly: the feature-name DSL cannot currently
+        produce an escaping key, because every registered ``regex_pattern``
+        anchors on a literal prefix (``range``, ``scalar_field_``, ``rrim``,
+        ``sqrt_``, …), so no store key can begin with ``..`` or ``/``. But this
+        store is exported from the public barrel ``pc2img.image_cache.__all__``,
+        and Phase 5 turned the delete into a file-deletion primitive: a key with
+        a parent-directory segment was measured (2026-07-28) overwriting a file
+        one level above the cache directory on offload and then removing it on
+        delete. This is hardening of a public API surface, not a live exploit
+        path from untrusted point-cloud metadata.
+
+        The original ``path`` is returned (not the resolved one) so the base
+        store's behaviour stays byte-identical — only the *check* resolves. The
+        cache directory is resolved per call rather than cached on the instance:
+        the base store pickles its ``__dict__`` wholesale for the joblib/loky
+        tiled path, so a cached resolved path is state that can go stale across
+        processes, and the measured cost of not caching is ~40 µs per path build
+        (per raster, not per pixel).
+        """
+        cache_dir = self._cache_dir.resolve()
+        if not path.resolve().is_relative_to(cache_dir):
+            raise ValueError(
+                f"Refusing raster key path {str(path)!r}: it resolves to "
+                f"{str(path.resolve())!r}, outside the configured cache directory "
+                f"{str(cache_dir)!r}. Raster keys must not escape the cache directory."
+            )
+        return path
+
+    def _get_npy_path(self, feature: str) -> Path:
+        """Return the base store's ``.npy`` path, refused if it escapes the cache dir."""
+        return self._assert_within_cache_dir(super()._get_npy_path(feature))
+
+    def _get_meta_path(self, feature: str) -> Path:
+        """Return the base store's JSON sidecar path, refused if it escapes the cache dir."""
+        return self._assert_within_cache_dir(super()._get_meta_path(feature))
 
     # --- legacy BC aliases: keep FeatureManager call sites stable ------------
 
