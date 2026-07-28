@@ -9,11 +9,17 @@ files_reviewed_list:
   - tests/test_image_store.py
   - tests/test_rrim_features.py
 findings:
-  critical: 1
-  warning: 6
+  critical: 0
+  warning: 7
   info: 3
   total: 10
 status: issues_found
+amended: 2026-07-27T15:10:00Z
+amendments:
+  - "CR-01 downgraded BLOCKER -> WARNING after owner review: the defect predates 05-14
+     (reachable pre-diff via the long-form spelling) and is therefore not a regression;
+     the proposed math.isfinite fix was also shown insufficient. See the Correction
+     block under CR-01."
 ---
 
 # Phase 05: Code Review Report (round-2 gap closure, plan 05-14)
@@ -58,8 +64,11 @@ no `pickle.load*` sink, no new deserialization surface.
 What is **not** sound: the regex widening was treated as "purely additive", and it is not.
 It admits decimal-exponent overflow (`z1e400`), which `float()` turns into `inf`,
 `_validate_config` accepts (`inf > 0`), and the slope path then renders as a silently
-all-NaN raster — a token that raised a clear `ValueError` before this diff. That is
-CR-01 and it is the reason this review is not clean. Six further warnings cover an
+all-NaN raster. That is CR-01 — **downgraded to a warning on 2026-07-27** after the
+orchestrator reproduced the same all-NaN result on the *pre-diff* grammar via the
+long-form spelling, establishing that 05-14 did not introduce the defect. The claim
+below that the token "raised a clear `ValueError` before this diff" is **wrong**; see the
+Correction block under CR-01. Seven warnings in total cover an
 overclaimed cross-store safety guarantee (with a confirmed data-loss repro through the
 *successful*-delete path the new test does not exercise), an unvalidated key → `unlink()`
 path escape, a silent base-feature reinterpretation caused by the same widening, and three
@@ -72,9 +81,14 @@ marked PLAUSIBLE.
 
 ## Critical Issues
 
-### CR-01 (BLOCKER): Widened `z` grammar admits decimal-exponent overflow → `inf` → silent all-NaN raster
+*None. CR-01 was raised as a blocker and downgraded to a warning on owner review; it is
+retained in place below, with its original text intact and a Correction block appended,
+rather than rewritten — the reasoning that produced the wrong severity is itself the
+useful record.*
 
-**Status:** CONFIRMED (reproduced).
+### CR-01 (WARNING — downgraded 2026-07-27, originally filed BLOCKER): Widened `z` grammar admits decimal-exponent overflow → `inf` → silent all-NaN raster
+
+**Status:** CONFIRMED as a defect; **REFUTED as a regression** (see Correction below).
 **File:** `src/pc2img/features/rrim.py:45` (regex), `src/pc2img/features/rrim.py:122-123` (missing finiteness guard)
 
 **Issue:**
@@ -146,6 +160,49 @@ def test_overflowing_z_token_is_rejected_not_silently_infinite(token):
     with pytest.raises(ValueError, match="finite"):
         FEATURES.match(f"rrim_component_(slope,range,{token})")
 ```
+
+#### Correction (2026-07-27, orchestrator + owner) — severity BLOCKER → WARNING
+
+Three claims above were tested and two do not survive.
+
+**1. "Before this diff none of these tokens parsed at all" — FALSE.** The pre-05-14 regex
+was `^z([+-]?\d+(?:\.\d+)?)$`. Its `\d+` is unbounded, so the same magnitude spelled in
+long form was always legal and produces the identical failure:
+
+```
+token: z1000…0 (41 chars, = 1e39)
+OLD (pre-05-14) regex matches it: True
+result: finite=0/256  all-NaN=True
+```
+
+05-14 made the magnitude expressible in 6 characters instead of 41. That is an ergonomics
+change, not a new defect, so this is **not a regression** and does not gate Phase 5.
+
+**2. The proposed `math.isfinite` fix is INSUFFICIENT.** It closes only `z ≥ 1.8e308`. The
+entire finite band from ~3.4e38 upward still produces an all-NaN raster:
+
+```
+z=1e30  → 256/256 finite      z=1e150 → 0/256 ALL-NaN
+z=1e38  → 256/256 finite      z=1e300 → 0/256 ALL-NaN
+```
+
+**3. The mechanism is float32 representability, not non-finiteness.** `numpy` names it
+directly — `RuntimeWarning: overflow encountered in cast` at `rrim.py:236`. There are two
+distinct modes: the *product* leaving float32 range (data-dependent), and the *multiplier
+itself* leaving float32 range, which under NEP 50 casts the weak Python scalar to the array
+dtype **before** multiplying. The second mode destroys correct answers: `1e-30 * 1e39`
+returns `inf` where the true product `1e9` is trivially representable.
+
+**Disposition:** deferred, not fixed. An owner-reviewed audit established the class is not
+systemic — `compute_slope` and `compute_openness` are the only sites in the codebase that
+multiply a raster by a user scalar and immediately store float32 unbounded. `pixel_size`
+carries float64 headroom (finite at `px=1e-201`, peak 5.45e200); `hillshade` and
+`red_strength` are bounded by trig/clip; `multigrad` sigmas already fail loudly via scipy.
+The fix is a ~20-line invariant guard at 2 call sites, sketched and prototyped in
+`.planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md`. Owner
+decision: fail-fast (`ValueError`) when implemented, but not inside Phase 5 — this is a
+phase reopened twice by landing extra numerical code late, and nothing here is reachable
+with an honest input.
 
 ## Warnings
 

@@ -70,3 +70,12 @@ deliberately outside its locked scope:
   owner decision covered exponent notation and precision, **not** finiteness validation, so a
   `math.isfinite` check in `_validate_config` was deliberately not added. Candidate for a
   follow-up: reject non-finite `z_factor` at validation time (fail-fast, one line).
+
+  > **SUPERSEDED 2026-07-27** by
+  > `.planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md`.
+  > The gap-diff review (05-REVIEW.md CR-01) established that **finiteness is the wrong
+  > boundary**: a `math.isfinite` check closes only `z >= 1.8e308`, while every finite `z`
+  > above ~3.4e38 already yields a silent all-NaN raster (`z=1e150` → 0/256 finite). The
+  > real invariant is float32 representability of the *scaled raster*, and the owner-decided
+  > fix is a fail-fast guard at the two scaling sites, not a one-line validator tweak. Do not
+  > action this bullet on its own terms.
