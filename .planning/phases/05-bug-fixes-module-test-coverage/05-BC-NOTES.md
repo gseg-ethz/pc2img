@@ -379,6 +379,25 @@ downstream consumers.)
   the module no longer carries the unqualified claim as the sole record.
 - **Carry into Phase 6 BC-01:** yes.
 
+## 17. DiskBackedImageStore constructor default: LazyDiskCacheConfig() → None sentinel — NO BEHAVIOR CHANGE (IN-03, 05-16)
+
+- **Symbol:** `pc2img.image_cache.DiskBackedImageStore.__init__`'s `config`
+  keyword parameter.
+- **Old → new:** signature default only. Old:
+  `config: LazyDiskCacheConfig = LazyDiskCacheConfig()` (a shared mutable
+  pydantic-dataclass instance constructed once at import time). New:
+  `config: LazyDiskCacheConfig | None = None`, coerced in the constructor body
+  (`if config is None: config = LazyDiskCacheConfig()`) before forwarding to
+  the base store. An omitted or explicit `None` config yields the identical
+  default instance; an explicit config passes through unchanged. Closes the
+  last of the four B008 breadcrumbs deferred at 04-04 D-02 (the 05-10/05-11
+  sweep replaced this pattern at the `core.py` / `manager.py` /
+  `interpolation.py` / `tiled_generator.py` sites but not at this store
+  `__init__`).
+- **Migration note:** none — behaviour is byte-identical for every existing
+  call site.
+- **Carry into Phase 6 BC-01:** yes.
+
 ---
 
 ## Cross-cutting: mutable-default elimination (D-02 / D-17 consistency, 05-10 / 05-11)
@@ -387,7 +406,9 @@ Not a public-contract break, but recorded for completeness: the shared mutable
 `LazyDiskCacheConfig()` default was eliminated at every generator/manager
 construction site (`core.py`, `manager.py`, image_cache store, `interpolation.py`,
 `tiled_generator.py`) in favor of a `None`-sentinel pattern. No observable API
-change; prevents cross-instance config aliasing.
+change; prevents cross-instance config aliasing. (The image_cache store site
+listed above actually landed with plan 05-16, entry 17 — this paragraph had
+listed it ahead of the fact.)
 
 ---
 
@@ -411,6 +432,7 @@ change; prevents cross-instance config aliasing.
 | 14 | RRIM `zF` token (exponent accepted; shortest round-trip emission) | grammar widened + key formatting | ADDITIVE + BREAKING (narrow) |
 | 15 | `DiskBackedImageStore` key whose path escapes the cache dir | now raises `ValueError` at the first path build | BREAKING (surface) |
 | 16 | RRIM first-token precedence (`rrim_pack_(z1e5)`) | option token now wins over base-feature name | BREAKING (narrow) |
+| 17 | `DiskBackedImageStore.__init__` `config` default | `LazyDiskCacheConfig()` → `None` sentinel, coerced in-body | NO BEHAVIOR CHANGE |
 
 *Collated 2026-07-11 (plan 05-12) from the D-17 running notes recorded in each
 Phase-5 plan SUMMARY.*
