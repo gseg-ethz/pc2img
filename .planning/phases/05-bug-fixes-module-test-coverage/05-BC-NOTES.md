@@ -295,7 +295,7 @@ downstream consumers.)
   header**, and `del store["../victim"]` then **deleted it**. Such a key now
   raises **`ValueError` at the first path build** — for insertion, that is before
   any file outside the cache directory is created or truncated.
-- **Reachability, stated honestly:** this was **NOT reachable through the
+- **Reachability (SUPERSEDED 2026-09-24 — see Correction below):** this was **NOT reachable through the
   feature-name DSL**. Every registered `regex_pattern` anchors on a literal prefix
   (`range`, `scalar_field_`, `rrim`, `sqrt_`, …), so no store key derived from a
   feature name can begin with `..` or `/`. It is therefore **hardening of a public
@@ -303,6 +303,22 @@ downstream consumers.)
   recorded as breaking because the store is publicly exported and because Phase 5
   (entry 14's sibling fix, 05-14 `f776011`) is what turned `__delitem__` into a
   file-deletion primitive in the first place.
+- **Correction (2026-09-24, plan 05-16):** the claim above is FALSE and is superseded.
+  `FeatureRegistry.match` (`src/pc2img/features/registry.py`) has an UNANCHORED default
+  fallback: any feature name that matches no registered pattern becomes a
+  `ScalarFieldFeature` pseudo-spec with `params={'feature': name}`, and
+  `FeatureManager.submit` passes that name verbatim as the store key.
+  `ScalarFieldFeature`'s own pattern (`^scalar_field_(?P<feature>.+)$`) has an
+  unconstrained suffix that also accepts an embedded traversal. Scalar-field names
+  come from PLY/E57 property names read off point-cloud files — untrusted metadata.
+  Reproduced end-to-end 2026-09-24: `PointCloudData` carrying a scalar field named
+  `../victim`, run through `PointCloudImageGenerator(...).generate(["../victim"])`,
+  reaches this store and is refused by the containment guard with `ValueError` —
+  without the guard it would write outside the cache directory. On the installed
+  GSEGUtils 0.5.x (0.5.3) this containment guard is therefore **LOAD-BEARING**, not
+  defence-in-depth. It becomes redundant only at the Phase-6 GSEGUtils 0.6 adoption,
+  where upstream absorbs the equivalent check
+  (`.planning/spikes/000-absorption-test/README.md`, verdict VALIDATED).
 - **Scope:** containment is about **escaping, not nesting**. A key that resolves
   *inside* the cache directory is still accepted — `".."` becomes a file literally
   named `...npy` inside it, and `"sub/nested"` stays under it. All six realistic
