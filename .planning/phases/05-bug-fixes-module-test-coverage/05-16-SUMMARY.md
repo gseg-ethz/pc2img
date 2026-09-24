@@ -275,3 +275,10 @@ None — no external service configuration required.
 - 05-17 can cite this plan's disposition table verbatim in its own UAT evidence lines, and should cite the corrected IN-01 artifact path (image_cache store module, not rrim.py).
 - Outstanding for 05-17: RRIM residuals (WR-01, WR-04, IN-04, IN-05 not touched here — out of this plan's declared files), the Phase-6 deferral todo (review-r2-a7c7f4e498a6), and all `05-UAT.md` `status:` flips for the findings this plan closed.
 - Pending: confirm `uv run --frozen pyright` produces no NEW errors in an environment where the tool is actually available (see Issues Encountered).
+
+## Self-Check: PASSED
+
+- `src/pc2img/image_cache/disk_backed_image_store.py` — FOUND
+- `tests/test_image_store.py` — FOUND
+- `.planning/phases/05-bug-fixes-module-test-coverage/05-16-SUMMARY.md` — FOUND
+- Commits `101c077`, `f1a81cb`, `d1947b4`, `13f02b0`, `d48bf37`, `3fad7db`, `b49b4f2`, `a98a34a` — all FOUND in `git log --oneline --all`

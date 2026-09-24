@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 15/17 plans executed (05-16, 05-17 — round-4 gap closure, planned 2026-09-24, pending)
+**Plans**: 16/17 plans executed (05-16, 05-17 — round-4 gap closure, planned 2026-09-24, pending)
 
 **Wave 1**
 
@@ -208,7 +208,7 @@ Plans:
 - [x] 05-13-PLAN.md — Round 1: 8 review gaps G1-G8 (RRIM dependencies_for blocker, K validation, store purge, float64 rotation, single-sourcing) [BUG-05, TEST-03, TEST-04]
 - [x] 05-14-PLAN.md — Round 2: G9-G12 — RRIM z_factor round-trip blocker + store delete no-side-effect-on-KeyError blocker (both introduced by 05-13) + G11/G12 BC-record entries [BUG-05]
 - [x] 05-15-PLAN.md — Round 3: WR-02 store-key path containment (unlink/write escape from the cache dir) + WR-03 base-feature-vs-option precedence BC record & pin + gap-status reconciliation [BUG-05]
-- [ ] 05-16-PLAN.md — Round 4 (wave 1, store): refused-delete atomicity BLOCKER (introduced by 05-15) fixed RED-first with G10 intact; symlinked-entry and value-supplied-cache_path claims reproduced→branched; threat posture corrected to load-bearing on GSEGUtils 0.5.x (registry default fallback); guard-sensitive tests + mutation check; IN-01 (actual location: store module), IN-03 None-sentinel + BC entry 17, WR-06 [BUG-05]
+- [x] 05-16-PLAN.md — Round 4 (wave 1, store): refused-delete atomicity BLOCKER (introduced by 05-15) fixed RED-first with G10 intact; symlinked-entry and value-supplied-cache_path claims reproduced→branched; threat posture corrected to load-bearing on GSEGUtils 0.5.x (registry default fallback); guard-sensitive tests + mutation check; IN-01 (actual location: store module), IN-03 None-sentinel + BC entry 17, WR-06 [BUG-05]
 - [ ] 05-17-PLAN.md — Round 4 (wave 2, RRIM + bookkeeping): precedence pinned at FEATURES.match surface, z-sensitivity end-to-end, upper z boundary (name-level), _validate_clip names its clip; Phase-6 todo for the absorption-superseded containment findings; UAT/VERIFICATION evidence-cited reconciliation [BUG-05, TEST-04]
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
@@ -235,5 +235,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 15/15 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 16/17 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |

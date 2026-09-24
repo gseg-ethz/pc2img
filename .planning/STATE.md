@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 05
-current_phase_name: bug-fixes-module-test-coverage
+current_phase_name: Bug Fixes & Module Test Coverage
 status: executing
-stopped_at: "Completed 05-15-PLAN.md (round-3 gap closure: WR-02 containment + WR-03 BC record + gap bookkeeping). NEXT: review this gap diff, then re-verify Phase 5."
-last_updated: "2026-09-24T13:03:12.351Z"
-last_activity: 2026-07-28
-last_activity_desc: Executed 05-15 (round-3 gaps closed)
-state_head: 8d477d3a37bf16d4b97c6b64bb7712de3d2b3de5
+stopped_at: "Completed 05-16-PLAN.md (round-4 gap closure wave 1: blocker fixed + both reviewer-asserted containment claims settled by measurement + threat posture corrected everywhere + guard-sensitive tests + IN-03/IN-01 closed). NEXT: 05-17 (wave 2, RRIM residuals + Phase-6 todo + UAT bookkeeping), then this gap diff's own review, then re-verify Phase 5."
+last_updated: "2026-09-24T14:08:22.560Z"
+last_activity: 2026-09-24
+last_activity_desc: Phase 05 execution started
+state_head: a98a34a9db06a0e75fcc1adbbec6812d1360b6d9
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 37
-  completed_plans: 35
+  completed_plans: 36
 milestone_name: milestone
 ---
 
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 05 — bug-fixes-module-test-coverage
+**Current focus:** Phase 05 — Bug Fixes & Module Test Coverage
 
 ## Current Position
 
-Phase: 05 (bug-fixes-module-test-coverage) — READY TO EXECUTE
-Plan: 15 of 17 (round-4 gap plans 05-16, 05-17 planned, not executed)
-Status: Round-4 gap closure planned (05-16 store atomicity + threat posture; 05-17 RRIM residuals + bookkeeping) — plan-checker PASSED; next: execute --gaps-only, then review the fix diff, then re-verify
-Last activity: 2026-07-28 — Executed 05-15 (round-3 gaps closed)
+Phase: 05 (Bug Fixes & Module Test Coverage) — EXECUTING
+Plan: 2 of 17
+Status: Ready to execute
+Last activity: 2026-09-24 — Phase 05 execution started
 
 Progress: [████████████████████] 35/35 plans (100%)
 
@@ -99,6 +99,7 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 |------|----------|-------|-------|
 | Phase 05 P14 | 15min | 3 tasks | 6 files |
 | Phase 05 P15 | 46min | 3 tasks | 7 files |
+| Phase 05 P16 | 55min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -163,6 +164,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 05 P15] Cache dir deliberately NOT cached on the instance (base store pickles __dict__ wholesale for the joblib/loky tiled path); measured cost 45us per path build, i.e. per raster not per pixel
 - [Phase ?]: [Phase 05 P15] WR-03 landed as BC record + two pinning tests with ZERO behaviour change per the locked owner decision: rrim_pack_(z1e5) means base_feature=range/z=1e5 where pre-05-14 it meant base_feature=z1e5/z=1.0; scalar_field_z1e5 verified as the migration path
 - [Phase ?]: [Phase 05 P15] Gap bookkeeping reconciled with cited evidence: audit-uat for 05-UAT.md 22 open -> 7 (1 deferred + 6 deliberately open); the float32 scaling overflow reads deferred (not resolved) so it stays visible to the ship gate by design
+- [Phase 05]: [Phase 05 P16] Round-4 gap closure: __delitem__ reordered so both codec paths (running the containment guard) are built BEFORE super().__delitem__ — a refused delete (ValueError or KeyError) is now a full no-op in memory and on disk for every escape spelling and the overwrite route (review-r2-70fb459066a6 BLOCKER).
+- [Phase 05]: [Phase 05 P16] Both round-2 reviewer-asserted containment claims REPRODUCED by running code: a symlinked cache entry was wrongly refused (full-path resolve followed the final symlink) -- fixed by resolving only the parent directory; a value-supplied entry cache_path escapes offload(pickle_container=False) -- NOT extended into enforcement, docstring narrowed instead (owner decision D-R4-01 #5).
+- [Phase 05]: [Phase 05 P16] Threat posture corrected everywhere it was stated (store docstring, test comment, BC-NOTES entry 15, UAT reason): the containment guard IS reachable via FeatureRegistry.match's unanchored default fallback (ScalarFieldFeature verbatim key) and is LOAD-BEARING on the installed GSEGUtils 0.5.x, not defence-in-depth as previously claimed; redundant only at the Phase-6 0.6 adoption (spike-000 VALIDATED).
 
 ### Pending Todos
 
@@ -201,6 +205,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T11:32:51.321Z
-Stopped at: Completed 05-15-PLAN.md (round-3 gap closure: WR-02 containment + WR-03 BC record + gap bookkeeping). NEXT: review this gap diff, then re-verify Phase 5.
+Last session: 2026-09-24T14:08:22.374Z
+Stopped at: Completed 05-16-PLAN.md (round-4 gap closure wave 1: blocker fixed + both reviewer-asserted containment claims settled by measurement + threat posture corrected everywhere + guard-sensitive tests + IN-03/IN-01 closed). NEXT: 05-17 (wave 2, RRIM residuals + Phase-6 todo + UAT bookkeeping), then this gap diff's own review, then re-verify Phase 5.
 Resume file: None
