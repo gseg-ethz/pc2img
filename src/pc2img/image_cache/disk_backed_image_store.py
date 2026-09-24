@@ -1,4 +1,3 @@
-import logging
 from pathlib import Path
 
 from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig
@@ -6,8 +5,6 @@ from numpy.typing import NDArray
 from pydantic import ConfigDict, validate_call
 
 from .disk_backed_image_data import DiskBackedImageData
-
-logger = logging.getLogger(__name__.split(".")[0])
 
 
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
@@ -43,8 +40,15 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     def __init__(
         self,
         *,
-        config: LazyDiskCacheConfig = LazyDiskCacheConfig(),
+        config: LazyDiskCacheConfig | None = None,
     ) -> None:
+        # IN-03 (review-r1-8ff7171c6ca4): None-sentinel default, not a shared
+        # mutable LazyDiskCacheConfig() instance (DSN-07 pattern, matching the
+        # 05-10/05-11 sweep at the generator/manager sites). No behaviour
+        # change — an omitted or explicit-None config yields the identical
+        # default instance; an explicit config passes through unchanged.
+        if config is None:
+            config = LazyDiskCacheConfig()
         super().__init__(
             config=config,
             factory=DiskBackedImageData,

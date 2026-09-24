@@ -135,11 +135,10 @@ def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
 def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
     # A TRACKED key that was never offloaded (no on-disk codec pair) must delete
     # cleanly: unlink(missing_ok=True) carries the safety, not a
-    # cache_dir-is-None guard. (review-r1-c2b69f0885e7: renamed from
-    # test_delete_absent_key_does_not_raise, which misdescribed this body — the
-    # key IS tracked here, just never offloaded; the genuinely absent-key
-    # contract is pinned separately by
-    # test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op below.)
+    # cache_dir-is-None guard. (review-r1-c2b69f0885e7: renamed from the prior
+    # test name, which misdescribed this body — the key IS tracked here, just
+    # never offloaded; the genuinely absent-key contract is pinned separately
+    # by test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op below.)
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", _gray((6, 6)))
     del store["range"]  # in memory only — no .npy on disk
@@ -508,3 +507,21 @@ def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path:
     # parent + stem are stable across that internal rewrite.
     assert entry.cache_path.parent == store.cache_dir
     assert entry.cache_path.stem == "range"
+
+
+# --------------------------------------------------------------------------- #
+# review-r1-8ff7171c6ca4 (IN-03, round 4) — constructor default is a          #
+# None-sentinel, not a shared mutable LazyDiskCacheConfig() instance (DSN-07  #
+# pattern, matching the 05-10/05-11 sweep at other generator/manager sites)   #
+# --------------------------------------------------------------------------- #
+def test_default_config_is_coerced_from_none_sentinel():
+    """`DiskBackedImageStore()` and `DiskBackedImageStore(config=None)` behave identically."""
+    default_cfg = LazyDiskCacheConfig()
+
+    store = DiskBackedImageStore()
+    assert isinstance(store.cache_dir, Path)
+    assert store._enable_caching == default_cfg.enable_caching
+
+    store2 = DiskBackedImageStore(config=None)
+    assert isinstance(store2.cache_dir, Path)
+    assert store2._enable_caching == default_cfg.enable_caching
