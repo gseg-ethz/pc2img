@@ -591,7 +591,7 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   status: resolved
   evidence: "Closed by Task 1 of plan 05-15, commit 03eb715: one containment authority (_assert_within_cache_dir routed through _get_npy_path / _get_meta_path) covering all four disk-touching routes, with __delitem__ left byte-identical. Proving tests (authored xfail-first, RED confirmed before the fix): test_escaping_key_delete_refuses_and_leaves_outside_file_intact, test_escaping_key_add_refuses_before_writing_outside_cache_dir; false-positive bound: test_containment_guard_accepts_realistic_feature_names. Recorded as 05-BC-NOTES.md entry 15."
   severity: major
-  reason: "Not reachable from the feature-name DSL today (every registered regex_pattern anchors on a literal prefix, so no key can begin with .. or /), but DiskBackedImageStore is exported from the public barrel. Fix is an is_relative_to guard, ~6 lines."
+  reason: "Reachable via the registry default fallback (FeatureRegistry.match has an unanchored fallback to ScalarFieldFeature, params={'feature': name}, verbatim as the store key; reproduced end-to-end 2026-09-24, plan 05-16); load-bearing on the installed GSEGUtils 0.5.x, and redundant only at the Phase-6 GSEGUtils 0.6 adoption (spike-000, VALIDATED). DiskBackedImageStore is also exported from the public barrel. Fix is an is_relative_to guard, ~6 lines."
   test: review-r1-a239bdbfc017
   root_cause: "_get_npy_path/_get_meta_path build cache_dir / f\"{key}.npy\" with no containment check, and this diff made __delitem__ perform an unconditional unlink"
   artifacts:
