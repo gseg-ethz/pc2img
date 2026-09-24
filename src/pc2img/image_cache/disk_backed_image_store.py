@@ -126,13 +126,28 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     def __delitem__(self, key: str) -> None:
         """Drop ``key`` and purge its on-disk ``.npy`` + ``.meta.json`` codec pair.
 
-        Membership is validated by the base store FIRST: the entire body of
-        :meth:`DiskBackedStore.__delitem__` is an in-memory ``del``, so it raises
-        ``KeyError`` for an untracked key with no side effect. Delegating before
-        touching the disk keeps that contract intact, and buys exactly one
-        property: **a delete that raises ``KeyError`` is a no-op on disk** (G10).
-        Ordering matters here — the reverse order made a ``KeyError`` delete
-        irreversibly destructive.
+        Three-stage contract, in order (round 4, review-r2-70fb459066a6):
+
+        1. **Containment first** — both codec paths are built via
+           :meth:`_get_npy_path` / :meth:`_get_meta_path` before anything else
+           runs. If ``key`` escapes the cache directory this raises
+           ``ValueError`` here, before the in-memory entry is touched: a
+           refused delete is a no-op in memory as well as on disk.
+        2. **Membership second** — only then does the base store's
+           ``__delitem__`` run: its entire body is an in-memory ``del``, so it
+           raises ``KeyError`` for an untracked key with no side effect on
+           disk (G10). Ordering matters here — building the paths AFTER the
+           base delegation made a refused delete (either a containment
+           ``ValueError`` or, historically, a reversed ``KeyError`` ordering)
+           irreversibly destructive.
+        3. **Unlink last** — the two ``.npy`` / ``.meta.json`` paths, already
+           bound to local variables in stage 1, are purged only once stage 2
+           has confirmed the key was genuinely tracked.
+
+        No membership pre-check (``key in self``) is added ahead of the
+        delegation in stage 2 — the base store stays the single membership
+        authority, and the ``KeyError`` path stays a disk no-op because no
+        unlink runs until ``super().__delitem__`` has returned.
 
         That property is narrower than "one store cannot destroy another store's
         raster", and deliberately so. The base ``__init__`` re-scans ``*.npy`` and
@@ -153,9 +168,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         but never offloaded — an absent file is simply a no-op. No new
         deserialization surface is introduced (the DSN-09 posture is preserved).
         """
+        npy_path = self._get_npy_path(key)
+        meta_path = self._get_meta_path(key)
         super().__delitem__(key)
-        self._get_npy_path(key).unlink(missing_ok=True)
-        self._get_meta_path(key).unlink(missing_ok=True)
+        npy_path.unlink(missing_ok=True)
+        meta_path.unlink(missing_ok=True)
 
     @property
     def image_data(self) -> dict[str, DiskBackedImageData | None]:

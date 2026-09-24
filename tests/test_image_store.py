@@ -315,3 +315,53 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
     store.offload_image_data_to_disk(feature_name)
 
     np.testing.assert_array_equal(np.asarray(store[feature_name]), arr)
+
+
+# --------------------------------------------------------------------------- #
+# review-r2-70fb459066a6 (BLOCKER, round 4) — a refused delete must be a full  #
+# no-op, in memory as well as on disk                                         #
+#                                                                              #
+# 05-15's __delitem__ calls super().__delitem__(key) (the in-memory drop)     #
+# BEFORE building the codec paths that run the containment guard. For an      #
+# escaping key the ValueError is raised only AFTER the entry is already gone  #
+# from the store: the refusal is not atomic. Same on the overwrite route      #
+# (add_image_to_store does `del self[img_name]` first). Reproduced 2026-09-24 #
+# on HEAD: `del store["../victim"]` raises ValueError, and afterwards         #
+# `"../victim" in store` is False and `len(store) == 0`.                      #
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
+def test_refused_delete_leaves_store_membership_intact(tmp_path: Path, spelling: str):
+    """A `del store[escaping_key]` that raises must leave the store unchanged."""
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    key = _escaping_keys(tmp_path)[spelling]
+    arr = _gray((4, 4))
+    store[key] = DiskBackedImageData(arr)
+
+    with pytest.raises(ValueError):
+        del store[key]
+
+    assert key in store, "a refused delete dropped the key from the store"
+    np.testing.assert_array_equal(np.asarray(store[key]), arr)
+    assert sentinel.exists(), "refused delete removed a file outside the cache directory"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
+    """A refused overwrite (`add_image_to_store` on an escaping key) must not drop the old entry."""
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    key = _escaping_keys(tmp_path)["parent_segment"]
+    original = _gray((4, 4))
+    replacement = (original + 10.0).astype(np.float32)
+    store[key] = DiskBackedImageData(original)
+
+    with pytest.raises(ValueError):
+        store.add_image_to_store(key, replacement)
+
+    assert key in store, "a refused overwrite dropped the existing entry"
+    np.testing.assert_array_equal(np.asarray(store[key]), original)
+    assert sentinel.exists(), "refused overwrite removed a file outside the cache directory"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
