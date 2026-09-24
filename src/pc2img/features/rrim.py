@@ -124,8 +124,13 @@ def _format_number(value: float) -> str:
 def _validate_clip(name: str, clip: tuple[float, float]) -> tuple[float, float]:
     # G8: non-strict percentile bounds via the shared single-source helper
     # (clipping to a single percentile is a well-defined degenerate operation).
+    # review-r1-8fb6b87813d1 (IN-02): re-raise naming which clip failed — the
+    # shared helper's own message has no way to know which caller invoked it.
     low, high = clip
-    _validate_percentile_bounds(low, high, strict=False)
+    try:
+        _validate_percentile_bounds(low, high, strict=False)
+    except ValueError as exc:
+        raise ValueError(f"RRIM {name}_clip {clip!r} is invalid: {exc}") from exc
     return float(low), float(high)
 
 
