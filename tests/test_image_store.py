@@ -216,9 +216,11 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
 # `unlink`. Reproduced 2026-07-28 on HEAD with a sentinel one level above the  #
 # cache directory: `add_image_to_store("../victim", arr)` +                    #
 # `offload_image_data_to_disk` OVERWROTE the sentinel with an NPY header, and  #
-# `del store["../victim"]` then DELETED it. Not reachable from the             #
-# feature-name DSL (every registered `regex_pattern` anchors on a literal      #
-# prefix), but the store is exported from the public barrel.                   #
+# `del store["../victim"]` then DELETED it. Reachability corrected round 4:   #
+# see the store docstring's threat-posture paragraph and                      #
+# `FeatureRegistry.match`'s unanchored default fallback (review-r2-1a435f-    #
+# 413f18) — the guard is load-bearing, not defence-in-depth, on the           #
+# installed GSEGUtils 0.5.x.                                                  #
 # --------------------------------------------------------------------------- #
 _SENTINEL_BYTES = b"pc2img round-3 containment sentinel -- must not be touched"
 
@@ -365,3 +367,101 @@ def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
     np.testing.assert_array_equal(np.asarray(store[key]), original)
     assert sentinel.exists(), "refused overwrite removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+# --------------------------------------------------------------------------- #
+# review-r2-9998f2b36d4c (round 4) — a legitimate symlinked cache entry must   #
+# be served, not refused, while every escaping key stays refused              #
+#                                                                              #
+# `_assert_within_cache_dir` resolves the FULL path, which follows the final  #
+# component's own symlink. A cache directory holding `<key>.npy` +            #
+# `<key>.meta.json` as symlinks to a real codec pair elsewhere is adopted by  #
+# `__init__` (the adoption scan uses `Path.is_file()`, which follows          #
+# symlinks) but then refused on read, delete and store-unpickling, because    #
+# the resolved candidate lands outside the cache directory even though the   #
+# LINK itself sits inside it. Reproduced 2026-09-24.                          #
+# --------------------------------------------------------------------------- #
+def _symlinked_entry_layout(tmp_path: Path) -> tuple[Path, Path, np.ndarray]:
+    """Real codec pair in ``shared/``; ``cache/`` holds only symlinks to it."""
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    cache = tmp_path / "cache"
+    cache.mkdir()
+
+    arr = _gray((4, 4))
+    shared_store = DiskBackedImageStore(
+        config=LazyDiskCacheConfig(enable_caching=True, cache_path=shared, purge_disk_on_gc=False)
+    )
+    shared_store.add_image_to_store("range", arr)
+    shared_store.offload_image_data_to_disk("range")
+
+    (cache / "range.npy").symlink_to(shared / "range.npy")
+    (cache / "range.meta.json").symlink_to(shared / "range.meta.json")
+    return shared, cache, arr
+
+
+def test_symlinked_cache_entry_is_served_and_unpickles(tmp_path: Path):
+    """A cache-directory-internal symlink to a real codec pair must be served, not refused."""
+    shared, cache, arr = _symlinked_entry_layout(tmp_path)
+    cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache, purge_disk_on_gc=False)
+    store = DiskBackedImageStore(config=cfg)
+
+    assert "range" in store, "the adoption scan must still adopt a symlinked codec pair"
+    np.testing.assert_array_equal(np.asarray(store["range"]), arr)
+
+    restored = pickle.loads(pickle.dumps(store))
+    np.testing.assert_array_equal(np.asarray(restored["range"]), arr)
+
+    # A fresh store for the delete assertion: reading/pickling above may have
+    # offloaded the in-memory entry again, and delete must only remove the LINK.
+    store2 = DiskBackedImageStore(config=cfg)
+    del store2["range"]
+    assert not (cache / "range.npy").exists(), "delete must remove the link inside the cache dir"
+    assert not (cache / "range.meta.json").exists()
+    assert (shared / "range.npy").exists(), "delete of a symlinked entry must not remove its target"
+    assert (shared / "range.meta.json").exists()
+
+    # The three escape spellings must still be refused under the rewritten predicate.
+    # A fresh subdirectory avoids colliding with the "cache" / "shared" dirs above.
+    escape_root = tmp_path / "escape_root"
+    escape_root.mkdir()
+    sentinel, escape_cfg = _escape_layout(escape_root)
+    escape_store = DiskBackedImageStore(config=escape_cfg)
+    for key in _escaping_keys(escape_root).values():
+        with pytest.raises(ValueError):
+            escape_store._get_npy_path(key)
+    assert sentinel.exists()
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+    # Nesting under the cache directory must still resolve inside.
+    nested = escape_store._get_npy_path("sub/nested")
+    assert nested.is_relative_to(escape_store.cache_dir.resolve())
+
+
+# --------------------------------------------------------------------------- #
+# review-r2-3f625b03fb03 (round 4) — the containment invariant is about       #
+# key-derived paths, not entry-supplied ones                                  #
+#                                                                              #
+# An entry inserted through the mapping setter (`store[key] = value`) carries #
+# its own `cache_path`, chosen by the caller and never routed through the     #
+# guarded `_get_npy_path` / `_get_meta_path` builders. `offload()` with the   #
+# default `pickle_container=False` writes through the ENTRY's own            #
+# `_cache_path`. Reproduced 2026-09-24 via a STORE-INSERTED entry (not a      #
+# directly constructed one, whose offload is a no-op): a file outside the     #
+# cache directory was overwritten with raster bytes. This is NOT extended     #
+# into enforcement (owner decision, D-R4-01 #5) — the docstring is narrowed   #
+# to what the key builders actually enforce, and this test pins the enforced  #
+# half: an entry inserted through `add_image_to_store` always carries a       #
+# `cache_path` under the cache directory (because that route derives it from  #
+# the guarded `_get_npy_path`).                                               #
+# --------------------------------------------------------------------------- #
+def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((4, 4)))
+
+    entry = store.store["range"]
+    assert entry is not None
+    # LazyDiskCache re-suffixes the handed-in `.npy` path to `.dat`, so only
+    # parent + stem are stable across that internal rewrite.
+    assert entry.cache_path.parent == store.cache_dir
+    assert entry.cache_path.stem == "range"

@@ -24,12 +24,19 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     load-from-serialized-object path here anymore — and a stale legacy cache
     file degrades to a cache miss via the base loader's explicit refusal.
 
-    **Containment invariant (WR-02):** every on-disk path this store builds must
-    resolve *inside* the configured cache directory. A key whose path escapes it
-    is refused with :class:`ValueError` at the first path build, so no key can
-    make a write, a read or an unlink touch a file outside that directory.
-    Nesting *under* the cache directory is still allowed — only escaping is
-    refused.
+    **Containment invariant (WR-02, narrowed round 4 — review-r2-3f625b03fb03):**
+    every on-disk path this store builds FROM A KEY resolves *inside* the
+    configured cache directory. A key whose path escapes it is refused with
+    :class:`ValueError` at the first path build, so no key can make a write, a
+    read or an unlink touch a file outside that directory. Nesting *under* the
+    cache directory is still allowed — only escaping is refused. This guard
+    does NOT extend to an entry's own ``cache_path``: an entry inserted
+    through the mapping setter (``store[key] = value``) carries whatever
+    ``cache_path`` its caller supplied, and :meth:`offload` with the default
+    ``pickle_container=False`` writes through that entry-owned path directly
+    (the ``.dat`` memmap write is a GSEGUtils carry-out — see
+    :meth:`offload`). Only :meth:`add_image_to_store` derives its entry's
+    ``cache_path`` from the guarded route.
     """
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -49,26 +56,43 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     def _assert_within_cache_dir(self, path: Path) -> Path:
         """Return ``path`` unchanged, or raise if it escapes the cache directory.
 
-        This is the single containment authority for all four routes that touch
-        the disk, because every one of them builds its path through
+        This is the single containment authority for the on-disk paths this
+        store builds FROM A KEY, because every one of them routes through
         :meth:`_get_npy_path` / :meth:`_get_meta_path`:
 
         1. **insertion** — ``DiskBackedStore.add_data_to_store`` (so the refusal
-           lands *before* any file outside the cache directory is created),
-        2. **offload write** — ``DiskBackedStore._store_entry``,
+           lands *before* any file outside the cache directory is created);
+           the ``cache_path`` derived here is what the inserted entry's own
+           memmap write (``LazyDiskCache._convert_to_memmap``) later writes
+           through as ``<key>.dat`` — ``LazyDiskCache._init_from_config``
+           re-suffixes the handed-in ``.npy`` path internally,
+        2. **offload write** — ``DiskBackedStore._store_entry``, which also
+           builds the ``<key>.meta.json.tmp`` atomic-write sidecar directly
+           from the cache directory,
         3. **load** — ``DiskBackedStore._load_entry``,
         4. **delete** — this class's :meth:`__delitem__` unlink.
 
-        Threat posture, stated honestly: the feature-name DSL cannot currently
-        produce an escaping key, because every registered ``regex_pattern``
-        anchors on a literal prefix (``range``, ``scalar_field_``, ``rrim``,
-        ``sqrt_``, …), so no store key can begin with ``..`` or ``/``. But this
-        store is exported from the public barrel ``pc2img.image_cache.__all__``,
-        and Phase 5 turned the delete into a file-deletion primitive: a key with
-        a parent-directory segment was measured (2026-07-28) overwriting a file
-        one level above the cache directory on offload and then removing it on
-        delete. This is hardening of a public API surface, not a live exploit
-        path from untrusted point-cloud metadata.
+        Threat posture, measured 2026-09-24 (BUG-05, review-r2-1a435f413f18):
+        ``FeatureRegistry.match`` (:mod:`pc2img.features.registry`) has an
+        UNANCHORED default fallback — any name that matches no registered
+        pattern becomes a ``ScalarFieldFeature`` pseudo-spec with
+        ``params={'feature': name}``, and ``FeatureManager.submit`` passes
+        that name verbatim as the store key. ``ScalarFieldFeature``'s own
+        pattern (``^scalar_field_(?P<feature>.+)$``) has an unconstrained
+        suffix that accepts an embedded traversal too. Scalar-field names
+        come from PLY/E57 property names read off point-cloud files —
+        untrusted metadata, not a value pc2img constructs. Reproduced
+        end-to-end: a ``PointCloudData`` carrying a scalar field named
+        ``../victim`` reaches this guard via ``generate(["../victim"])`` and
+        is refused with ``ValueError``; without the guard it would write
+        outside the cache directory. On the installed GSEGUtils 0.5.x this
+        containment guard is **LOAD-BEARING**, not defence-in-depth — it
+        becomes redundant only at the Phase-6 GSEGUtils 0.6 adoption, where
+        upstream absorbs the equivalent check
+        (``.planning/spikes/000-absorption-test/README.md``, verdict
+        VALIDATED). This store is also exported from the public barrel
+        ``pc2img.image_cache.__all__``, so any caller may pass any key
+        directly — the guard is not solely defending the registry route.
 
         The original ``path`` is returned (not the resolved one) so the base
         store's behaviour stays byte-identical — only the *check* resolves. The
@@ -79,10 +103,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         (per raster, not per pixel).
         """
         cache_dir = self._cache_dir.resolve()
-        if not path.resolve().is_relative_to(cache_dir):
+        candidate = path.parent.resolve() / path.name
+        if not candidate.is_relative_to(cache_dir):
             raise ValueError(
                 f"Refusing raster key path {str(path)!r}: it resolves to "
-                f"{str(path.resolve())!r}, outside the configured cache directory "
+                f"{str(candidate)!r}, outside the configured cache directory "
                 f"{str(cache_dir)!r}. Raster keys must not escape the cache directory."
             )
         return path
@@ -184,7 +209,17 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         features: str | list[str] | None = None,
         pickle_container: bool = False,
     ) -> None:
-        """Offload selected entries; ``features`` is the legacy alias for ``keys``."""
+        """Offload selected entries; ``features`` is the legacy alias for ``keys``.
+
+        ``pickle_container=False`` (the default) delegates to each entry's own
+        :meth:`LazyDiskCache.offload`, which writes through the entry's own
+        ``cache_path`` (the ``<key>.dat`` memmap) directly — this bypasses the
+        store's containment guard for an entry whose ``cache_path`` was
+        supplied by the caller rather than derived by
+        :meth:`add_image_to_store` (see the class docstring's containment
+        invariant, review-r2-3f625b03fb03). ``pickle_container=True`` routes
+        through the guarded ``_get_npy_path`` / ``_get_meta_path`` builders.
+        """
         super().offload(keys=features, pickle_container=pickle_container)
 
     def offload_image_data_to_disk(self, features: str | list[str] | None = None) -> None:
