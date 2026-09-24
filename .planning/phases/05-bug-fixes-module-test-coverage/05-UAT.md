@@ -616,7 +616,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "The RRIM end-to-end test asserts that z_factor actually influences the output, not merely that the output has the right shape and is finite"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 1, commit 101c077 (fix): __delitem__ reordered to build both codec paths -- running the containment guard -- BEFORE delegating to super().__delitem__, so a refused delete (ValueError or KeyError) is a genuine no-op in memory and on disk. Proving tests: test_refused_delete_leaves_store_membership_intact, test_refused_overwrite_leaves_existing_entry_intact; G10's prior no-side-effect-on-KeyError contract remains independently pinned by test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op."
   severity: minor
   reason: "Test-strength gap on the proving test for the G9 blocker; z was confirmed to change the output, but nothing in the suite asserts it"
   test: review-r1-a8cd7b4707b0
@@ -628,7 +629,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "The z_factor round-trip tests cover the upper end of the exponent range as well as the sub-1e-4 lower end"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-17 Task 1, commit 83e69e4 (test): _ROUND_TRIP_Z_VALUES extended with 1e16, 1e17, 1.2345678e20, 1e22, 4503599627370495.5 (test_pack_feature_name_round_trips_z_factor now runs 14 parametrised cases); test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name pins that all three exponent spellings of 1e16 resolve to one identical dependency list and that each emitted pack name re-parses to the exact double. NAME-level only -- no raster computed at z >= 1e16; the float32 overflow item stays deferred (review-r1-42a7c0c6f8c7)."
   severity: minor
   reason: "Test-strength gap; cheap to close by extending the existing parametrisation"
   test: review-r1-4939108716dd
@@ -640,7 +642,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "Every store test's body asserts the behaviour its name claims"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 3, commit d48bf37 (test): test_delete_absent_key_does_not_raise renamed to test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op (the ordering fix inverted the contract the old name encoded), plus a new absent-key test pinning the corrected behaviour."
   severity: minor
   reason: "Test-strength / naming-accuracy gap; the stale name misdescribes the current, intended contract"
   test: review-r1-c2b69f0885e7
@@ -652,19 +655,21 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "rrim.py declares no unused logger, or declares one bound to __name__"
-  status: failed
+  status: resolved
+  evidence: "Artifact path corrected (see below): rrim.py has never had a logger (`git log -S getLogger -- src/pc2img/features/rrim.py` returns nothing over the whole reviewed range -- the truth held vacuously for the named file). The actual dead module-level logger (logging.getLogger(__name__.split('.')[0]), bound to the root package name, never used in the file) lived in src/pc2img/image_cache/disk_backed_image_store.py and was removed there by 05-16 Task 3, commit 3fad7db. See 05-16-SUMMARY.md 'IN-01 Artifact-Path Correction'."
   severity: cosmetic
   reason: "Cosmetic cleanup"
   test: review-r1-ab91c4469087
   root_cause: "Leftover from an earlier revision"
   artifacts:
-    - path: "src/pc2img/features/rrim.py"
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
       issue: "Dead module-level logger bound to the root package rather than the module"
   missing: []
   debug_session: ""
 
 - truth: "A clip validation error names which clip (slope_clip or structure_clip) failed"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-17 Task 1, commit 01dcff0 (fix): _validate_clip re-raises the shared validator's ValueError naming '<name>_clip', chained via `from`. Proving tests: test_clip_validation_error_names_the_failing_clip (parametrised slope_clip/structure_clip), test_clip_validation_error_reaches_the_registry_surface. Judged NOT a BC-NOTES entry (message-text-only change, same ValueError type, identical accept/reject outcomes, no test asserted the old text) per the G8 unified-message-strings precedent (05-VERIFICATION.md deviation record)."
   severity: minor
   reason: "Small correctness/ergonomics issue in an error path; one-line fix"
   test: review-r1-8fb6b87813d1
@@ -676,7 +681,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   debug_session: ""
 
 - truth: "The store constructor's mutable default is either fixed or explicitly recorded as an accepted deferral"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 3, commits 3fad7db (fix) + b49b4f2 (docs: BC-NOTES entry 17): DiskBackedImageStore.__init__'s config parameter is now a None-sentinel default (DSN-07 pattern), coerced in the constructor body; `ruff check --select B008` is clean. Proving test: test_default_config_is_coerced_from_none_sentinel."
   severity: cosmetic
   reason: "Known, already-deferred breadcrumb; recorded for completeness"
   test: review-r1-8ff7171c6ca4
@@ -693,7 +699,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
      `## Gaps — Round N` would make every entry below invisible. -->
 
 - truth: "A delete that raises leaves the store unchanged - a refused __delitem__ is a no-op in memory as well as on disk"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 1, commit 101c077 (fix): __delitem__ reordered so both codec paths (running the containment guard) are built BEFORE super().__delitem__ -- a refused delete is a full no-op in memory and on disk for every escape spelling and the overwrite route. Proving tests: test_refused_delete_leaves_store_membership_intact, test_refused_overwrite_leaves_existing_entry_intact. RED confirmed first (4 xfailed) against pre-fix HEAD."
   severity: blocker
   reason: "Independently reproduced by the orchestrator on 2026-07-28, not only by the reviewer. Introduced by 03eb715."
   test: review-r2-70fb459066a6
@@ -710,7 +717,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "BLOCKER"
 
 - truth: "The threat-posture docstring describes the reachability of escaping store keys accurately"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 2, commits f1a81cb (fix) + d1947b4 (docs: BC-NOTES) + 13f02b0 (docs: UAT): the false threat-posture paragraph corrected in the store docstring, the round-3 test-file comment, BC-NOTES entry 15 (relabelled SUPERSEDED + Correction bullet), and the UAT reason: line for review-r1-a239bdbfc017. Reachability transcript (FeatureRegistry.match's unanchored default fallback reaching the store with a scalar-field name taken verbatim from PLY/E57 metadata) is recorded in 05-16-SUMMARY.md 'Reproduction Transcripts' #4."
   severity: major
   reason: "Confirmed end-to-end by the orchestrator on 2026-07-28, and the false claim has already been copied into records that carry to Phase 6."
   test: review-r2-1a435f413f18
@@ -729,7 +737,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "A legitimate cache entry is never newly refused by the containment predicate, and store unpickling still succeeds"
-  status: failed
+  status: resolved
+  evidence: "REPRODUCED by 05-16 before any change (05-16-SUMMARY.md 'Reproduction Transcripts' #2), then fixed: _assert_within_cache_dir rewritten to resolve only the parent directory (path.parent.resolve() / path.name), commit f1a81cb. Proving test: test_symlinked_cache_entry_is_served_and_unpickles (authored xfail-first, confirmed xfail in isolation, then passed unmarked after the rewrite); every escape spelling and nesting remain correctly classified."
   severity: major
   reason: "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED. Round 4 must reproduce before fixing."
   test: review-r2-9998f2b36d4c
@@ -744,7 +753,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "Every containment proving test fails if the guard is removed"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 3, commit d48bf37 (test): offload moved inside the guarded region so the sentinel assertions are guard-sensitive; demonstrated by a throwaway, never-committed no-guard pytest plugin selecting -k 'escaping or refused' -- 10 failed guard-off, 10 passed guard-on (05-16-SUMMARY.md 'Mutation Check')."
   severity: major
   reason: "Reviewer measured it against a guard-removed build: both sentinel assertions pass with and without the guard."
   test: review-r2-af50d770d73d
@@ -758,7 +768,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "The containment invariant claimed in the class docstring holds for every public method declared in this file"
-  status: failed
+  status: resolved
+  evidence: "REPRODUCED by 05-16 via a STORE-INSERTED entry (05-16-SUMMARY.md 'Reproduction Transcripts' #3), correcting a prior invalid refutation attempt that used a directly-constructed entry whose offload was a no-op. Branch taken: NARROW the docstring (no enforcement extension), commit f1a81cb. test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir pins the enforced half (passed on first run, no marker); confirmed no __setitem__ override was added (`git diff ... | grep -c 'def __setitem__'` = 0)."
   severity: major
   reason: "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED. The orchestrator's refutation attempt was invalid (a directly-constructed DiskBackedImageData whose offload was a no-op), so this is neither confirmed nor refuted."
   test: review-r2-3f625b03fb03
@@ -773,7 +784,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "The precedence BC event is pinned at the public surface where it actually bites"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-17 Task 1, commit 83e69e4 (test): test_exponent_token_precedence_is_visible_at_the_registry_surface asserts the WR-03 precedence through FEATURES.match (not the private parser), including the derived pack-name dependency and spec.cls identity for all three RRIM classes."
   severity: minor
   reason: "Coverage-shape issue: the pinned contract is not the one the BC record cites."
   test: review-r2-d1c47843161c
@@ -787,7 +799,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "The containment predicate resolves each path at most once per call"
-  status: failed
+  status: resolved
+  evidence: "FOLDED by 05-16 into the _assert_within_cache_dir predicate rewrite (commit f1a81cb): the resolved cache directory is now bound once per call as part of the parent-only-resolution rewrite that also closed review-r2-9998f2b36d4c. No standalone change was needed."
   severity: cosmetic
   reason: "Efficiency and clarity cleanup on an error path."
   test: review-r2-2b9426a42695
@@ -801,7 +814,9 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "Every guarded path builder has a test that exercises its guard"
-  status: failed
+  status: deferred
+  evidence: "DEFERRED, not fixed: the _get_meta_path guard branch is symmetric with _get_npy_path but is not directly exercised by its own test (covered only transitively). Superseded by the Phase-6 GSEGUtils 0.6 adoption (spike-000, VALIDATED), which deletes the whole override this finding is about -- writing a dedicated test for code scheduled for deletion is not worthwhile. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
   severity: cosmetic
   reason: "Dead-in-practice branch with no coverage."
   test: review-r2-a7c7f4e498a6
@@ -815,7 +830,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "The docstring's enumeration of disk-touching routes matches the routes that exist"
-  status: failed
+  status: resolved
+  evidence: "FOLDED by 05-16 into the rewritten route-enumeration paragraph (commit f1a81cb): the docstring's disk-touching-route enumeration now names the .dat memmap route and states that it inherits containment via cache_path. No standalone change was needed."
   severity: cosmetic
   reason: "Documentation completeness; the omitted path is covered transitively but not named."
   test: review-r2-6f4507d8c33f
@@ -829,7 +845,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "Tests contain no unused bindings that imply an assertion which is not made"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 3, commit d48bf37 (test): the previously-unused sentinel binding is now bound and asserted after the round trip in the relevant test."
   severity: cosmetic
   reason: "Cleanup; an unused binding reads as a forgotten assertion."
   test: review-r2-e3a76c7d3fd0
@@ -843,7 +860,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "The delete route is pinned for every escape spelling the add route is pinned for"
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-16 Task 3, commit d48bf37 (test): the delete proving test is now parametrised over the same three escape spellings the add proving test already covered."
   severity: cosmetic
   reason: "Coverage asymmetry between the add and delete proving tests."
   test: review-r2-7c8e11c81eed
