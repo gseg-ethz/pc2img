@@ -183,7 +183,23 @@ def test_generate_rrim_component_slope_end_to_end_returns_finite_raster(syntheti
 # round-tripping form. The existing G1 end-to-end tests above all use default  #
 # z, which is exactly why they pass and why this class of defect was invisible.#
 # --------------------------------------------------------------------------- #
-_ROUND_TRIP_Z_VALUES = [1e-06, 1e-05, 0.0001, 0.5, 1.0, 1.2345678, 2.5, 10.0, 100.0]
+_ROUND_TRIP_Z_VALUES = [
+    1e-06,
+    1e-05,
+    0.0001,
+    0.5,
+    1.0,
+    1.2345678,
+    2.5,
+    10.0,
+    100.0,
+    # review-r1-4939108716dd (WR-05): upper exponent boundary, NAME-level only.
+    1e16,
+    1e17,
+    1.2345678e20,
+    1e22,
+    4503599627370495.5,
+]
 
 
 @pytest.mark.parametrize("z_factor", _ROUND_TRIP_Z_VALUES)
@@ -209,6 +225,31 @@ def test_pack_feature_name_is_injective_for_nearby_z() -> None:
     assert a != b, "distinct z_factor configs collide on one pack name (non-injective cache key)"
 
 
+def test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name() -> None:
+    """review-r1-4939108716dd (WR-05): round-trip coverage extends to the upper exponent boundary.
+
+    ``_format_number``'s integer branch means every float >= 2**53 (all of
+    which are integers) emits a long-digit token, never exponent notation — so
+    the upper boundary is exercised on INPUT spelling (the widened grammar
+    accepts ``z1e16``) and on the canonical emitted key, not on the
+    formatter's own output switching form. This is NAME-level only: the
+    float32 raster overflow at such ``z`` is the deferred Phase-6 item
+    (``2026-07-27-rrim-float32-scaling-invariant-guard.md``) and is
+    deliberately not computed here — no raster is generated with z >= 1e16.
+    """
+    expected_pack_name = "rrim_pack_(range,r16,d8,z10000000000000000)"
+    for spelling in ("rrim_(range,z1e16)", "rrim_(range,z1E+16)", "rrim_(range,z1e+16)"):
+        assert FEATURES.match(spelling).dependencies == ["range", expected_pack_name]
+
+    reparsed = rrim_module._parse_rrim_config(FEATURES.match(expected_pack_name).params["args"])
+    assert reparsed.z_factor == 1e16
+
+    high_precision_pack_name = rrim_module.RRIMConfig(base_feature="range", z_factor=1.2345678e20).pack_feature_name()
+    assert high_precision_pack_name == "rrim_pack_(range,r16,d8,z123456780000000000000)"
+    reparsed_high = rrim_module._parse_rrim_config(FEATURES.match(high_precision_pack_name).params["args"])
+    assert reparsed_high.z_factor == 1.2345678e20
+
+
 def test_rrim_dependency_chain_resolves_for_sub_1e4_z() -> None:
     """The full request-time loop: rrim name -> pack dep name -> re-match on that name."""
     assert FEATURES.match("rrim_(range,z1e-05)").dependencies == [
@@ -225,6 +266,36 @@ def test_generate_rrim_small_z_end_to_end(synthetic_pcd) -> None:
     raster = np.asarray(images["rrim_(range,z1e-05)"])
     assert raster.shape == (16, 16, 3)
     assert np.isfinite(raster).all()
+
+
+def test_generate_rrim_z_factor_changes_the_output(synthetic_pcd) -> None:
+    """review-r1-a8cd7b4707b0 (WR-04): z_factor must be observably load-bearing end-to-end.
+
+    If ``z`` were dropped from the computation, both pairs asserted below would
+    be array-equal and every existing G9 end-to-end test would still pass —
+    those only assert shape and finiteness. The pack pair carries the
+    strongest signal (openness is an angle, not scale-invariant); the rrim
+    pair is the G9 target itself.
+    """
+    gen = _rrim_generator(synthetic_pcd)
+    images = gen.generate(
+        [
+            "rrim_(range,z1)",
+            "rrim_(range,z4)",
+            "rrim_pack_(range,r16,d8,z1)",
+            "rrim_pack_(range,r16,d8,z4)",
+        ]
+    )
+    rrim_z1 = np.asarray(images["rrim_(range,z1)"])
+    rrim_z4 = np.asarray(images["rrim_(range,z4)"])
+    pack_z1 = np.asarray(images["rrim_pack_(range,r16,d8,z1)"])
+    pack_z4 = np.asarray(images["rrim_pack_(range,r16,d8,z4)"])
+
+    for raster in (rrim_z1, rrim_z4, pack_z1, pack_z4):
+        assert np.isfinite(raster).all()
+
+    assert not np.array_equal(rrim_z1, rrim_z4), "rrim raster is z_factor-insensitive"
+    assert not np.array_equal(pack_z1, pack_z4), "rrim_pack raster is z_factor-insensitive"
 
 
 @pytest.mark.parametrize(
@@ -319,3 +390,50 @@ def test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name() -> 
     with_options = rrim_module._parse_rrim_config("scalar_field_z1e5,z2")
     assert with_options.base_feature == "scalar_field_z1e5"
     assert with_options.z_factor == 2.0
+
+
+def test_exponent_token_precedence_is_visible_at_the_registry_surface() -> None:
+    """review-r2-d1c47843161c: pin WR-03 precedence at the PUBLIC surface.
+
+    BC-NOTES entry 16 describes the break at the surface a caller actually
+    touches: "the same public name, resolving to the same cache key, now
+    denotes a different computation". The pins above
+    (``test_exponent_token_takes_precedence_over_base_feature_name`` et al.) go
+    through the private parser (``_parse_rrim_config`` / ``_parse_rrim_component``),
+    which is the *mechanism*, not the surface the BC record is written about —
+    ``dependencies_for`` is the exact surface G1 rewrote (DSN-05), and it could
+    drift independently of the private-parser pins staying green. This test
+    asserts through ``FEATURES.match``, which is what schedules the dependency
+    graph and derives the store key.
+    """
+    pack_spec = FEATURES.match("rrim_pack_(z1e5)")
+    assert pack_spec.dependencies == ["range"]
+    assert pack_spec.cls is rrim_module.RRIMPackFeature
+
+    rrim_spec = FEATURES.match("rrim_(z1e5)")
+    assert rrim_spec.dependencies == ["range", "rrim_pack_(range,r16,d8,z100000)"]
+    assert rrim_spec.cls is rrim_module.RRIMFeature
+    # Ties the asserted dependency string to the actual derived store key.
+    assert rrim_spec.dependencies[1] == rrim_module.RRIMConfig(z_factor=1e5).pack_feature_name()
+
+    component_spec = FEATURES.match("rrim_component_(slope,z1e5)")
+    assert component_spec.dependencies == ["range"]
+    assert component_spec.cls is rrim_module.RRIMComponentFeature
+
+
+# --------------------------------------------------------------------------- #
+# review-r1-8fb6b87813d1 (IN-02): a clip validation error names its clip       #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    ("field", "expected"),
+    [("slope_clip", "slope_clip"), ("structure_clip", "structure_clip")],
+)
+def test_clip_validation_error_names_the_failing_clip(field: str, expected: str) -> None:
+    cfg = rrim_module.RRIMConfig(**{field: (98.0, 2.0)})
+    with pytest.raises(ValueError, match=expected):
+        rrim_module._validate_config(cfg)
+
+
+def test_clip_validation_error_reaches_the_registry_surface() -> None:
+    with pytest.raises(ValueError, match="slope_clip"):
+        FEATURES.match("rrim_(range,sclip98-2)")
