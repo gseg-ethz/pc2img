@@ -243,3 +243,95 @@ Suite at the end of this plan: **175 passed, 0 failed, 0 residual xfail.**
 The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
 
 Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-4 closure record (2026-09-24)
+
+Written by plans `05-16` (wave 1, image-cache) and `05-17` (wave 2, RRIM residuals +
+bookkeeping) — round 4 of gap closure, covering every round-1 and round-2 finding left
+`failed` after round 3. **Body-only append — the YAML frontmatter `status:` / `gaps_open:`
+fields are deliberately NOT updated here.** Re-verification owns those; this section records
+what changed underneath them so the next verifier does not have to reconstruct it.
+
+### Entries flipped, with evidence
+
+| Finding | Round | Disposition | Closed by | Evidence |
+| --- | --- | --- | --- | --- |
+| review-r2-70fb459066a6 (BLOCKER) | 2 | Fixed | 05-16 Task 1 | `101c077` — `__delitem__` reordered so both codec paths (running the containment guard) build BEFORE `super().__delitem__`; a refused delete is a full no-op in memory and on disk. `test_refused_delete_leaves_store_membership_intact`, `test_refused_overwrite_leaves_existing_entry_intact`. |
+| review-r2-1a435f413f18 (major) | 2 | Fixed | 05-16 Task 2 | `f1a81cb`, `d1947b4`, `13f02b0` — threat-posture paragraph corrected in the store docstring, test comment, BC-NOTES entry 15, and UAT `review-r1-a239bdbfc017` `reason:`. |
+| review-r2-9998f2b36d4c | 2 | REPRODUCED, fixed | 05-16 Task 2 | `f1a81cb` — `_assert_within_cache_dir` resolves only the parent directory; `test_symlinked_cache_entry_is_served_and_unpickles`. |
+| review-r2-3f625b03fb03 | 2 | REPRODUCED, docstring narrowed | 05-16 Task 2 | `f1a81cb` — `test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir`; no `__setitem__` override added. |
+| review-r2-af50d770d73d (guard-sensitivity) | 2 | Fixed | 05-16 Task 3 | `d48bf37` — offload moved inside the guarded region; no-guard mutation check: 10/10 fail guard-off, 10/10 pass guard-on. |
+| review-r2-7c8e11c81eed | 2 | Fixed | 05-16 Task 3 | `d48bf37` — delete proving test parametrised over the same three escape spellings as the add test. |
+| review-r2-e3a76c7d3fd0 | 2 | Fixed | 05-16 Task 3 | `d48bf37` — sentinel bound and asserted after the round trip. |
+| review-r2-d1c47843161c | 2 | Fixed | 05-17 Task 1 | `83e69e4` — `test_exponent_token_precedence_is_visible_at_the_registry_surface` pins WR-03 through `FEATURES.match`, including the derived store key. |
+| review-r2-2b9426a42695 | 2 | **Folded** | 05-16 Task 2 | `f1a81cb` — resolved cache directory bound once per call, folded into the predicate rewrite; no standalone change. |
+| review-r2-6f4507d8c33f | 2 | **Folded** | 05-16 Task 2 | `f1a81cb` — docstring route-enumeration rewrite now names the `.dat` memmap route; no standalone change. |
+| review-r2-a7c7f4e498a6 | 2 | **Deferred** | 05-17 Task 2 | Superseded by the Phase-6 GSEGUtils 0.6 override deletion (spike-000, VALIDATED); `deferred_to:` the new todo. |
+| review-r1-c2b69f0885e7 | 1 | Fixed | 05-16 Task 3 | `d48bf37` — test renamed to `test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op` + new absent-key test. |
+| review-r1-8ff7171c6ca4 (IN-03) | 1 | Fixed | 05-16 Task 3 | `3fad7db`, `b49b4f2` — `None`-sentinel constructor default; BC-NOTES entry 17. |
+| review-r1-ab91c4469087 (IN-01) | 1 | Fixed, artifact path corrected | 05-16 Task 3 | `3fad7db` — the dead logger was never in `rrim.py` (`git log -S getLogger` empty for that file); it was in `disk_backed_image_store.py` and is removed there. UAT `path:` corrected in place by 05-17 Task 2. |
+| review-r1-a8cd7b4707b0 (WR-04) | 1 | Fixed | 05-17 Task 1 | `83e69e4` — `test_generate_rrim_z_factor_changes_the_output`: `rrim`/`rrim_pack` rasters at `z1` vs `z4` are finite and NOT array-equal. |
+| review-r1-4939108716dd (WR-05) | 1 | Fixed | 05-17 Task 1 | `83e69e4` — `_ROUND_TRIP_Z_VALUES` extended to the upper exponent boundary (14 parametrised cases); `test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name`. NAME-level only. |
+| review-r1-8fb6b87813d1 (IN-02) | 1 | Fixed | 05-17 Task 1 | `01dcff0` — `_validate_clip` names `<name>_clip` in its error, chained via `from`. |
+
+**Reviewer-asserted findings settled by measurement (D-R4-01 #5):** `review-r2-9998f2b36d4c`
+and `review-r2-3f625b03fb03` were marked "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED" going
+into round 4. Both were REPRODUCED by running code before any change (05-16-SUMMARY.md
+"Reproduction Transcripts" #2 and #3), and both took their REPRODUCED branch per the
+owner's pre-committed decision.
+
+### Fold/defer outcome (D-R4-01 #4)
+
+Of the three absorption-superseded findings (`review-r2-2b9426a42695`,
+`review-r2-a7c7f4e498a6`, `review-r2-6f4507d8c33f`), two were folded into rewrites 05-16 made
+for other reasons in the same commit (`f1a81cb`) and are recorded `resolved` with that
+evidence. The third, `review-r2-a7c7f4e498a6` (no test directly exercises the `_get_meta_path`
+guard branch), had no host rewrite to fold into, so it is `deferred` to
+`.planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md`
+(`resolves_phase: 6`) — the todo that deletes the whole override this finding concerns, once
+pc2img actually runs GSEGUtils >= 0.6 (spike-000, VALIDATED absorption).
+
+### IN-01 misattribution
+
+`review-r1-ab91c4469087` named `src/pc2img/features/rrim.py` as the file with a dead logger.
+`git log --oneline -S getLogger -- src/pc2img/features/rrim.py` returns nothing over the whole
+reviewed range — rrim.py has never had a logger. The actual dead module-level logger
+(`logging.getLogger(__name__.split(".")[0])`, bound to the root package name) was in
+`src/pc2img/image_cache/disk_backed_image_store.py` and was removed there by 05-16 Task 3
+(`3fad7db`). The UAT entry's artifact `path:` is corrected in place by this record's authoring
+plan (05-17 Task 2); its `issue:` text is unchanged.
+
+### IN-02 not-a-BC-entry judgement
+
+`_validate_clip` naming its failing clip (`review-r1-8fb6b87813d1`) is a message-text-only
+change: the same `ValueError` type, identical accept/reject outcomes, and no test in the suite
+asserted the old message text. Per owner-delegated planner judgement (D-R4-01 #3) this is NOT
+recorded as a BC-NOTES entry, on the precedent of G8's unified percentile-bounds message
+strings, which this same file's Round-3 closure record above documents as a
+`05-VERIFICATION.md` deviation rather than a BC entry.
+
+### Mutation-check result
+
+Carried forward from 05-16 (review-r2-af50d770d73d): a throwaway, never-committed no-guard
+pytest plugin selecting `-k "escaping or refused"` over `tests/test_image_store.py` showed
+10/10 selected containment-refusal tests failing with the guard removed and 10/10 passing with
+the guard live — the tests are demonstrably guard-sensitive, not tautologically passing.
+
+### Final suite count
+
+`.venv/bin/pytest -q` → **196 passed, 0 failed, 0 residual xfail/xpassed** (baseline at the
+start of round 4 was 185; 05-16 added tests within the 185 baseline reported by its own
+SUMMARY, 05-17 Task 1 added 11 new test instances on top). Coverage floor 55 holds at 62.20%.
+`tests/test_hygiene.py` — 4 passed. `gsd-tools query audit-uat` for `05-UAT.md`: **2** open
+items, both `deferred` (the pre-existing float32 item plus the newly deferred
+`review-r2-a7c7f4e498a6`), zero `failed`.
+
+`uv run --frozen pyright` could not be run in this environment (`pyright` is not installed and
+is not a declared dependency — see 05-16-SUMMARY.md "Issues Encountered"); `ruff check` and
+`ruff format --check` on `src/pc2img/features/rrim.py` and `tests/test_rrim_features.py` are
+clean.
+
+The YAML frontmatter `status:` / `gaps_open:` fields of `05-UAT.md` and this file are NOT
+updated by either round-4 plan — re-verification owns them, next.
