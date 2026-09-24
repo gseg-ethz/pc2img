@@ -58,8 +58,15 @@ def test_store_source_has_no_arbitrary_deserialization_sink():
     assert sink.search(src) is None, "store source still holds an arbitrary-object load sink"
 
 
-def test_legacy_pkl_refused_as_cache_miss(tmp_path: Path):
-    """A legacy pre-Phase-2 `.pkl` must be refused (cache miss), never loaded."""
+def test_legacy_pkl_degrades_to_cache_miss(tmp_path: Path):
+    """A legacy pre-Phase-2 `.pkl` degrades to a cache miss (KeyError), never loaded.
+
+    Renamed (round 4, out-of-band from a name collision with the
+    review-r2-af50d770d73d mutation check's `-k "escaping or refused"`
+    filter): this test's KeyError comes from the legacy-.pkl refusal path,
+    not the containment guard, so it must stay guard-INsensitive and out of
+    that selection. No behaviour change.
+    """
     legacy = tmp_path / "ghost.pkl"
     with open(legacy, "wb") as f:
         pickle.dump({"unexpected": "payload"}, f)
@@ -125,13 +132,30 @@ def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
     assert not store._get_meta_path("range").exists()
 
 
-def test_delete_absent_key_does_not_raise(tmp_path: Path):
-    # A key that was never offloaded (no on-disk codec pair) must delete cleanly:
-    # unlink(missing_ok=True) carries the safety, not a cache_dir-is-None guard.
+def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
+    # A TRACKED key that was never offloaded (no on-disk codec pair) must delete
+    # cleanly: unlink(missing_ok=True) carries the safety, not a
+    # cache_dir-is-None guard. (review-r1-c2b69f0885e7: renamed from
+    # test_delete_absent_key_does_not_raise, which misdescribed this body — the
+    # key IS tracked here, just never offloaded; the genuinely absent-key
+    # contract is pinned separately by
+    # test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op below.)
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", _gray((6, 6)))
     del store["range"]  # in memory only — no .npy on disk
     assert "range" not in store
+
+
+def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
+    """A key that was NEVER added must raise KeyError and leave the cache dir untouched (G10)."""
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    before = sorted(p.name for p in tmp_path.iterdir())
+
+    with pytest.raises(KeyError):
+        del store["never-added"]
+
+    after = sorted(p.name for p in tmp_path.iterdir())
+    assert after == before
 
 
 # --------------------------------------------------------------------------- #
@@ -249,7 +273,8 @@ def _escaping_keys(tmp_path: Path) -> dict[str, str]:
     }
 
 
-def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Path):
+@pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
+def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Path, spelling: str):
     """`del store[escaping_key]` must refuse, and the outside file must survive.
 
     The key is made tracked through the mapping setter (`store[key] = value`),
@@ -258,18 +283,20 @@ def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Pa
     proving test has to use.
 
     The 05-14 G10 contract is pinned in the same test: an untracked *ordinary*
-    key still raises `KeyError` with no disk side effect.
+    key still raises `KeyError` with no disk side effect. Parametrised over the
+    same three escape spellings as the add proving test (review-r2-7c8e11c81eed).
     """
     sentinel, cfg = _escape_layout(tmp_path)
     store = DiskBackedImageStore(config=cfg)
 
-    key = "../victim"
+    key = _escaping_keys(tmp_path)[spelling]
     store[key] = DiskBackedImageData(_gray((4, 4)))
     assert key in store
 
     with pytest.raises(ValueError):
         del store[key]
 
+    assert key in store, "a refused delete dropped the key from the store"
     assert sentinel.exists(), "escaping delete removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES
 
@@ -280,13 +307,24 @@ def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Pa
 
 @pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
 def test_escaping_key_add_refuses_before_writing_outside_cache_dir(tmp_path: Path, spelling: str):
-    """`add_image_to_store` must refuse before any outside file is created or truncated."""
+    """`add_image_to_store` must refuse before any outside file is created or truncated.
+
+    ``offload_image_data_to_disk`` runs INSIDE the ``pytest.raises`` block,
+    directly after ``add_image_to_store`` (review-r2-af50d770d73d): with the
+    guard live, ``add_image_to_store`` raises first and the offload call is
+    never reached. With the guard disabled (mutation check), insertion alone
+    never writes — only reaching ``offload_image_data_to_disk`` and having IT
+    raise (or fail to) makes this test guard-sensitive; without the guard the
+    offload succeeds, nothing is raised, and ``pytest.raises`` itself fails
+    the test with "DID NOT RAISE".
+    """
     sentinel, cfg = _escape_layout(tmp_path)
     store = DiskBackedImageStore(config=cfg)
     key = _escaping_keys(tmp_path)[spelling]
 
     with pytest.raises(ValueError):
         store.add_image_to_store(key, _gray((4, 4)))
+        store.offload_image_data_to_disk(key)
 
     assert sentinel.exists(), "escaping insert removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES, "escaping insert overwrote a file outside the cache directory"
@@ -308,8 +346,11 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
 
     Carries NO marker deliberately — it must pass both before and after the
     guard lands, which is what bounds the false-positive risk of adding it.
+    The sentinel outside the cache directory is asserted intact after the
+    round trip too (review-r2-e3a76c7d3fd0), so this test bounds both
+    false-positive refusals AND stray writes.
     """
-    _sentinel, cfg = _escape_layout(tmp_path)
+    sentinel, cfg = _escape_layout(tmp_path)
     store = DiskBackedImageStore(config=cfg)
     arr = _gray((5, 5))
 
@@ -317,6 +358,8 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
     store.offload_image_data_to_disk(feature_name)
 
     np.testing.assert_array_equal(np.asarray(store[feature_name]), arr)
+    assert sentinel.exists()
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
 
 
 # --------------------------------------------------------------------------- #
