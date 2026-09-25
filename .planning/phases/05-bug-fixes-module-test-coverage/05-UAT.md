@@ -915,7 +915,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING"
 
 - truth: "Dropping z_factor from compute_slope is detected by a test."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-18 Task 3 (commit d6a25ef 'pin z_factor on the slope path via the component surface'): test_generate_rrim_z_factor_changes_the_output now also asserts the rrim_component_(slope,range,z1) vs (z4) pair alongside the pre-existing rrim/pack pairs; docstring's prior overclaim corrected. Mutation check (05-18-SUMMARY.md): the slope_noz plugin (compute_slope forced to z_factor=1.0) makes `-k z_factor_changes` fail with 'slope path is z_factor-insensitive' (1 failed of 51 in the whole file); plugin off, 51 passed."
   severity: minor
   reason: "test_generate_rrim_z_factor_changes_the_output only observes z through the openness/pack path; robust-percentile normalisation cancels a linear z scale on the rrim slope channel."
   test: review-r3-289e26115f42
@@ -983,7 +984,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING (latent; not reachable from current key builders)"
 
 - truth: "An overwrite that fails for any reason leaves the existing entry and its codec pair intact."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-18 Task 1: RED tests on commit 20ef1c6 ('pin failed-overwrite atomicity and the successful-overwrite round trip') -- test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact[in_memory] and [codec_offloaded], test_successful_overwrite_serves_the_replacement_after_offload_and_reload -- then the fix on commit 816a7cc ('validate the replacement before dropping the old entry on overwrite'): add_image_to_store now validates containment then raster shape BEFORE dropping the existing entry, so a failed overwrite is a full no-op in memory and on disk. The reviewer's suggested build-then-swap ordering was measured and rejected (05-18-SUMMARY.md reproduction transcript): constructing the replacement on the old entry's shared <key>.dat path while the old entry is still tracked clobbers the old entry's live buffer at construction, and the old entry's path-bound weakref.finalize then unlinks the just-built replacement's .dat when the old object is collected. Mutation check: the revert-ordering plugin (old body: del self[img_name] before add_data_to_store) makes exactly the two failed-overwrite tests fail (2 failed, 30 passed); plugin off, 32 passed. The documented residual (an OSError raised while the replacement's memmap is created, after the old entry has already been dropped) is recorded in add_image_to_store's docstring and routed to the Phase-6 GSEGUtils todo by this plan's Task 3."
   severity: minor
   reason: "add_image_to_store runs del self[img_name] (drops the in-memory entry and unlinks .npy + .meta.json) before add_data_to_store validates or wraps the replacement, so any non-containment failure loses the old raster."
   test: review-r3-a37bd243f37d
@@ -1017,7 +1019,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "WARNING (pre-existing code; new test claims the boundary)"
 
 - truth: "test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op fails under the G10 unlink-before-membership mutation, or claims only the KeyError."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-18 Task 2 (commit 1ac37b0 'plant the absent-key codec pair, keep temp dirs under tmp_path, merge the delete-refusal tests'): test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op now plants a never-added codec pair on disk via a peer store constructed after the store under test (so it is never adopted). Mutation check (05-18-SUMMARY.md): the unlink-first plugin (__delitem__ unlinks both codec paths before delegating to the base store) makes the strengthened test fail with a mismatched directory listing (`-k absent_key` -> 1 failed; whole file -> 2 failed, 27 passed, the second failure being the pre-existing two-store sensor); plugin off, 29 passed."
   severity: minor
   reason: "No file exists for 'never-added', so the disk no-op half holds under any ordering; the G10 contract is pinned only by test_failed_delete_preserves_codec_pair_and_both_stores."
   test: review-r3-b008fc7c80a7
@@ -1047,7 +1050,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "Explanatory comments added in round 4 describe the current code and the actual G10 history."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-19 Task 1 (commit 1317595 'describe properties, not planning IDs, in store docstrings') and Task 2 (commit e2f9e31 'describe behaviours, not planning IDs, in test docstrings and headers'): tests/test_image_store.py's symlink-section header now describes the pre-fix predicate in the past tense and says explicitly it is pre-fix behaviour; disk_backed_image_store.py's __delitem__ docstring history is split into the two accurate clauses -- building the codec paths after the base delegation made a refused containment delete non-atomic, and the original absent-key-delete defect unlinked the codec pair before the membership check."
   severity: cosmetic
   reason: "Section header says in present tense that _assert_within_cache_dir resolves the FULL path (pre-fix behaviour); __delitem__ docstring misstates the G10 history as building paths after delegation."
   test: review-r3-95860076d83b
@@ -1063,7 +1067,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO"
 
 - truth: "Shipped source docstrings carry no .planning/ paths or planning/review IDs that dangle on main."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-19 Task 1 (commits 1317595, 5f6676b, 537a6b6, 6250b1f, 795c90c) and Task 2 (commit e2f9e31): every comment and docstring under src/pc2img and tests/ is swept clean of planning vocabulary. Owner decision (2026-09-25, this plan-phase session): the class is WIDENED beyond review-ledger IDs and .planning/ paths to ALSO cover requirement/design/decision codes (BUG-, TEST-, PERF-, QUAL-, DSN-, D-NN, M-NN, BC-NN, WR-, IN-, CR-, SEC-, T-NN, G<n>, D-RN-NN) and plan/file references, in BOTH shipped trees. The tokenizer-scoped gate measured 80 comment/docstring hits in 15 src files and 139 in 13 test files before the sweep (05-18's edits shifted the plan's pre-measured 79/143 by one line each); after the sweep both counts are 0. The AST gate (docstrings blanked, comments ignored) is byte-identical to BASE for every touched file. Residual scan (a planning ID living in an identifier or a runtime string, which the sweep must never touch): NONE found in either tree."
   severity: minor
   reason: "New docstring text cites .planning/spikes/000-absorption-test/README.md, review-r2-/review-r1- IDs and D-R4-01; main is stripped of .planning/ (same rationale as the commit-scope rule); rrim.py:53 and :127 continue the pattern."
   test: review-r3-6cf03abfa333
@@ -1095,7 +1100,8 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
   reviewer_severity: "INFO (pre-existing)"
 
 - truth: "The store test module leaves no temp directories behind and has no duplicate tests."
-  status: failed
+  status: resolved
+  evidence: "Closed by 05-18 Task 2 (commit 1ac37b0 'plant the absent-key codec pair, keep temp dirs under tmp_path, merge the delete-refusal tests'): test_default_config_is_coerced_from_none_sentinel redirects tempfile.tempdir to tmp_path before either None-config store is constructed and asserts cache_dir.parent == tmp_path, proving the mkdtemp route was actually exercised and confined to pytest's own tree; the verify chain's leaked-tmp-dirs check reports 0 (05-18-SUMMARY.md). test_refused_delete_leaves_store_membership_intact was removed and its one extra assertion (array equality of the surviving entry) folded into test_escaping_key_delete_refuses_and_leaves_outside_file_intact, so the duplication is gone; round-4 evidence lines that cite the removed test name refer to the commit where it still existed."
   severity: minor
   reason: "test_default_config_is_coerced_from_none_sentinel constructs DiskBackedImageStore() without cache_path, which mkdtemp()s and never removes the directory; test_escaping_key_delete_refuses_* and test_refused_delete_leaves_store_membership_intact assert the same thing over the same three spellings."
   test: review-r3-e720fec68c0d
