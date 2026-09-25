@@ -4,7 +4,7 @@ from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig
 from numpy.typing import NDArray
 from pydantic import ConfigDict, validate_call
 
-from .disk_backed_image_data import DiskBackedImageData
+from .disk_backed_image_data import DiskBackedImageData, _assert_image_shape
 
 
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
@@ -141,7 +141,39 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         key, but the legacy store silently replaced it — generator reuse
         re-submits the same feature name. We drop the existing key first so the
         prior overwrite semantics are preserved.
+
+        **Ordering (WR-07, round 5):** every failure that is a function of the
+        inputs — containment, then raster shape — is validated BEFORE the
+        existing entry is dropped, so a failed overwrite is a full no-op: the
+        old entry, and its on-disk codec pair when offloaded, survive
+        untouched. Concretely: (1) :meth:`_get_npy_path` runs first, so an
+        escaping key raises ``ValueError`` before anything else is touched
+        (preserving containment's precedence over the shape check); (2)
+        :func:`_assert_image_shape` runs next, so a bad raster shape raises
+        ``AssertionError`` before the old entry is touched; only once both
+        checks pass does (3) the existing key get dropped and (4) the
+        replacement get built via :meth:`add_data_to_store`.
+
+        The replacement is deliberately never constructed while the old entry
+        is still tracked. The two share the same ``<key>.dat`` memmap path
+        (``LazyDiskCache._init_from_config`` derives it from the handed-in
+        ``.npy`` path), so building the replacement first — the naive
+        "build-then-swap" fix — reopens that path in ``r+`` mode and
+        overwrites the OLD entry's live buffer at construction time; the old
+        entry's own path-bound ``weakref.finalize`` then unlinks the
+        just-built replacement's ``.dat`` the moment the old object is
+        collected. Delete-before-build over the shared path is therefore the
+        one safe ordering.
+
+        Documented residual: an ``OSError`` raised while the replacement's
+        memmap is being created (e.g. disk full) AFTER the old entry has
+        already been dropped is not recovered — the old entry is gone and the
+        new one failed mid-construction. Recovering that would need a
+        build-to-a-temporary-path-then-adopt primitive, which can only live in
+        the cache layer that owns the ``<key>.dat`` derivation, not here.
         """
+        self._get_npy_path(img_name)
+        _assert_image_shape(img_data)
         if img_name in self:
             del self[img_name]
         self.add_data_to_store(
