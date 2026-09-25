@@ -5,7 +5,7 @@ gaps_open: 4 round-2 gaps (G9-G12) surfaced 2026-07-12 by a code review OF the 0
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-07-28T14:09:45Z
+updated: 2026-09-25T07:41:26Z
 gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
 gaps_source_round2: "/code-review 1295c2b high (session 32af2599-d24a-4113-af77-85196232cb2a, 2026-07-12) — 8 finder angles over `git diff 1295c2b HEAD`, i.e. the 05-13 gap-closure commits themselves. No GSD review ever covered that diff: 05-REVIEW.md predates it. Findings re-reproduced 2026-07-27 against HEAD before recording."
 ---
@@ -871,5 +871,239 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
       issue: "lines 241-247 and 250-276"
   missing:
     - "parametrise the delete proving test over the same three spellings"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+<!-- ROUND 3 — imported 2026-09-25T07:41:26Z by /gsd-consolidate-findings from gsd-code-reviewer-deep (file:.planning/phases/05-bug-fixes-module-test-coverage/05-REVIEW.md), range 443d390..c93e045.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "Every containment route is pinned by its own guard-sensitive test: with only the insertion route unguarded, a test fails and no file is written outside the cache directory."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "05-16 moved offload into the pytest.raises block on the false premise that insertion alone never writes; with caching enabled insertion writes <key>.dat, so an unguarded insertion route passes the whole suite."
+  test: review-r3-ffa2d1c2ca7c
+  root_cause: "Mutation insert_unguarded (add_data_to_store builds its path via the base _get_npy_path, delete/offload/load stay guarded): test_escaping_key_add_refuses_* pass (3 passed) and the full suite passes (196) while victim.dat is written outside the cache dir; the round-3 test at 443d390 fails 3x with DID NOT RAISE. Realistic trigger: GSEGUtils 0.6 (admitted by the >=0.5.3,<1.0 pin) has zero self._get_npy_path call sites."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 307-329 and 500-509: add test relies on offload to raise; companion test uses only benign key 'range'"
+  missing:
+    - "Separate insertion-only test asserting ValueError and no new file anywhere outside cache dir (not one sentinel name)"
+    - "Separate offload-route test with a setter-inserted caching-enabled entry"
+    - "Correct the 'insertion alone never writes' sentence in the docstring and the round-3 ledger entry"
+  debug_session: ""
+  reviewer_severity: "WARNING (round-4 regression of a proving test)"
+
+- truth: "The symlinked-entry delete assertion can fail: a delete that follows the link and removes the target is caught."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "pickle.dumps(store) replaces the cache-internal symlinks with regular files before the delete half runs, so the delete assertions are vacuous; pickling also silently de-links served symlinks (undocumented)."
+  test: review-r3-e40af7956397
+  root_cause: "Before pickle npy/meta is_symlink=True, after pickle False; mutation unlink_follow (path.resolve().unlink()) passes all 29 tests in tests/test_image_store.py."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 454-464: delete half runs on de-linked regular files"
+  missing:
+    - "Re-create the symlink layout before the delete and assert is_symlink() as a precondition"
+    - "Decide and document whether de-linking on pickle is acceptable"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "Dropping z_factor from compute_slope is detected by a test."
+  status: failed
+  severity: minor
+  reason: "test_generate_rrim_z_factor_changes_the_output only observes z through the openness/pack path; robust-percentile normalisation cancels a linear z scale on the rrim slope channel."
+  test: review-r3-289e26115f42
+  root_cause: "Mutation slope_noz (z_factor dropped from compute_slope): all 51 tests in tests/test_rrim_features.py pass; rrim_component_(slope,range,z1) == z4 under the mutation, only the component surface observes it."
+  artifacts:
+    - path: "tests/test_rrim_features.py"
+      issue: "lines 271-298: no rrim_component_(slope,...) z1/z4 pair; docstring overclaims"
+  missing:
+    - "Add rrim_component_(slope,range,z1)/(z4) pair asserted not array-equal"
+    - "Correct the docstring: the rrim pair pins z through the pack only"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "Any key the store tracks can be removed through the public MutableMapping API; an escaping key can never be tracked in the first place."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "Round-4 containment-first delete plus the inherited unguarded __setitem__ means a setter-inserted escaping key can never be removed: clear()/pop()/popitem() raise every time and clear() leaves the store part-cleared; under 05-15 the same sequence healed after one failure."
+  test: review-r3-ede9dcc0e91b
+  root_cause: "store['range']=..., store['../victim']=... (setter, unguarded); store.clear() raises ValueError on attempts 0,1,2 with keys stuck at ['../victim']; store.pop('../victim') raises ValueError; only escape hatch is the private store.store dict. Same script under 05-15 ordering: clear() succeeds on retry."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 200-204: __delitem__ refuses first; __setitem__ inherited unguarded from DiskBackedStore"
+  missing:
+    - "Guard __setitem__ via self._get_npy_path(key) before super().__setitem__"
+    - "Escaping-delete tests seed through store.store[key] to reach the delete path"
+    - "Test that a setter insertion of an escaping key raises and is not tracked"
+  debug_session: ""
+  reviewer_severity: "WARNING (behaviour change introduced in round 4)"
+
+- truth: "The containment docstrings and error message state the invariant the code actually enforces (parent directory resolves inside the cache dir; the final component is not followed) and the threat model (cache-dir writers out of scope)."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "Class docstring still claims no key can make a write, read or unlink touch a file outside the cache dir, but round 4 deliberately serves reads through cache-internal symlinks; writes to *.npy.tmp, *.meta.json.tmp and .dat follow planted symlinks (pre-existing); helper docstring and error message say 'resolves' for a parent-only resolution."
+  test: review-r3-dda7a00b69cf
+  root_cause: "test_symlinked_cache_entry_is_served_and_unpickles asserts a read through cache/range.npy -> shared/range.npy succeeds (outside the cache dir); planted j.npy.tmp, j.meta.json.tmp and m.dat symlinks receive the offload write (w1/w2/w3 transcripts in 05-REVIEW.md WR-05)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 24-29, 101-102, 113-114: overstated invariant, stale 'only the check resolves', error text 'it resolves to'"
+  missing:
+    - "Restate invariant as directory-containment, final component not followed"
+    - "State threat model: anyone with write access to the cache dir is out of scope"
+    - "Error message: 'its parent resolves to ...'"
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "_assert_within_cache_dir refuses any path whose final component is '', '.' or '..', independent of what the key builders append."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "candidate = path.parent.resolve() / path.name is correct only if path.name is never '..'; is_relative_to is lexical, so cache/.. is admitted by the LOAD-BEARING helper; the pre-round-4 full-resolve predicate refused it."
+  test: review-r3-2785f15bd78e
+  root_cause: "_assert_within_cache_dir(cache_dir / '..') and (cache_dir / 'sub/../..') are ADMITTED (real path = parent of cache dir). Unreachable today because both builders append .npy/.meta.json (15 spellings checked); a future builder passing a directory or separate suffix (e.g. Phase-6 GSEGUtils 0.6 adoption) inherits the hole silently."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 109-111: no final-component check before parent-only resolve"
+  missing:
+    - "Reject path.name in ('', '.', '..') before the parent-only resolve"
+    - "Unit test feeding cache_dir / '..' directly to the helper"
+  debug_session: ""
+  reviewer_severity: "WARNING (latent; not reachable from current key builders)"
+
+- truth: "An overwrite that fails for any reason leaves the existing entry and its codec pair intact."
+  status: failed
+  severity: minor
+  reason: "add_image_to_store runs del self[img_name] (drops the in-memory entry and unlinks .npy + .meta.json) before add_data_to_store validates or wraps the replacement, so any non-containment failure loses the old raster."
+  test: review-r3-a37bd243f37d
+  root_cause: "Store has 'range' with range.dat/range.meta.json/range.npy; add_image_to_store('range', <1-D array>) raises AssertionError from the DiskBackedImageData shape check; afterwards 'range' not in store and only range.dat remains. Same for factory/validator errors and OSError (disk full, ENAMETOOLONG per IN-05)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 145-153: delete-then-build overwrite ordering"
+  missing:
+    - "Build and validate the replacement before deleting the old entry"
+    - "Test for a failed overwrite with 1-D data"
+  debug_session: ""
+  reviewer_severity: "WARNING (pre-existing, adjacent to round-4 claims)"
+
+- truth: "_validate_config rejects a non-finite or underflowed z_factor with an error naming the value, and the upper-boundary test covers overflow."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: absurd z_factor values (overflow to inf / pack names past NAME_MAX) are a constructed-input class, out of current scope; they fail loudly rather than returning wrong output. Folded into the existing Phase-6 z_factor bounds todo. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md"
+  severity: minor
+  reason: "z1e309 parses to inf, inf > 0 passes validation, _format_number emits zinf, and the request fails late at dependency re-match with 'Unknown RRIM option zinf'; z1e-400 underflows to 0.0; the new boundary test stops at 1e22."
+  test: review-r3-92f6d30153ef
+  root_cause: "FEATURES.match('rrim_(range,z1e309)') -> deps ['range', 'rrim_pack_(range,r16,d8,zinf)'] then ValueError: Unknown RRIM option 'zinf'; rrim_pack_(range,z1e999) accepted with z_factor=inf; rrim_(range,z1e-400) -> 'z_factor must be > 0, got 0.0'."
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "lines 144-145 (_validate_config), 119-121 (_format_number)"
+    - path: "tests/test_rrim_features.py"
+      issue: "lines 228-250: boundary test stops at 1e22"
+  missing:
+    - "Require np.isfinite(z_factor) in _validate_config"
+    - "Add z1e309 / z1e-400 cases to the boundary test"
+  debug_session: ""
+  reviewer_severity: "WARNING (pre-existing code; new test claims the boundary)"
+
+- truth: "test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op fails under the G10 unlink-before-membership mutation, or claims only the KeyError."
+  status: failed
+  severity: minor
+  reason: "No file exists for 'never-added', so the disk no-op half holds under any ordering; the G10 contract is pinned only by test_failed_delete_preserves_codec_pair_and_both_stores."
+  test: review-r3-b008fc7c80a7
+  root_cause: "Mutation unlink_first (original G10 defect): pytest -k absent_key -> 1 passed; only test_failed_delete_preserves_codec_pair_and_both_stores fails."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 148-157: no on-disk pair for the absent key"
+  missing:
+    - "Place a never-added.npy/.meta.json pair on disk before the delete and assert it survives, or rename the test"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Every escape spelling in the delete tests can actually escape when the guard is removed, so its sentinel assertion decides something."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current scope, and the Phase-6 GSEGUtils 0.6 adoption deletes the containment override this finding is about, so fixing it now is work thrown away. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "cache/a never exists on the setter/delete route, so cache/a/../../victim.npy fails with ENOENT and unlink(missing_ok=True) is a no-op; the embedded_traversal sentinel is untouchable."
+  test: review-r3-36e425b15be9
+  root_cause: "With the guard removed, the embedded_traversal delete case fails only on DID NOT RAISE; its sentinel assertions can never fail because the kernel rejects the non-existent cache/a component."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 271, 275-304, 378-393: _escape_layout does not create cache/a"
+  missing:
+    - "(cache_dir / 'a').mkdir() in _escape_layout"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Explanatory comments added in round 4 describe the current code and the actual G10 history."
+  status: failed
+  severity: cosmetic
+  reason: "Section header says in present tense that _assert_within_cache_dir resolves the FULL path (pre-fix behaviour); __delitem__ docstring misstates the G10 history as building paths after delegation."
+  test: review-r3-95860076d83b
+  root_cause: "tests/test_image_store.py:418 header describes the pre-round-4 predicate; disk_backed_image_store.py:168-171 attributes the historical G10 defect to path-building order rather than unlink-before-membership."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "line 418: stale present-tense header"
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 168-171: garbled G10 history sentence"
+  missing:
+    - "Past-tense header; split the history sentence into two accurate clauses"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Shipped source docstrings carry no .planning/ paths or planning/review IDs that dangle on main."
+  status: failed
+  severity: minor
+  reason: "New docstring text cites .planning/spikes/000-absorption-test/README.md, review-r2-/review-r1- IDs and D-R4-01; main is stripped of .planning/ (same rationale as the commit-scope rule); rrim.py:53 and :127 continue the pattern."
+  test: review-r3-6cf03abfa333
+  root_cause: "After the milestone squash to main with .planning/ stripped, disk_backed_image_store.py lines 24, 45-49, 79, 94-97, 158, 224 and rrim.py:127 reference files and IDs that do not exist on that branch."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "lines 24, 45-49, 79, 94-97, 158, 224"
+    - path: "src/pc2img/features/rrim.py"
+      issue: "line 127 (and pre-existing line 53)"
+  missing:
+    - "Keep technical reasoning in docstrings; move provenance IDs to commit bodies or .planning/"
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "Any accepted z_factor yields a cache filename within NAME_MAX."
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: absurd z_factor values (overflow to inf / pack names past NAME_MAX) are a constructed-input class, out of current scope; they fail loudly rather than returning wrong output. Folded into the existing Phase-6 z_factor bounds todo. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md"
+  severity: minor
+  reason: "The integer branch of _format_number writes every digit, so from roughly z >= 1e215 the pack name exceeds 255 bytes and offload/memmap creation raises ENAMETOOLONG; feeds WR-07 because the OSError happens after the overwrite's del."
+  test: review-r3-a3a5eb992c66
+  root_cause: "Pack name of 226 bytes offloads ok; 257 bytes raises OSError [Errno 36] File name too long on offload / memmap creation."
+  artifacts:
+    - path: "src/pc2img/features/rrim.py"
+      issue: "lines 119-120: unbounded integer formatting"
+  missing:
+    - "Bound z in _validate_config, or exponent form above 2**53 (cache-key BC event)"
+  debug_session: ""
+  reviewer_severity: "INFO (pre-existing)"
+
+- truth: "The store test module leaves no temp directories behind and has no duplicate tests."
+  status: failed
+  severity: minor
+  reason: "test_default_config_is_coerced_from_none_sentinel constructs DiskBackedImageStore() without cache_path, which mkdtemp()s and never removes the directory; test_escaping_key_delete_refuses_* and test_refused_delete_leaves_store_membership_intact assert the same thing over the same three spellings."
+  test: review-r3-e720fec68c0d
+  root_cause: "Each run of tests/test_image_store.py leaves two new directories in /tmp from the default-config test; lines 275-304 and 378-393 duplicate each other."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "lines 517-527 temp leak; 275-304 vs 378-393 duplication"
+  missing:
+    - "tmp_path-backed config or rmtree teardown; merge the two delete tests"
   debug_session: ""
   reviewer_severity: "INFO"

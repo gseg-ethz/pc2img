@@ -140,6 +140,22 @@ introduced 2 blockers), and nothing in this class is reachable with any honest i
 (`z` in 0.1–10 against metre-scale rasters never approaches 3.4e38). Deferring is cheap
 here precisely because the design is already decided.
 
+## Round-4 review findings folded in (deferred 2026-09-25)
+
+Same input class (absurd `z_factor` magnitudes; they fail loudly, never silently wrong), so
+they ride with this todo. Both `status: deferred` in 05-UAT.md:
+
+- **review-r3-92f6d30153ef** (05-REVIEW.md WR-08) — `z1e309` parses to `inf`, passes
+  `_validate_config` (`inf > 0`), and `_format_number` emits `zinf`, which the grammar then
+  rejects with a misleading "Unknown RRIM option 'zinf'"; `z1e-400` underflows to `0.0`.
+  The breadcrumb above says finiteness alone is the wrong boundary for the float32 problem —
+  but a finiteness/underflow check at parse time is still needed for *this* symptom; design the
+  bound once to cover both.
+- **review-r3-a3a5eb992c66** (05-REVIEW.md IN-05) — the integer branch of `_format_number`
+  writes every digit, so from about z >= 1e215 the pack name exceeds NAME_MAX (255 bytes) and
+  offload raises ENAMETOOLONG. An upper bound on z (far below that) closes it; switching to
+  exponent form instead would change the cache key (BC event).
+
 ## Breadcrumbs
 
 - Finding + full correction block: `.planning/phases/05-bug-fixes-module-test-coverage/05-REVIEW.md` § CR-01

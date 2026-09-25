@@ -8,7 +8,7 @@ score: 8/8 must-haves verified as of 2026-07-11; superseded — see Round-2 Gaps
 behavior_unverified: 0
 overrides_applied: 0
 gap_closure: 05-13 (8 post-UAT code-review gaps closed; suite 111→135 passed)
-gaps_open: "11 (round 2)"
+gaps_open: "14 (round 3)"
 next_action: "/gsd-plan-phase --gaps — then execute, re-review the fix diff, and re-verify before /gsd-ship"
 ---
 
@@ -335,3 +335,14 @@ clean.
 
 The YAML frontmatter `status:` / `gaps_open:` fields of `05-UAT.md` and this file are NOT
 updated by either round-4 plan — re-verification owns them, next.
+
+
+---
+
+## Round-3 findings (consolidated 2026-09-25T07:41:26Z)
+
+14 finding(s) imported from `gsd-code-reviewer-deep` over `443d390..c93e045`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.

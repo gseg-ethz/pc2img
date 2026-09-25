@@ -84,6 +84,32 @@ fixing them in the override now would be work thrown away the moment this todo e
   docstring enumeration) folded into the rewritten route-enumeration paragraph (same commit).
   Both are `status: resolved` in 05-UAT.md with that evidence, not deferred to this todo.
 
+### Round-4 gap-diff review (05-REVIEW.md, 2026-09-24) — deferred 2026-09-25
+
+Owner decision 2026-09-25: hardening against constructed/escaping key names is out of current
+scope. The six findings below all concern the containment override (or its tests) that step 3
+deletes, so they become a **checklist for this adoption**, not Phase-5 work. Each is
+`status: deferred` in 05-UAT.md, round `review-r3-*`:
+
+- **review-r3-ffa2d1c2ca7c** (WR-01) — the add proving test only fails via offload; an
+  unguarded *insertion* route writes `<key>.dat` outside the cache dir with the whole suite
+  green. **Directly relevant to step 4**: after deleting the override, re-pin each route
+  (insert / offload / load / delete) with its own test that asserts *no new file anywhere*
+  outside the cache dir, not one sentinel name.
+- **review-r3-e40af7956397** (WR-02) — the symlinked-entry delete assertion runs after pickling
+  has de-linked the entries, so it cannot fail; also decide whether de-link-on-pickle is fine.
+- **review-r3-ede9dcc0e91b** (WR-04) — `__setitem__` is unguarded while `__delitem__` refuses
+  first, so a setter-inserted escaping key cannot be removed via the public API. Re-check
+  under 0.6 whether upstream guards the setter.
+- **review-r3-dda7a00b69cf** (WR-05) — containment docstrings overstate the invariant
+  (parent-only resolve; reads served through cache-internal symlinks; `.tmp`/`.dat` writes
+  follow planted symlinks). Moot once the override and its docstrings are deleted; restate the
+  threat model wherever the guarantee is documented after adoption.
+- **review-r3-2785f15bd78e** (WR-06) — `_assert_within_cache_dir(cache_dir / "..")` is
+  admitted (lexical `is_relative_to` after parent-only resolve). Deleted with the helper.
+- **review-r3-36e425b15be9** (IN-02) — the `embedded_traversal` delete case cannot escape
+  because `cache/a` never exists; `mkdir` it in `_escape_layout` when re-pinning in step 4.
+
 ## Not this repo
 
 The spike-000 differential probe found that `LazyDiskCache.offload` writes the `.dat` memmap
