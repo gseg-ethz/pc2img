@@ -121,3 +121,24 @@ family pc2img's real `generate()` pipeline actually writes (spike 000's ground-t
 instrumentation: `_store_entry` is never called; only `LazyDiskCache.offload` writes).
 File or reference the corresponding GSEGUtils-side todo when this phase starts; do not attempt
 to work around it from pc2img.
+
+- **Path-bound finalizer, held-reference hazard (measured 2026-09-25).** `LazyDiskCache`
+  registers `weakref.finalize(self, _purge_cache_pair, self._cache_path)` bound to the `.dat`
+  **path**, not the object. On a successful `add_image_to_store` overwrite (05-18's
+  validate-before-delete fix), a caller that still holds a reference to the OLD entry after the
+  overwrite has that old object's finalizer fire later and unlink the NEW entry's `<key>.dat`
+  when the old object is garbage-collected (`FileNotFoundError` on the next offload/reload).
+  `FeatureManager`'s own route is safe because the codec offload path drops the old reference
+  first before the new one is built, so this hazard is latent, not currently reachable from
+  pc2img's real pipeline. A fix needs an inode- or object-bound finalizer upstream — pc2img
+  cannot resolve this from its own override, which never touches the finalizer registration.
+- **Overwrite atomicity against a mid-build OSError (documented residual, 05-18).** In the
+  validate -> delete -> build overwrite ordering, an `OSError` raised while the replacement's
+  memmap is being created (e.g. disk full) AFTER the old entry has already been dropped is not
+  recovered: the old entry is gone and the new one failed mid-construction. Recovering this
+  needs a build-to-a-temporary-path-then-adopt primitive in `DiskBackedStore` / `LazyDiskCache`
+  — the `.dat` path is derived from the key inside `LazyDiskCache._init_from_config`, a
+  mechanism only the cache layer owns. pc2img's `validate -> delete -> build` ordering covers
+  every failure detectable BEFORE the old entry is touched (containment, raster shape) and
+  documents this residual in `add_image_to_store`'s docstring; it cannot cover a failure that
+  occurs only after the old entry is already gone.
