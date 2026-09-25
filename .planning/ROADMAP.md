@@ -177,7 +177,7 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: 18/19 plans executed (05-18, 05-19 — round-5 gap closure, planned 2026-09-25, pending)
+**Plans**: 19/19 plans executed (05-18, 05-19 — round-5 gap closure, planned 2026-09-25, pending)
 
 **Wave 1**
 
@@ -211,7 +211,7 @@ Plans:
 - [x] 05-16-PLAN.md — Round 4 (wave 1, store): refused-delete atomicity BLOCKER (introduced by 05-15) fixed RED-first with G10 intact; symlinked-entry and value-supplied-cache_path claims reproduced→branched; threat posture corrected to load-bearing on GSEGUtils 0.5.x (registry default fallback); guard-sensitive tests + mutation check; IN-01 (actual location: store module), IN-03 None-sentinel + BC entry 17, WR-06 [BUG-05]
 - [x] 05-17-PLAN.md — Round 4 (wave 2, RRIM + bookkeeping): precedence pinned at FEATURES.match surface, z-sensitivity end-to-end, upper z boundary (name-level), _validate_clip names its clip; Phase-6 todo for the absorption-superseded containment findings; UAT/VERIFICATION evidence-cited reconciliation [BUG-05, TEST-04]
 - [x] 05-18-PLAN.md — Round 5 (wave 1, code): WR-07 failed-overwrite atomicity (validate → delete → build; reviewer's build-first ordering measured unsafe on the shared .dat path) RED-first + mutation-checked; IN-01 absent-key test made non-vacuous (pair planted, unlink-first mutation); IN-06 temp-dir leak stopped + duplicate delete-refusal tests merged; WR-03 z_factor pinned on the slope path via the component surface (slope_noz mutation) [BUG-05, TEST-04]
-- [ ] 05-19-PLAN.md — Round 5 (wave 2, text + bookkeeping): IN-03 stale/garbled round-4 comments; IN-04 planning-vocabulary sweep of every comment/docstring in src/ AND tests/ (ledger IDs plus BUG-/TEST-/DSN-/D-/M-/BC- codes, widened per owner 2026-09-25; tokenizer-scoped gate + AST gate: no executable change); six UAT flips with evidence, Round-5 closure record, GSEGUtils overwrite residuals filed in the Phase-6 todo [BUG-05]
+- [x] 05-19-PLAN.md — Round 5 (wave 2, text + bookkeeping): IN-03 stale/garbled round-4 comments; IN-04 planning-vocabulary sweep of every comment/docstring in src/ AND tests/ (ledger IDs plus BUG-/TEST-/DSN-/D-/M-/BC- codes, widened per owner 2026-09-25; tokenizer-scoped gate + AST gate: no executable change); six UAT flips with evidence, Round-5 closure record, GSEGUtils overwrite residuals filed in the Phase-6 todo [BUG-05]
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
 
@@ -237,5 +237,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 18/19 | In Progress|  |
+| 5. Bug Fixes & Module Test Coverage | 19/19 | In Progress|  |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |

@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 05
 current_phase_name: Bug Fixes & Module Test Coverage
 status: executing
-stopped_at: "Completed 05-18-PLAN.md (round-5 wave-1 gap closure: WR-07 overwrite reordered validate-before-delete with single-sourced shape helper, IN-01 absent-key sensor made mutation-sensitive, IN-06 temp-dir leak fixed + duplicate delete-refusal test merged, WR-03 z_factor pinned on the RRIM slope path via the component surface. Suite 196 passed, coverage 62.27%. NEXT: 05-19 (wave 2, provenance sweep + UAT/VERIFICATION bookkeeping), then the round-5 diff needs its own code review before Phase 5 re-verifies.)"
-last_updated: "2026-09-25T09:53:44.860Z"
+stopped_at: Completed 05-19-PLAN.md
+last_updated: "2026-09-25T10:15:17.372Z"
 last_activity: 2026-09-25
 last_activity_desc: Phase 05 execution started
-state_head: d6a25efabbac2e7de8d0cbd960e9dcb311dcaea3
+state_head: b99574b3a9245c9d2f7dae181a3cc525136d7b62
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 39
-  completed_plans: 38
+  completed_plans: 39
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 05 (Bug Fixes & Module Test Coverage) — EXECUTING
-Plan: 2 of 19
+Plan: 3 of 19
 Status: Ready to execute
 Last activity: 2026-09-25 — Phase 05 execution started
 
@@ -102,6 +102,7 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 | Phase 05 P16 | 55min | 3 tasks | 4 files |
 | Phase 05 P17 | 11min | 2 tasks | 4 files |
 | Phase 05 P18 | 20min | 3 tasks | 4 files |
+| Phase 05 P19 | 50min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,7 @@ Recent decisions affecting current work:
 - [Phase 05]: WR-07 ordering: validate (containment, then shape) -> delete -> build; build-then-swap was measured and rejected (clobbers the old entry's live buffer, races its finalizer).
 - [Phase 05]: WR-07 exception type stays AssertionError, single-sourced via a new _assert_image_shape helper -- no BC-NOTES entry opens.
 - [Phase 05]: OSError-mid-build residual and the held-reference hazard left unfixed, routed to the Phase-6 GSEGUtils carry-out list (05-19 to record).
+- [Phase 05]: Owner decision (2026-09-25, plan-phase session): IN-04 provenance-sweep class widened beyond review-ledger IDs to all planning vocabulary (requirement/design/decision codes, .planning/ paths, plan numbers) in both src/pc2img and tests/. — Keeps main clean of dangling provenance references while preserving all technical reasoning, restated in plain words.
 
 ### Pending Todos
 
@@ -212,6 +214,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-25T09:53:44.647Z
-Stopped at: Completed 05-18-PLAN.md (round-5 wave-1 gap closure: WR-07 overwrite reordered validate-before-delete with single-sourced shape helper, IN-01 absent-key sensor made mutation-sensitive, IN-06 temp-dir leak fixed + duplicate delete-refusal test merged, WR-03 z_factor pinned on the RRIM slope path via the component surface. Suite 196 passed, coverage 62.27%. NEXT: 05-19 (wave 2, provenance sweep + UAT/VERIFICATION bookkeeping), then the round-5 diff needs its own code review before Phase 5 re-verifies.)
+Last session: 2026-09-25T10:15:17.171Z
+Stopped at: Completed 05-19-PLAN.md
 Resume file: None
