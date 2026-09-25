@@ -412,6 +412,70 @@ def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
+# WR-07 (round 5) — a failed overwrite must leave the existing entry and its   #
+# codec pair fully intact, in memory and on disk                              #
+#                                                                              #
+# `add_image_to_store` used to drop the existing key (`del self[img_name]`)   #
+# before the replacement's raster shape was validated, so a bad-shape         #
+# overwrite destroyed the entry it was meant to replace. The safe fix is      #
+# validate (containment, then shape) -> delete -> build: building the         #
+# replacement on the shared `<key>.dat` path BEFORE the old entry is dropped  #
+# was also measured and rejected — it clobbers the old entry's live buffer at #
+# construction, and the old entry's path-bound finalizer later unlinks the    #
+# just-built replacement's `.dat` when the old object is collected.          #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize("offloaded", [False, True], ids=["in_memory", "codec_offloaded"])
+def test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact(tmp_path: Path, offloaded: bool):
+    """A failed overwrite (bad raster shape) is a full no-op on the existing entry.
+
+    The exception type is pinned deliberately: a bad raster shape raises
+    `AssertionError` (the rule lives in `DiskBackedImageData.__init__`), and
+    this test locks that type — changing it would be a breaking-change event
+    this gap round does not open.
+    """
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    original = _gray((4, 4))
+    store.add_image_to_store("range", original)
+    if offloaded:
+        store.offload_image_data_to_disk("range")
+        assert store._get_npy_path("range").exists()
+        assert store._get_meta_path("range").exists()
+
+    with pytest.raises(AssertionError):
+        store.add_image_to_store("range", np.ones(4, dtype=np.float32))
+
+    assert "range" in store
+    np.testing.assert_array_equal(np.asarray(store["range"]), original)
+    if offloaded:
+        assert store._get_npy_path("range").exists()
+        assert store._get_meta_path("range").exists()
+
+
+def test_successful_overwrite_serves_the_replacement_after_offload_and_reload(tmp_path: Path):
+    """Characterization: a successful overwrite still round-trips after the reorder.
+
+    The replacement must be served after offload and reload from the SAME
+    store, and from a FRESH store re-scanning the same cache directory.
+    """
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store1 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store1.add_image_to_store("range", a)
+    store1.offload_image_data_to_disk("range")
+
+    store1.add_image_to_store("range", b)
+    store1.offload_image_data_to_disk("range")
+
+    np.testing.assert_array_equal(np.asarray(store1["range"]), b)
+    assert store1._get_npy_path("range").exists()
+    assert store1._get_meta_path("range").exists()
+
+    store2 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    np.testing.assert_array_equal(np.asarray(store2["range"]), b)
+
+
+# --------------------------------------------------------------------------- #
 # review-r2-9998f2b36d4c (round 4) — a legitimate symlinked cache entry must   #
 # be served, not refused, while every escaping key stays refused              #
 #                                                                              #
