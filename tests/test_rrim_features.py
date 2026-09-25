@@ -271,11 +271,16 @@ def test_generate_rrim_small_z_end_to_end(synthetic_pcd) -> None:
 def test_generate_rrim_z_factor_changes_the_output(synthetic_pcd) -> None:
     """review-r1-a8cd7b4707b0 (WR-04): z_factor must be observably load-bearing end-to-end.
 
-    If ``z`` were dropped from the computation, both pairs asserted below would
-    be array-equal and every existing G9 end-to-end test would still pass —
-    those only assert shape and finiteness. The pack pair carries the
-    strongest signal (openness is an angle, not scale-invariant); the rrim
-    pair is the G9 target itself.
+    z reaches the final rasters on two distinct paths, and each needs its own
+    pair to be provably load-bearing. The rrim composite's slope channel is
+    robust-percentile normalised (`_normalize_robust`), so a linear z scale on
+    `compute_slope`'s output cancels there — the rrim pair therefore observes
+    z only through the pack's openness-derived structure channel, and the pack
+    pair observes z on the openness path (`compute_openness`). Neither pair
+    can detect a regression that drops z from `compute_slope` specifically:
+    the component-slope pair below is the only surface on which
+    `compute_slope`'s own z is directly observable, which is why all three
+    pairs are asserted together.
     """
     gen = _rrim_generator(synthetic_pcd)
     images = gen.generate(
@@ -284,18 +289,23 @@ def test_generate_rrim_z_factor_changes_the_output(synthetic_pcd) -> None:
             "rrim_(range,z4)",
             "rrim_pack_(range,r16,d8,z1)",
             "rrim_pack_(range,r16,d8,z4)",
+            "rrim_component_(slope,range,z1)",
+            "rrim_component_(slope,range,z4)",
         ]
     )
     rrim_z1 = np.asarray(images["rrim_(range,z1)"])
     rrim_z4 = np.asarray(images["rrim_(range,z4)"])
     pack_z1 = np.asarray(images["rrim_pack_(range,r16,d8,z1)"])
     pack_z4 = np.asarray(images["rrim_pack_(range,r16,d8,z4)"])
+    slope_z1 = np.asarray(images["rrim_component_(slope,range,z1)"])
+    slope_z4 = np.asarray(images["rrim_component_(slope,range,z4)"])
 
-    for raster in (rrim_z1, rrim_z4, pack_z1, pack_z4):
+    for raster in (rrim_z1, rrim_z4, pack_z1, pack_z4, slope_z1, slope_z4):
         assert np.isfinite(raster).all()
 
     assert not np.array_equal(rrim_z1, rrim_z4), "rrim raster is z_factor-insensitive"
     assert not np.array_equal(pack_z1, pack_z4), "rrim_pack raster is z_factor-insensitive"
+    assert not np.array_equal(slope_z1, slope_z4, equal_nan=True), "slope path is z_factor-insensitive"
 
 
 @pytest.mark.parametrize(
