@@ -142,3 +142,19 @@ to work around it from pc2img.
   every failure detectable BEFORE the old entry is touched (containment, raster shape) and
   documents this residual in `add_image_to_store`'s docstring; it cannot cover a failure that
   occurs only after the old entry is already gone.
+
+## Round-5 review carry-over (deferred 2026-09-25, owner triage: hardening, not a working-path defect)
+
+From `05-REVIEW.md` (round 5, `c93e045..dc7783d`), consolidated into `05-UAT.md` as `review-r4-*`.
+Revisit together with the GSEGUtils 0.6 adoption, which rewrites this override anyway:
+
+- [ ] `review-r4-a97761a4b73d` — overwrite still loses the old entry for empty rasters, zero-itemsize
+      dtypes and wrong-type cache overrides (fail after the drop); either pre-validate them or narrow the
+      `add_image_to_store` docstring's "every input-driven failure" claim. Direct-caller only.
+- [ ] `review-r4-da637a8dfe3c` — `_assert_image_shape` is a bare `assert`; make it an explicit
+      `raise AssertionError(...)` so the guard survives `python -O` (same exception type, no BC event).
+- [ ] `review-r4-ee69c181dfa0` — add a test pinning containment-ValueError-before-shape-AssertionError
+      precedence (name it to match `-k "escaping or refused"`).
+- [ ] `review-r4-d8efb7e5d778` — the docstring's "the one safe ordering" overclaims; add the
+      held-reference residual (already listed above) to the shipped docstring, since `.planning/` is
+      stripped on main.

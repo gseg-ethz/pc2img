@@ -5,7 +5,7 @@ gaps_open: 4 round-2 gaps (G9-G12) surfaced 2026-07-12 by a code review OF the 0
 phase: 05-bug-fixes-module-test-coverage
 source: [05-01-SUMMARY.md, 05-02-SUMMARY.md, 05-03-SUMMARY.md, 05-04-SUMMARY.md, 05-05-SUMMARY.md, 05-06-SUMMARY.md, 05-07-SUMMARY.md, 05-08-SUMMARY.md, 05-09-SUMMARY.md, 05-10-SUMMARY.md, 05-11-SUMMARY.md, 05-12-SUMMARY.md]
 started: 2026-07-11T15:23:32Z
-updated: 2026-09-25T07:41:26Z
+updated: 2026-09-25T11:45:54Z
 gaps_source: post-UAT high-effort code review (develop-gsd...HEAD) on PR #12; UAT itself passed 47/47 — these gaps were surfaced by review, already root-caused and reproduced
 gaps_source_round2: "/code-review 1295c2b high (session 32af2599-d24a-4113-af77-85196232cb2a, 2026-07-12) — 8 finder angles over `git diff 1295c2b HEAD`, i.e. the 05-13 gap-closure commits themselves. No GSD review ever covered that diff: 05-REVIEW.md predates it. Findings re-reproduced 2026-07-27 against HEAD before recording."
 ---
@@ -1113,3 +1113,148 @@ review_gaps_round2: 4 (G9-G12 — OPEN; 2 correctness + 2 BC-record)
     - "tmp_path-backed config or rmtree teardown; merge the two delete tests"
   debug_session: ""
   reviewer_severity: "INFO"
+
+<!-- ROUND 4 — imported 2026-09-25T11:45:54Z by /gsd-consolidate-findings from gsd-code-reviewer-deep (file:.planning/phases/05-bug-fixes-module-test-coverage/05-REVIEW.md), range c93e045..dc7783d.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "A failed add_image_to_store overwrite is a full no-op for every input-driven failure, as the store docstring claims"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "Validate-before-delete misses input-driven failures (empty rasters, zero-itemsize dtypes, wrong-type cache overrides); the docstring overclaims and the old entry is still lost"
+  test: review-r4-a97761a4b73d
+  root_cause: "Store holds codec-offloaded 'range'; add_image_to_store('range', <(0,0) raster | V0 dtype | enable_caching_override=2>) raises ValueError 'cannot mmap an empty file' / pydantic ValidationError AFTER del self[img_name]: 'range' untracked, range.npy + range.meta.json gone, empty case leaves an orphan untracked range.dat. Reachable only by direct callers of the public barrel (FeatureManager never passes overrides or re-submits)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 174: Validate-before-delete misses input-driven failures (empty rasters, zero-itemsize dtypes, wrong-type cache overrides); the docstring overclaims and the old entry is still lost"
+  missing: []
+  debug_session: ""
+
+- truth: "The overwrite shape guard holds regardless of interpreter flags"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "_assert_image_shape is a bare assert guarding the public add_image_to_store; removed under python -O"
+  test: review-r4-da637a8dfe3c
+  root_cause: "python -O -m pytest tests/test_image_store.py -> 2 failed (both test_failed_overwrite cases, no AssertionError); under -O add_image_to_store('range', np.ones(4)) over a codec-offloaded 2-D entry is accepted and stored as shape (4,)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_data.py"
+      issue: "line 22: _assert_image_shape is a bare assert guarding the public add_image_to_store; removed under python -O"
+  missing: []
+  debug_session: ""
+
+- truth: "A test pins that containment ValueError takes precedence over the shape AssertionError in add_image_to_store"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "No test pins containment-before-shape precedence; removing or reordering the _get_npy_path pre-check leaves the suite green"
+  test: review-r4-ee69c181dfa0
+  root_cause: "Delete the self._get_npy_path(img_name) pre-check (or move it after _assert_image_shape): tests/test_image_store.py 29 passed; escaping key '../victim' with a 1-D array then raises AssertionError instead of ValueError (tracked and untracked)."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "No test pins containment-before-shape precedence; removing or reordering the _get_npy_path pre-check leaves the suite green"
+  missing: []
+  debug_session: ""
+
+- truth: "The __delitem__ docstring history describes the historical defect mechanism accurately"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: minor
+  reason: "The sweep's rewrite of the __delitem__ history states a false mechanism (an unlink landing before a later ValueError); the real loss was in-memory membership"
+  test: review-r4-16ca6d81fd0c
+  root_cause: "Running the historical f776011 __delitem__ body against the current guarded path builders with keys '../victim', 'sub/../../victim', absolute path: ValueError raised, no outside file unlinked, but the entry is silently dropped from memory (tracked=False) — contradicting the new parenthetical."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 199: The sweep's rewrite of the __delitem__ history states a false mechanism (an unlink landing before a later ValueError); the real loss was in-memory membership"
+  missing: []
+  debug_session: ""
+
+- truth: "The shipped store docstring states the held-reference hazard of delete-before-build rather than calling it the one safe ordering"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md"
+  severity: minor
+  reason: "Docstring calls delete-before-build 'the one safe ordering' but it shares build-first's held-reference hazard; the hazard is documented only in .planning/ (stripped on main)"
+  test: review-r4-d8efb7e5d778
+  root_cause: "Caller holds the old entry (e.g. a raster from generate() or a kept store[key]); a SUCCESSFUL overwrite at HEAD: held object reads the new data (2.0, was 1); when it is collected its path-bound finalizer unlinks the shared range.dat; next offload/read of the new entry -> FileNotFoundError."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "line 156: Docstring calls delete-before-build 'the one safe ordering' but it shares build-first's held-reference hazard; the hazard is documented only in .planning/ (stripped on main)"
+  missing: []
+  debug_session: ""
+
+- truth: "Shipped src/ and tests/ comments carry no planning references (the widened round-4 planning-reference finding class)"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: minor
+  reason: "The planning-reference sweep is marked resolved in 05-UAT.md but shipped references remain; the 05-19 gate regex misses them"
+  test: review-r4-4a993aa1a335
+  root_cause: "grep -rnE -i 'phase[- ]?[0-9]|pitfall|gap round|carry-out|verdict|FINDINGS framing|[0-9]{4}-[0-9]{2}-[0-9]{2}-[a-z0-9-]+\\.md' src/pc2img tests prints: test_rrim_features.py:236-237 (.planning/todos file name), test_feature_registry.py:60-61 ('FINDINGS framing captured in the plan objective'), test_image_store.py:51 ('Pitfall 6'), test_image_store.py:439 ('this gap round', added by 05-18), disk_backed_image_store.py:34 ('carry-out'), :95 ('(measured and verdict VALIDATED)'); the 05-19 gate exits 0 on the same tree while review-r3-6cf03abfa333 is marked resolved."
+  artifacts:
+    - path: "tests/test_rrim_features.py"
+      issue: "line 236: The planning-reference sweep is marked resolved in 05-UAT.md but shipped references remain; the 05-19 gate regex misses them"
+  missing: []
+  debug_session: ""
+
+- truth: "The failed-overwrite test docstring names where the shape rule lives"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: cosmetic
+  reason: "New test docstring says the shape rule lives in DiskBackedImageData.__init__; after the hoist it lives in _assert_image_shape"
+  test: review-r4-66d8cfa20681
+  root_cause: "test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact docstring points at DiskBackedImageData.__init__, which is never reached for the failing call; the store calls _assert_image_shape directly."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "line 436: New test docstring says the shape rule lives in DiskBackedImageData.__init__; after the hoist it lives in _assert_image_shape"
+  missing: []
+  debug_session: ""
+
+- truth: "The comment sweep introduces no new lint findings"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: cosmetic
+  reason: "Sweep turned two section headers into text ruff parses as commented-out code (ERA001)"
+  test: review-r4-ba69ab35c32e
+  root_cause: "'# Breadth: replace_nan' at tests/test_util.py:123 and :153 parse as annotated assignments; ruff check src/pc2img tests --ignore E402,C901,B008 goes from 4 findings at c93e045 to 6 at HEAD (ungated: hygiene test lints src/ only)."
+  artifacts:
+    - path: "tests/test_util.py"
+      issue: "line 123: Sweep turned two section headers into text ruff parses as commented-out code (ERA001)"
+  missing: []
+  debug_session: ""
+
+- truth: "The absent-key delete test covers something the two-store sensor does not"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: minor
+  reason: "The strengthened absent-key test is now almost a subset of the two-store sensor"
+  test: review-r4-84a2b5dff14c
+  root_cause: "Both tests share setup (store built before a peer offloads the key, del on non-owner raises KeyError, pair survives) and fail on exactly the same unlink-first mutation (2 failed); the absent-key test only adds a listing-equality check."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "line 149: The strengthened absent-key test is now almost a subset of the two-store sensor"
+  missing: []
+  debug_session: ""
+
+- truth: "A full test run leaves no tmp* entries in the system temp dir"
+  status: deferred
+  evidence: "DEFERRED, not fixed. Owner decision 2026-09-25: hardening, not a defect in the intended working path (FeatureManager cannot reach it; direct-caller / wording / hygiene only), so no further Phase-5 gap round. This entry deliberately REMAINS VISIBLE to gsd-tools query audit-uat: uat.cjs parseGapsItems skips only status: resolved."
+  deferred_to: ".planning/todos/pending/2026-09-25-phase-6-round-5-comment-and-test-hygiene.md"
+  severity: minor
+  reason: "Temp-file leaks remain in other test modules (pre-existing; store module now leaks 0)"
+  test: review-r4-15a5c4928dc8
+  root_cause: "A full-suite run leaves 18 top-level tmp* directories / *.dat files in /tmp from test_disk_backed_image_data.py (3), test_interpolation.py (6), test_manager.py (2), test_point_cloud_image_generator.py (2), test_rrim_features.py (5)."
+  artifacts:
+    - path: "tests/conftest.py"
+      issue: "Temp-file leaks remain in other test modules (pre-existing; store module now leaks 0)"
+  missing: []
+  debug_session: ""
