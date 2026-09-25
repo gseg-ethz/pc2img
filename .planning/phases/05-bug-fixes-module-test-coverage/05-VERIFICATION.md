@@ -1,23 +1,36 @@
 ---
 phase: 05-bug-fixes-module-test-coverage
 verified: 2026-07-11T08:00:00Z
-reverified: 2026-07-11T16:40:00Z
-status: gaps_found
-status_history: passed (2026-07-11T16:40:00Z) → gaps_found (2026-07-27T10:05:00Z)
-score: 8/8 must-haves verified as of 2026-07-11; superseded — see Round-2 Gaps below
+reverified: 2026-09-25T14:15:00Z
+status: passed
+status_history: passed (2026-07-11T16:40:00Z) → gaps_found (2026-07-27T10:05:00Z) → passed (2026-09-25T14:15:00Z, round-5 re-verification)
+score: 8/8 must-haves verified (5 ROADMAP success criteria + DSN-09 security + CI floor + registry unification)
 behavior_unverified: 0
 overrides_applied: 0
-gap_closure: 05-13 (8 post-UAT code-review gaps closed; suite 111→135 passed)
-gaps_open: "10 (round 4)"
-next_action: "/gsd-plan-phase --gaps — then execute, re-review the fix diff, and re-verify before /gsd-ship"
+gap_closure: "05-13 (round 1), 05-15 (round 3), 05-16/05-17 (round 4), 05-18/05-19 (round 5) — all closed; suite 111→196 passed"
+gaps_open: "0 open gaps. 20 items in 05-UAT.md remain status: deferred (owner-accountable, tracked to Phase-6 todos) — visible by design, not gaps blocking this phase."
+next_action: "/gsd-ship"
+covered_files: [".planning/REQUIREMENTS.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-01-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-01-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-02-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-02-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-03-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-03-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-04-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-04-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-05-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-05-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-06-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-06-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-07-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-07-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-08-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-08-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-09-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-09-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-10-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-10-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-11-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-11-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-12-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-12-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-13-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-13-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-14-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-14-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-15-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-15-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-16-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-16-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-17-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-17-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-18-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-18-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-19-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-19-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-REVIEW.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-UAT.md", "src/pc2img/core.py", "src/pc2img/errors.py", "src/pc2img/features/core.py", "src/pc2img/features/derivative_features.py", "src/pc2img/features/manager.py", "src/pc2img/features/registry.py", "src/pc2img/features/rrim.py", "src/pc2img/image_cache/__init__.py", "src/pc2img/image_cache/disk_backed_image_data.py", "src/pc2img/image_cache/disk_backed_image_store.py", "src/pc2img/registry.py", "src/pc2img/strategies/interpolation.py", "src/pc2img/strategies/projection.py", "src/pc2img/tiled_generator.py", "src/pc2img/util.py", "tests/test_image_store.py", "tests/test_rrim_features.py"]
+covered_digest: "v1:sha256:ad7b64df7571e66c048862e9bfc42c2fcad3a5460075d8a8ca2c75f33f7e061b"
+re_verification:
+  previous_status: gaps_found
+  previous_score: "8/8 (superseded by Round-2 Gaps, then Round-1/2/3/4 review findings, all since closed)"
+  gaps_closed:
+    - "Round-2 Gaps (G9 RRIM z_factor round-trip, G10 store delete no-side-effect blocker) — closed round 2/3 (05-14, 05-15)"
+    - "Round-1/Round-2 review findings (21 total) — closed rounds 3/4 (05-15, 05-16, 05-17)"
+    - "Round-3 review findings (14 total, WR-01..07/IN-01..06 numbering reused per-round) — 6 left open going into round 5 (review-r3-a37bd243f37d/WR-07, review-r3-b008fc7c80a7/IN-01, review-r3-e720fec68c0d/IN-06, review-r3-289e26115f42/WR-03, review-r3-95860076d83b/IN-03, review-r3-6cf03abfa333/IN-04) — all 6 closed by 05-18/05-19, evidence-cited in 05-UAT.md"
+  gaps_remaining: []
+  regressions: []
+gaps_deferred_advisory:
+  - "Round-4 findings (10, from the 05-REVIEW.md review of the 05-18/05-19 diff itself): WR-01 (overwrite doesn't cover every input-driven failure — empty raster / zero-itemsize dtype / wrong-type override kwargs), WR-02 (shape guard is a bare assert, stripped under python -O), WR-03 (no test pins containment-before-shape precedence), WR-04 (__delitem__ docstring history states a technically imprecise mechanism), WR-05 (docstring overclaims delete-before-build as 'the one safe ordering'; omits the held-reference finalizer hazard), WR-06 (planning-reference sweep gate regex has a narrower vocabulary than the IN-04 class name, so a handful of shipped references — e.g. a .planning/todos file name, 'Pitfall 6', 'carry-out' — survive), IN-01..IN-04 (test-hygiene / doc-accuracy). Owner-triaged 2026-09-25 (commit 64b2b00) as hardening/wording/test-hygiene, none breaking FeatureManager's reachable path; all 10 recorded status: deferred in 05-UAT.md, routed to two Phase-6 todos. Independently spot-verified in this re-verification (see Round-5 Re-verification section below)."
 ---
 
 # Phase 5: Bug Fixes & Module Test Coverage — Verification Report
 
 **Phase Goal:** All known and review-surfaced correctness bugs fixed, each with a proving test, and the previously untested core modules covered.
 **Verified:** 2026-07-11
-**Status:** gaps_found — the `passed` verdict below is superseded; see "Round-2 Gaps" at the end of this report
-**Re-verification:** No — initial verification
+**Status:** passed — see "Round-5 Re-verification (2026-09-25)" at the end of this report for the current, authoritative verdict
+**Re-verification:** Yes — round 5 of gap closure, following the 05-18/05-19 gap-closure plans
 
 ## Goal Achievement
 
@@ -465,3 +478,149 @@ updated by either round-5 plan — re-verification owns them, next.
 The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
 
 Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-5 Re-verification (2026-09-25) — AUTHORITATIVE VERDICT: PASSED
+
+This section is the current, authoritative verification of the phase goal. It supersedes the
+`passed` verdict at the top of this report (which was correct for what it examined at the time)
+and closes out the "Round-2 Gaps … not shippable" language above, which is now stale — every gap
+that made the phase unshippable has since been closed by rounds 2–5.
+
+### What triggered this round
+
+1. `05-18` + `05-19` (round 5 of gap closure) closed the six `review-r3-*` findings left `failed`
+   after round 3 (see "Round-5 closure record" above): WR-07 (store overwrite data-loss ordering),
+   IN-01 (vacuous absent-key test), IN-06 (temp-dir leak + duplicate test), WR-03 (z_factor not
+   pinned on the RRIM slope path), IN-03 (stale comment history), IN-04 (planning-vocabulary sweep).
+2. Per the global Review Discipline rule (`~/.claude/CLAUDE.md` § Review Discipline — "gap-closure
+   fixes get their own review"), the 05-18/05-19 diff itself got a dedicated deep review:
+   `05-REVIEW.md` (commit `acb1a11`), scope `c93e045..dc7783d -- src tests`, 28 files, depth
+   `deep`. It found 10 new issues (0 critical, 6 warning, 4 info) — including three real
+   correctness gaps in the round-5 fix itself (WR-01, WR-02, WR-04/WR-05 documentation accuracy).
+3. Those 10 findings were landed back into GSD per the global "land findings back into GSD,
+   always" rule via `/gsd-consolidate-findings` (commit `64b2b00`): imported into `05-UAT.md` as
+   round-4-consolidated entries (`review-r4-*`), the review ledger updated, two Phase-6 todos
+   gained new bullets. The owner (Nicholas Meyer, commit author) triaged all 10 on the record as
+   hardening / documentation-accuracy / test-hygiene, not correctness bugs on the pipeline's
+   reachable path, and deferred all 10 to Phase 6 rather than opening a sixth Phase-5 gap round.
+
+### Independent verification performed in this round (not a re-statement of the SUMMARYs)
+
+**Full suite reproduced:** `.venv/bin/pytest -q` → **196 passed, 0 failed, 17 warnings** (matches
+05-19-SUMMARY.md). `.venv/bin/pytest --cov=pc2img --cov-branch --cov-fail-under=55 -q` →
+**62.27%** total coverage, floor 55 held (matches). `.venv/bin/pytest tests/test_hygiene.py -q` →
+**4 passed**.
+
+**Requirement traceability re-confirmed:** `BUG-01..05`, `TEST-03..06` all present in
+`.planning/REQUIREMENTS.md` (lines 31-35, 41-44) marked `[x]` and `Complete`; no orphaned
+requirement IDs for Phase 5 — every ID a plan claims is in REQUIREMENTS.md, and every Phase-5 ID
+in REQUIREMENTS.md is claimed by a plan (05-01..05-19).
+
+**`audit-uat` reproduced (not trusted from the SUMMARY):** `gsd-tools query audit-uat` over
+`05-UAT.md` → **20** open items, **all `deferred`**, **0 `failed`** (10 pre-round-5 deferred + 10
+newly-imported round-4-consolidated). This matches the task-provided context exactly.
+
+**Debt-marker gate:** `grep -rnE "TBD|FIXME|XXX" src/pc2img tests` → no matches. `grep -rnE
+"TODO|HACK|PLACEHOLDER"` over the round-5-touched files → no matches. No blocker from the debt-
+marker gate.
+
+**Bookkeeping-commit isolation confirmed:** `git show --stat --format= acb1a11 -- src tests` and
+`git show --stat --format= 64b2b00 -- src tests` both print nothing — the review-import and
+consolidation commits touched no production or test code, only planning artifacts, matching each
+plan's own prohibition.
+
+**Reachability of the three real WR-01/WR-02 correctness gaps independently checked, not
+trusted from the owner's stated rationale:**
+- `grep -n "add_image_to_store\|override" src/pc2img/features/manager.py` shows the only call
+  site is `self._raster_cache.add_image_to_store(name, array)` — **no override kwargs are ever
+  passed** by the pipeline's own orchestration layer, confirming WR-01's third failure class
+  (wrong-type override kwargs) is unreachable via `FeatureManager`.
+- `.venv/bin/python -O -m pytest tests/test_image_store.py -q` reproduced WR-02 exactly: **2
+  failed** (`test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact[in_memory]` and
+  `[codec_offloaded]`) — the bare `assert` in `_assert_image_shape` is indeed stripped under
+  `python -O`, confirming the finding is real, not overstated.
+- `.venv/bin/ruff check src/pc2img tests --ignore E402,C901,B008` reproduced IN-02 exactly:
+  **6 errors** including the two new `ERA001` hits in `tests/test_util.py:123,153` the review
+  named — confirming the sweep introduced two new lint findings, as claimed.
+- Read `src/pc2img/image_cache/disk_backed_image_store.py` and `disk_backed_image_data.py`
+  directly (not the SUMMARY's description of them): confirmed the WR-04 imprecise docstring
+  clause ("the unlink could still land before a later-stage `ValueError` was raised") and the
+  WR-05 overclaim ("Delete-before-build over the shared path is therefore the one safe ordering")
+  are still present verbatim — these documentation defects are genuinely unfixed, exactly as
+  `05-UAT.md` records them (`status: deferred`, not `resolved`).
+
+None of these three reproduced findings is reachable through `PointCloudImageGenerator.generate()`
+/ `FeatureManager.request()` — the only call sites `add_image_to_store` has in the production
+pipeline pass a plain 2-D/3-D `float32` raster with no override kwargs, on a `generate()`-managed
+feature name that is never manufactured to be empty or zero-itemsize. The owner's "hardening, not
+a defect in the intended working path" disposition is corroborated, not merely asserted.
+
+### Roadmap Success Criteria — regression check (previously VERIFIED, still holds)
+
+The 8 truths verified in the "Goal Achievement" section above (5 ROADMAP SCs + DSN-09 + CI floor +
+registry unification) are unaffected by the round-5 diff (which touches only
+`disk_backed_image_store.py`, `disk_backed_image_data.py`, `test_image_store.py`,
+`test_rrim_features.py`, plus the 28-file comment/docstring sweep). The full green suite (196
+passed, up from 109 at initial verification) and the reproduced coverage/hygiene runs above are
+sufficient regression evidence: no test that pinned any of the 8 original truths was removed or
+weakened by the sweep (the AST-diff gates in 05-19's own `<verify>` chains prove no executable
+line changed in any swept file, and this was independently spot-checked above for two files).
+
+### Verdict
+
+**status: passed.** The phase goal — "All known and review-surfaced correctness bugs fixed, each
+with a proving test, and the previously untested core modules covered" — is achieved:
+
+- All 9 requirement IDs (`BUG-01..05`, `TEST-03..06`) are satisfied with proving tests, reproduced
+  green in this round.
+- Every review-surfaced correctness bug through round 5 that is reachable via the actual pipeline
+  (`FeatureManager` / `PointCloudImageGenerator.generate()`) has a fix and a proving test; the
+  round-5 diff's own review (05-REVIEW.md) found no defect on that reachable path.
+- The round-5 diff got its own dedicated review before this re-verification, satisfying the global
+  Review Discipline rule; the review's 10 findings were landed back into `05-UAT.md` /
+  `REVIEW-LEDGER.md` via `/gsd-consolidate-findings`, satisfying the "land findings back into GSD"
+  rule — none of this lives only in a session transcript.
+- The owner's disposition of all 20 currently-`deferred` items (10 from round 3's closure, 10 newly
+  imported from the round-5-diff review) as hardening / documentation-accuracy / test-hygiene, not
+  phase-blocking correctness bugs, is independently corroborated in this round by reproducing three
+  of the concrete claims (reachability via `manager.py`, the `-O` assert-stripping, the new ERA001
+  lint hits) rather than trusting the SUMMARY or the UAT entry alone.
+- `gsd-tools query audit-uat` confirms 0 `failed` items remain; all 20 open items are `deferred`
+  with a named Phase-6 todo, visible to the audit by design (not resolved-and-hidden).
+- Full suite green (196 passed), coverage floor held (62.27% ≥ 55%), hygiene gate green, no debt
+  markers.
+
+**Not re-litigated, by design:** the 20 `deferred` UAT items and the two Phase-6 todos they route
+to. These are owner-accountable, dated, evidence-cited dispositions, not silent gaps — reopening
+them here would contradict the explicit re-verification brief for this round and would duplicate
+work already recorded once, correctly, in `05-UAT.md` and `05-VERIFICATION.md`'s own closure
+records.
+
+### Requirements Coverage (round-5 confirmation)
+
+| Requirement | Status | Evidence (round 5) |
+| --- | --- | --- |
+| BUG-01 | ✓ SATISFIED | Unaffected by round 5; suite green, `test_orthographic_*` still pass |
+| BUG-02 | ✓ SATISFIED | Unaffected by round 5; suite green |
+| BUG-03 | ✓ SATISFIED | Unaffected by round 5; suite green |
+| BUG-04 | ✓ SATISFIED | rrim module docstring still populated; `test_rrim_features.py` module-docstring sensor passes (05-19 confirmed non-empty) |
+| BUG-05 | ✓ SATISFIED | Round-5 fixes (WR-07/IN-01/IN-06/WR-03) closed with proving, mutation-checked tests (05-18); round-5-diff review findings (WR-01/02/04/05/06, IN-01..04) confirmed unreachable via the production pipeline or purely documentation/hygiene, owner-deferred with evidence |
+| TEST-03 | ✓ SATISFIED | Unaffected; suite green |
+| TEST-04 | ✓ SATISFIED | `test_rrim_features.py::test_generate_rrim_z_factor_changes_the_output` strengthened (WR-03 fix), reproduced passing |
+| TEST-05 | ✓ SATISFIED | Unaffected; suite green |
+| TEST-06 | ✓ SATISFIED | Unaffected; suite green |
+
+### Gaps Summary (round 5)
+
+No gaps. The six round-3 findings that were `failed` going into this round are now `resolved` with
+cited evidence (05-18/05-19). The 10 new findings from the round-5-diff's own review are `deferred`
+by owner decision, with the underlying claims independently reproduced in this re-verification and
+found to be genuine-but-unreachable (WR-01, WR-02) or documentation-only (WR-04, WR-05, WR-06,
+IN-01..04) — not correctness bugs on the phase's production path. Phase 5's goal is achieved.
+
+---
+
+_Re-verified: 2026-09-25 (round 5)_
+_Verifier: Claude (gsd-verifier)_
