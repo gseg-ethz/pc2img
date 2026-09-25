@@ -346,3 +346,111 @@ updated by either round-4 plan — re-verification owns them, next.
 The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
 
 Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-5 closure record (2026-09-25)
+
+Written by plans `05-18` (wave 1, store/rrim fixes) and `05-19` (wave 2, provenance sweep +
+bookkeeping) — round 5 of gap closure, covering the six round-3 findings left `failed`.
+**Body-only append — the YAML frontmatter `status:` / `gaps_open:` fields are deliberately NOT
+updated here.** Re-verification owns those; this section records what changed underneath them
+so the next verifier does not have to reconstruct it.
+
+### Entries flipped, with evidence
+
+| Finding | Disposition | Closed by | Evidence |
+| --- | --- | --- | --- |
+| review-r3-a37bd243f37d (WR-07) | Fixed | 05-18 Task 1 | `20ef1c6` (RED), `816a7cc` (fix) — `add_image_to_store` now validates containment then raster shape BEFORE dropping the existing entry; a failed overwrite is a full no-op in memory and on disk. Mutation check: revert-ordering plugin -> 2 failed of 32; plugin off -> 32 passed. |
+| review-r3-b008fc7c80a7 (IN-01) | Fixed | 05-18 Task 2 | `1ac37b0` — `test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op` plants a never-added codec pair on disk via a peer store constructed after the store under test. Mutation check: unlink-first plugin -> 2 failed of 29 (`-k absent_key` -> 1 failed); plugin off -> 29 passed. |
+| review-r3-e720fec68c0d (IN-06) | Fixed | 05-18 Task 2 | `1ac37b0` — `tempfile.tempdir` redirected to `tmp_path` before construction, `cache_dir.parent == tmp_path` asserted; `leaked tmp dirs: 0`. `test_refused_delete_leaves_store_membership_intact` merged into `test_escaping_key_delete_refuses_and_leaves_outside_file_intact`; round-4 evidence lines above that cite the removed test name refer to the commit where it still existed (`d48bf37`). |
+| review-r3-289e26115f42 (WR-03) | Fixed | 05-18 Task 3 | `d6a25ef` — `test_generate_rrim_z_factor_changes_the_output` extended with the `rrim_component_(slope,range,z1)` vs `(z4)` pair. Mutation check: slope_noz plugin -> 1 failed of 51 (`slope path is z_factor-insensitive`); plugin off -> 51 passed. |
+| review-r3-95860076d83b (IN-03) | Fixed | 05-19 Task 1 + Task 2 | `1317595`, `e2f9e31` — the symlink-section header in `tests/test_image_store.py` now describes the pre-fix predicate in the past tense; the `__delitem__` docstring's history is split into two accurate clauses. |
+| review-r3-6cf03abfa333 (IN-04) | Fixed, class WIDENED | 05-19 Task 1 + Task 2 | `1317595`, `5f6676b`, `537a6b6`, `6250b1f`, `795c90c`, `e2f9e31` — every comment/docstring under `src/pc2img` and `tests/` swept clean of planning vocabulary. |
+
+### WR-07 ordering decision
+
+The fix orders `add_image_to_store` as **validate (containment, then raster shape) -> delete ->
+build**. The reviewer's suggested build-then-swap ordering (construct the replacement on the
+shared `<key>.dat` path before dropping the old entry) was measured and rejected: the two
+entries share one on-disk path (`LazyDiskCache._init_from_config` derives `<key>.dat` from the
+handed-in `.npy` path), so building the replacement first reopens that path in `r+` mode and
+overwrites the OLD entry's live buffer at construction time — and the old entry's own
+path-bound `weakref.finalize` then unlinks the just-built replacement's `.dat` the moment the
+old object is collected (05-18-SUMMARY.md "WR-07 — reviewer-ordering hazard" transcript).
+Delete-before-build over the shared path is therefore the one safe ordering.
+
+The **documented residual** — an `OSError` raised while the replacement's memmap is created
+(e.g. disk full) after the old entry has already been dropped — is not recovered here; it needs
+a build-to-a-temporary-path-then-adopt primitive that can only live in the GSEGUtils cache layer
+that derives `<key>.dat` from the key. Recorded in `add_image_to_store`'s docstring and routed
+to the Phase-6 GSEGUtils todo (`.planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md`)
+by this plan's Task 3.
+
+### Held-reference finalizer hazard (pre-existing, GSEGUtils-owned)
+
+Separately from the OSError residual, `LazyDiskCache` registers
+`weakref.finalize(self, _purge_cache_pair, self._cache_path)` bound to the `.dat` **path**, not
+the object. On a *successful* `add_image_to_store` overwrite, a caller holding a reference to
+the OLD entry after the overwrite has that old object's finalizer fire later and unlink the
+NEW entry's `<key>.dat` when the old object is garbage-collected (measured 2026-09-25:
+`FileNotFoundError` on the next offload/reload). The `FeatureManager` route is unaffected
+because the codec offload path drops the old reference first. This is not fixed here — it needs
+an inode- or object-bound finalizer upstream, not a pc2img workaround — and is recorded on the
+Phase-6 GSEGUtils todo alongside the OSError residual.
+
+### WR-07 not-a-BC-entry judgement
+
+No `BC-NOTES.md` entry opens for the WR-07 fix: the raster-shape rule's exception type stays
+`AssertionError` (unchanged, now single-sourced via `_assert_image_shape`), the error precedence
+(containment before shape) is unchanged and verified, and `_assert_image_shape` is a private
+module-level helper, not a new public symbol. This follows the precedent set by the G10
+data-loss fix (05-14), which was likewise not a BC entry for the same reasons (see this file's
+Round-3 closure record above).
+
+### IN-04 class: widened by owner decision
+
+**Owner decision (2026-09-25, this plan-phase session):** the IN-04 class is WIDENED beyond
+review-ledger IDs and `.planning/` paths to ALSO cover requirement/design/decision codes
+(`BUG-`, `TEST-`, `PERF-`, `QUAL-`, `DSN-`, `D-NN`, `M-NN`, `BC-NN`, `WR-`, `IN-`, `CR-`, `SEC-`,
+`T-NN`, `G<n>`, `D-RN-NN`) and planning file names / plan numbers / spike references, applied to
+**both** `src/pc2img` and `tests/` — the tree that ships stripped of `.planning/` on `main`. The
+technical reasoning behind every swept line is kept, restated in plain words; only the
+provenance citation is dropped or replaced with a generic locator.
+
+The enforcement mechanism is two gates, both run per sweep task: a **tokenizer-scoped gate**
+(walks `COMMENT` tokens and docstring lines only, via `ast.get_docstring` spans; a planning ID
+inside a `NAME` or non-docstring `STRING` token is reported as a RESIDUAL candidate, never
+edited) and an **AST gate** (docstrings blanked, comments ignored by the parser, `ast.dump`
+compared to the 05-18 baseline commit `5b727a7`) that proves no executable line, identifier or
+runtime string changed.
+
+Measured before/after: `src/pc2img` — **80** comment/docstring hits in 15 files before, **0**
+after; `tests/` — **139** comment/docstring hits in 13 files before, **0** after (05-18's own
+edits shifted the plan's pre-measured 79/143 baseline by one line each). Both AST gates print an
+empty list. **Residual candidates (a planning ID living in an identifier or a runtime string,
+which the sweep must never touch): NONE found in either tree.**
+
+### Mutation-check results (05-18, carried forward with citations above)
+
+- **WR-07**: revert-ordering plugin (old body: `del self[img_name]` before `add_data_to_store`)
+  — `2 failed, 30 passed`; plugin off — `32 passed`.
+- **IN-01**: unlink-first plugin (`__delitem__` unlinks both codec paths before delegating to the
+  base store) — `-k absent_key` -> `1 failed`; whole file -> `2 failed, 27 passed`; plugin off —
+  `29 passed`.
+- **WR-03**: slope_noz plugin (`compute_slope` forced to `z_factor=1.0`) — `-k z_factor_changes`
+  -> `1 failed` ("slope path is z_factor-insensitive"); whole file -> `1 failed, 50 passed`;
+  plugin off — `51 passed`.
+
+All plugins were throwaway modules that lived only in the session scratchpad and were never
+committed.
+
+### Final suite count
+
+`.venv/bin/pytest -q` → **196 passed, 0 failed, 0 residual xfail/xpassed**. Coverage floor 55
+holds at **62.27%**. `tests/test_hygiene.py` — 4 passed. `ruff check` / `ruff format --check` on
+`src/pc2img` and `tests/` clean. `gsd-tools query audit-uat` for `05-UAT.md`: **10** open items,
+all `deferred`, zero `failed`.
+
+The YAML frontmatter `status:` / `gaps_open:` fields of `05-UAT.md` and this file are NOT
+updated by either round-5 plan — re-verification owns them, next.
