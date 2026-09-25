@@ -3,12 +3,11 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 6
 current_phase_name: Publication Hardening & Downstream Migration Record
-status: planning
+status: "Phase 05 shipped — PR #12"
 stopped_at: Phase 05 complete, ready to plan Phase 6
-last_updated: "2026-09-25T11:55:12.128Z"
+last_updated: "2026-09-25T12:01:05.577Z"
 last_activity: 2026-09-25
-last_activity_desc: Phase 05 complete, transitioned to Phase 6
-state_head: 80631fa030f0e52430979b3e4e89271819bda8eb
+state_head: c441fe7f227174cb264509e3ca28262aa400a088
 progress:
   total_phases: 7
   completed_phases: 6
@@ -31,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 Phase: 6 — Publication Hardening & Downstream Migration Record
 Plan: Not started
-Status: Ready to plan
-Last activity: 2026-09-25 — Phase 05 complete, transitioned to Phase 6
+Status: Phase 05 shipped — PR #12
+Last activity: 2026-09-25
 
 Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
 
