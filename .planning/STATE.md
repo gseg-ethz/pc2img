@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 05
-current_phase_name: bug-fixes-module-test-coverage
+current_phase_name: Bug Fixes & Module Test Coverage
 status: executing
-stopped_at: "Completed 05-17-PLAN.md (round-4 gap closure wave 2: WR-03 pinned at FEATURES.match, z_factor observably load-bearing end-to-end, z round-trip extended to the upper exponent boundary, clip validation names its clip, Phase-6 GSEGUtils-0.6 override-deletion todo filed, 05-UAT.md reconciled to 2 deferred / 0 failed, Round-4 closure record appended to 05-VERIFICATION.md). NEXT: the round-4 diff (05-16+05-17) needs its own /gsd-code-review before Phase 5 re-verifies (global Review Discipline rule)."
-last_updated: "2026-09-25T09:27:23.334Z"
-last_activity: 2026-09-24
+stopped_at: "Completed 05-18-PLAN.md (round-5 wave-1 gap closure: WR-07 overwrite reordered validate-before-delete with single-sourced shape helper, IN-01 absent-key sensor made mutation-sensitive, IN-06 temp-dir leak fixed + duplicate delete-refusal test merged, WR-03 z_factor pinned on the RRIM slope path via the component surface. Suite 196 passed, coverage 62.27%. NEXT: 05-19 (wave 2, provenance sweep + UAT/VERIFICATION bookkeeping), then the round-5 diff needs its own code review before Phase 5 re-verifies.)"
+last_updated: "2026-09-25T09:53:44.860Z"
+last_activity: 2026-09-25
 last_activity_desc: Phase 05 execution started
-state_head: cf7e681dd8b4fb361d917c9076703af3883be531
+state_head: d6a25efabbac2e7de8d0cbd960e9dcb311dcaea3
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 39
-  completed_plans: 37
+  completed_plans: 38
 milestone_name: milestone
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 05 (bug-fixes-module-test-coverage) — READY TO EXECUTE
-Plan: 3 of 17
+Phase: 05 (Bug Fixes & Module Test Coverage) — EXECUTING
+Plan: 2 of 19
 Status: Ready to execute
-Last activity: 2026-09-24 — Phase 05 execution started
+Last activity: 2026-09-25 — Phase 05 execution started
 
 Progress: [████████████████████] 35/35 plans (100%)
 
@@ -101,6 +101,7 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 | Phase 05 P15 | 46min | 3 tasks | 7 files |
 | Phase 05 P16 | 55min | 3 tasks | 4 files |
 | Phase 05 P17 | 11min | 2 tasks | 4 files |
+| Phase 05 P18 | 20min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -170,6 +171,9 @@ Recent decisions affecting current work:
 - [Phase 05]: [Phase 05 P16] Threat posture corrected everywhere it was stated (store docstring, test comment, BC-NOTES entry 15, UAT reason): the containment guard IS reachable via FeatureRegistry.match's unanchored default fallback (ScalarFieldFeature verbatim key) and is LOAD-BEARING on the installed GSEGUtils 0.5.x, not defence-in-depth as previously claimed; redundant only at the Phase-6 0.6 adoption (spike-000 VALIDATED).
 - [Phase 05]: review-r2-2b9426a42695 and review-r2-6f4507d8c33f were folded by 05-16 into rewrites it made anyway, so they read resolved; review-r2-a7c7f4e498a6 had no host rewrite to fold into, so it is the sole finding newly deferred to the Phase-6 GSEGUtils-0.6 override-deletion todo.
 - [Phase 05]: IN-02 (_validate_clip naming its failing clip) judged NOT a BC-NOTES entry: message-text-only change, same ValueError type, identical accept/reject outcomes, no test asserted the old text -- precedent is G8's unified percentile-bounds message strings, recorded as a 05-VERIFICATION.md deviation rather than a BC entry.
+- [Phase 05]: WR-07 ordering: validate (containment, then shape) -> delete -> build; build-then-swap was measured and rejected (clobbers the old entry's live buffer, races its finalizer).
+- [Phase 05]: WR-07 exception type stays AssertionError, single-sourced via a new _assert_image_shape helper -- no BC-NOTES entry opens.
+- [Phase 05]: OSError-mid-build residual and the held-reference hazard left unfixed, routed to the Phase-6 GSEGUtils carry-out list (05-19 to record).
 
 ### Pending Todos
 
@@ -208,6 +212,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-24T14:21:05.602Z
-Stopped at: Completed 05-17-PLAN.md (round-4 gap closure wave 2: WR-03 pinned at FEATURES.match, z_factor observably load-bearing end-to-end, z round-trip extended to the upper exponent boundary, clip validation names its clip, Phase-6 GSEGUtils-0.6 override-deletion todo filed, 05-UAT.md reconciled to 2 deferred / 0 failed, Round-4 closure record appended to 05-VERIFICATION.md). NEXT: the round-4 diff (05-16+05-17) needs its own /gsd-code-review before Phase 5 re-verifies (global Review Discipline rule).
+Last session: 2026-09-25T09:53:44.647Z
+Stopped at: Completed 05-18-PLAN.md (round-5 wave-1 gap closure: WR-07 overwrite reordered validate-before-delete with single-sourced shape helper, IN-01 absent-key sensor made mutation-sensitive, IN-06 temp-dir leak fixed + duplicate delete-refusal test merged, WR-03 z_factor pinned on the RRIM slope path via the component surface. Suite 196 passed, coverage 62.27%. NEXT: 05-19 (wave 2, provenance sweep + UAT/VERIFICATION bookkeeping), then the round-5 diff needs its own code review before Phase 5 re-verifies.)
 Resume file: None
