@@ -10,7 +10,7 @@ from .registry import FEATURES
 
 
 def _validate_percentile_bounds(low: float, high: float, *, strict: bool) -> None:
-    """Validate a (low, high) percentile pair — the single source of the rule (G8).
+    """Validate a (low, high) percentile pair — the single source of the rule.
 
     Enforces ``0 <= low <= 100`` and ``0 <= high <= 100``, then the ordering:
     ``low < high`` when ``strict`` else ``low <= high``. Raises ``ValueError`` on
@@ -43,8 +43,8 @@ class GradientFeature(DerivativeFeatureStrategy):
         gradient_<axis>_<base_feature>[_px<pixel_size>]   (axis ∈ {x, y})
 
     ``pixel_size`` is the ``np.gradient`` sample spacing; the reported gradient is
-    scaled by ``1/pixel_size``. It defaults to ``100`` (KEPT-BEHAVIOR, D-07): every
-    pre-existing ``gradient_..`` name that omits the ``_px`` suffix reproduces the
+    scaled by ``1/pixel_size``. It defaults to ``100`` (kept behaviour, by design):
+    every pre-existing ``gradient_..`` name that omits the ``_px`` suffix reproduces the
     historical ``1/100``-scaled output byte-for-byte. Supply ``_px<value>`` (or the
     ``pixel_size=`` constructor kwarg) to opt into a different spacing.
 
@@ -61,7 +61,7 @@ class GradientFeature(DerivativeFeatureStrategy):
     def __init__(self, base_feature: str, axis: str, pixel_size: str | float | None = None) -> None:
         self.base_feature = base_feature
         self.axis = axis
-        # Default 100 reproduces today's 1/100-scaled output byte-for-byte (D-07).
+        # Default 100 reproduces today's 1/100-scaled output byte-for-byte (by design).
         self.pixel_size = 100.0 if pixel_size is None else float(pixel_size)
         if self.pixel_size <= 0:
             raise ValueError(f"pixel_size must be > 0, got {self.pixel_size}.")
@@ -113,12 +113,12 @@ class NormalizedFeature(DerivativeFeatureStrategy):
         self.dependencies = [base_feature]
         self.low = float(low)
         self.high = float(high)
-        # M-12/G8: strict percentile bounds (a zero-width range divides by zero),
+        # Strict percentile bounds (a zero-width range divides by zero),
         # validated through the shared single-source helper.
         _validate_percentile_bounds(self.low, self.high, strict=True)
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
-        # DSN-03: copy-before-mutate so the fetched raster is never written in place.
+        # Copy-before-mutate so the fetched raster is never written in place.
         img = np.array(fetch(self.base_feature), copy=True)
         low_bound, high_bound = np.nanpercentile(img, [self.low, self.high])
 
@@ -150,7 +150,7 @@ class HillshadeFeature(DerivativeFeatureStrategy):
     Name syntax:
         hillshade[_<base_feature>][_<azimuth>][_<altitude>][_<z_factor>]
 
-    Convention note (M-11 / D-08, KEPT-BEHAVIOR): the illumination *magnitude*
+    Convention note (kept behaviour, owner-approved): the illumination *magnitude*
     formula is algebraically equivalent to the ESRI hillshade, but the aspect axis
     here (``aspect = arctan2(-x, y)`` with ``x = ∂/∂row``, ``y = ∂/∂col``) is NOT
     north-up ESRI-compass aligned — it is rotated ≈90° relative to that convention.
@@ -194,7 +194,7 @@ class HillshadeFeature(DerivativeFeatureStrategy):
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
         # Mirror __init__: the base_feature group is OPTIONAL and defaults to
         # "range" when absent (bare ``hillshade``). Preserve that so match() and
-        # construction agree (DSN-05).
+        # construction agree.
         base_feature = params.get("base_feature")
         return [base_feature if base_feature is not None else "range"]
 
@@ -224,7 +224,7 @@ class AverageFeature(DerivativeFeatureStrategy):
 
     @classmethod
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
-        # Mirror __init__: split this feature's own regex group (DSN-05).
+        # Mirror __init__: split this feature's own regex group.
         return cls._split_top_level(params["average_features"] or "")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
@@ -251,7 +251,7 @@ class SumFeature(DerivativeFeatureStrategy):
 
     @classmethod
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
-        # Mirror __init__: split this feature's own regex group (DSN-05).
+        # Mirror __init__: split this feature's own regex group.
         return cls._split_top_level(params["sum_features"] or "")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
@@ -304,7 +304,7 @@ class NormFeature(DerivativeFeatureStrategy):
 
     @classmethod
     def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
-        # Mirror __init__: split this feature's own regex group (DSN-05).
+        # Mirror __init__: split this feature's own regex group.
         return cls._split_top_level(params["norm_features"] or "")
 
     def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
@@ -334,7 +334,7 @@ class ClipPercentileFeature(DerivativeFeatureStrategy):
     def __init__(self, base_feature: str, low: str, high: str) -> None:
         self.low = float(low)
         self.high = float(high)
-        # G8: non-strict bounds (clipping to a single percentile is well-defined),
+        # Non-strict bounds (clipping to a single percentile is well-defined),
         # validated through the shared single-source helper.
         _validate_percentile_bounds(self.low, self.high, strict=False)
         self.base_feature = base_feature

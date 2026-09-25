@@ -18,7 +18,7 @@ class FeatureManager:
     ):
         self.registry: FeatureRegistry = FEATURES
         self.pcd: PointCloudData = pcd
-        # DSN-07: None-sentinel default (no shared mutable LazyDiskCacheConfig()),
+        # None-sentinel default (no shared mutable LazyDiskCacheConfig()),
         # consistent with the core.py / tiled_generator sites.
         config = lazy_disk_cache_config or LazyDiskCacheConfig()
         self._raster_cache = DiskBackedImageStore(config=config)
@@ -29,7 +29,7 @@ class FeatureManager:
         # Analyze which base features need to be rasterized for targets
 
         self._targets = []
-        # DSN-04: reset per request so successive request() calls do not accumulate
+        # Reset per request so successive request() calls do not accumulate
         # stale base-feature specs on a reused generator.
         self._base_features = []
         if isinstance(targets, str):
@@ -38,7 +38,7 @@ class FeatureManager:
         def visit(spec: FeatureSpec, visiting: set[str]):
             if spec.name in self._raster_cache:
                 return
-            # DSN-08: a name re-entered on the current dependency path is a cycle;
+            # A name re-entered on the current dependency path is a cycle;
             # raise a clear ValueError instead of recursing into a RecursionError.
             if spec.name in visiting:
                 raise ValueError(f"dependency cycle: {spec.name}")

@@ -10,14 +10,14 @@ if TYPE_CHECKING:
 
 
 def _default_dependencies_for(params: dict[str, str | None]) -> list[str]:
-    """Derive raster dependencies from a parsed regex ``groupdict`` (G5).
+    """Derive raster dependencies from a parsed regex ``groupdict``.
 
     The single source of the default single-``base_feature`` dependency grammar,
     shared by both feature ABCs so the rule is defined in exactly one place. It
     returns ``[base_feature]`` when the parsed ``groupdict`` carries a
     ``base_feature`` group, else ``[]``.
 
-    DSN-05: this lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
+    This lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
     constructing the feature class (which previously ran ``__init__`` twice — once
     in ``match`` and again at compute time). Families whose ``__init__`` derives
     dependencies differently (e.g. the split-list ``average``/``sum``/``norm``

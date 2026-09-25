@@ -22,7 +22,7 @@ class FeatureSpec:
             raise ValueError(f"Name '{name}' does not match pattern {pattern.pattern}")
         self.name = name
         self.params = m.groupdict()
-        # G6: FeatureSpec does NOT derive its own dependencies. ``FeatureRegistry.match``
+        # FeatureSpec does NOT derive its own dependencies. ``FeatureRegistry.match``
         # is the single writer of ``spec.dependencies`` (via ``cls.dependencies_for``
         # on the matched path, or ``[]`` on the default-fallback path); deriving them
         # here was dead code that ``match`` overwrote on every path.
@@ -33,7 +33,7 @@ class FeatureSpec:
 class FeatureRegistry:
     def __init__(self):
         self._map: dict[re.Pattern[str], type[BaseFeatureStrategy | DerivativeFeatureStrategy]] = {}
-        # DSN-11: the default class is genuinely optional until a `default=True`
+        # The default class is genuinely optional until a `default=True`
         # feature registers, so type it `type[...] | None`.
         self._default_cls: type[BaseFeatureStrategy] | None = None
 
@@ -64,7 +64,7 @@ class FeatureRegistry:
             pat, cls = matches[0]
             spec = FeatureSpec(name, pat)
             spec.cls = cls
-            # DSN-05: derive dependencies from the parsed groupdict WITHOUT
+            # Derive dependencies from the parsed groupdict WITHOUT
             # constructing the feature (no more double `__init__`). Each family
             # overrides `dependencies_for` to mirror its own derivation, so
             # match() and construction always agree.
