@@ -1,15 +1,15 @@
-"""Proving sensors for the image_cache reparent (BUG-02 / DSN-02 + DSN-09).
+"""Proving sensors for the image_cache reparent onto GSEGUtils.
 
-Authored test-first (Phase 5, D-12): every sensor here is RED until
+Authored test-first: every sensor here is RED until
 `image_cache/` is reparented onto the GSEGUtils primitives
 (`DiskBackedNDArray` + `DiskBackedStore`). Tests are pure (no PointCloudData).
 
-- BUG-02 / DSN-02: `DiskBackedImageData` arithmetic must dispatch through the
+- Arithmetic: `DiskBackedImageData` arithmetic must dispatch through the
   inherited `__array_ufunc__` and return a plain `np.ndarray`.
-- DSN-09 (security): the store must not carry an arbitrary-object
+- Security: the store must not carry an arbitrary-object
   deserialization sink; reload goes through the `allow_pickle=False` codec and
   a legacy `.pkl` degrades to a cache miss.
-- Blocker sensor (Pitfall 1): an offload -> reload round-trip through the store
+- Blocker sensor: an offload -> reload round-trip through the store
   must return the correct array (fails if the reload class registration is
   unresolved).
 """
@@ -33,7 +33,7 @@ def _gray(shape=(10, 10), dtype=np.float32):
 
 
 def test_arithmetic_returns_plain_ndarray():
-    """BUG-02 / DSN-02: dbid + dbid == arr + arr and the result is a plain ndarray."""
+    """dbid + dbid == arr + arr and the result is a plain ndarray."""
     arr = _gray()
     a = DiskBackedImageData(arr)
     b = DiskBackedImageData(arr)
@@ -45,7 +45,7 @@ def test_arithmetic_returns_plain_ndarray():
 
 
 def test_store_source_has_no_arbitrary_deserialization_sink():
-    """DSN-09: the store SOURCE must not call the arbitrary-object load sink.
+    """Security: the store SOURCE must not call the arbitrary-object load sink.
 
     We negative-grep the store module source. The forbidden token is assembled
     from a hoisted, MULTILINE-flagged pattern (Pitfall 6: no mid-pattern inline
@@ -62,8 +62,8 @@ def test_store_source_has_no_arbitrary_deserialization_sink():
 def test_legacy_pkl_degrades_to_cache_miss(tmp_path: Path):
     """A legacy pre-Phase-2 `.pkl` degrades to a cache miss (KeyError), never loaded.
 
-    Renamed (round 4, out-of-band from a name collision with the
-    review-r2-af50d770d73d mutation check's `-k "escaping or refused"`
+    Renamed (out-of-band from a name collision with a
+    mutation check's `-k "escaping or refused"`
     filter): this test's KeyError comes from the legacy-.pkl refusal path,
     not the containment guard, so it must stay guard-INsensitive and out of
     that selection. No behaviour change.
@@ -91,7 +91,7 @@ def test_offload_reload_round_trip(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# G3 — overwrite / delete must purge the on-disk codec pair                    #
+# Overwrite / delete must purge the on-disk codec pair                        #
 #                                                                              #
 # add_image_to_store's overwrite path does `del self[key]`, but the base       #
 # __delitem__ drops only the in-memory entry. The stale `<key>.npy` +          #
@@ -136,7 +136,7 @@ def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
 def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
     # A TRACKED key that was never offloaded (no on-disk codec pair) must delete
     # cleanly: unlink(missing_ok=True) carries the safety, not a
-    # cache_dir-is-None guard. (review-r1-c2b69f0885e7: renamed from the prior
+    # cache_dir-is-None guard. (Renamed from the prior
     # test name, which misdescribed this body — the key IS tracked here, just
     # never offloaded; the genuinely absent-key contract is pinned separately
     # by test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op below.)
@@ -147,7 +147,7 @@ def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
 
 
 def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
-    """A key that was NEVER added must raise KeyError and leave the cache dir untouched (G10).
+    """A key that was NEVER added must raise KeyError and leave the cache dir untouched.
 
     A codec pair for "never-added" sits on disk (planted by a peer store,
     constructed AFTER this store so it is never adopted), which is what makes
@@ -181,9 +181,9 @@ def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# G10 — a KeyError-raising delete must be a genuine no-op (round 2)            #
+# A KeyError-raising delete must be a genuine no-op                           #
 #                                                                              #
-# The G3 fix above unlinked the codec pair BEFORE super() validated key        #
+# The fix above unlinked the codec pair BEFORE super() validated key           #
 # membership, inverting the base store's no-side-effect-on-KeyError contract   #
 # (its whole body is `del self._store[key]`). With two stores over one cache   #
 # directory, `del A["range"]` raises KeyError AND destroys the raster store B  #
@@ -231,8 +231,8 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
     the key and the delete takes the KeyError branch. Built AFTER the offload,
     `__init__` re-scans `*.npy` and store_a ADOPTS the key — the delete then
     succeeds and does purge the pair, leaving the offloaded peer unable to
-    serve it. That is intended G3 behaviour (a surviving pair would let a store
-    re-adopt and serve a stale raster), not the G10 defect, and it is the
+    serve it. That is intended purge behaviour (a surviving pair would let a store
+    re-adopt and serve a stale raster), not the historical delete-ordering defect, and it is the
     property the docstring now claims. Without this test, swapping two lines of
     setup above would silently reduce the suite to the weaker assertion.
     """
@@ -254,19 +254,17 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# WR-02 — a store key must never build a path outside the cache directory      #
-# (round 3)                                                                    #
+# A store key must never build a path outside the cache directory             #
 #                                                                              #
 # `_get_npy_path` / `_get_meta_path` join the raw key onto the cache dir with  #
-# no containment check, and 05-14 turned `__delitem__` into an unconditional   #
-# `unlink`. Reproduced 2026-07-28 on HEAD with a sentinel one level above the  #
-# cache directory: `add_image_to_store("../victim", arr)` +                    #
+# no containment check, and an earlier fix turned `__delitem__` into an       #
+# unconditional `unlink`. Reproduced 2026-07-28 on HEAD with a sentinel one   #
+# level above the cache directory: `add_image_to_store("../victim", arr)` +   #
 # `offload_image_data_to_disk` OVERWROTE the sentinel with an NPY header, and  #
-# `del store["../victim"]` then DELETED it. Reachability corrected round 4:   #
+# `del store["../victim"]` then DELETED it. Reachability corrected later:     #
 # see the store docstring's threat-posture paragraph and                      #
-# `FeatureRegistry.match`'s unanchored default fallback (review-r2-1a435f-    #
-# 413f18) — the guard is load-bearing, not defence-in-depth, on the           #
-# installed GSEGUtils 0.5.x.                                                  #
+# `FeatureRegistry.match`'s unanchored default fallback — the guard is        #
+# load-bearing, not defence-in-depth, on the installed GSEGUtils 0.5.x.       #
 # --------------------------------------------------------------------------- #
 _SENTINEL_BYTES = b"pc2img round-3 containment sentinel -- must not be touched"
 
@@ -307,7 +305,7 @@ def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Pa
     Carries the union of two contracts: the entry survives a refused delete
     byte-identical to what was inserted (ValueError, membership, array
     equality, sentinel existence + bytes), AND an untracked *ordinary* key
-    still raises `KeyError` with no disk side effect (the 05-14 G10 contract).
+    still raises `KeyError` with no disk side effect (the no-op-on-KeyError contract).
     Parametrised over the same three escape spellings as the add proving test.
     """
     sentinel, cfg = _escape_layout(tmp_path)
@@ -326,7 +324,7 @@ def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Pa
     assert sentinel.exists(), "escaping delete removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES
 
-    # 05-14 G10 contract, unchanged: an untracked ordinary key still raises KeyError.
+    # Unchanged contract: an untracked ordinary key still raises KeyError.
     with pytest.raises(KeyError):
         del store["never-added"]
 
@@ -336,7 +334,7 @@ def test_escaping_key_add_refuses_before_writing_outside_cache_dir(tmp_path: Pat
     """`add_image_to_store` must refuse before any outside file is created or truncated.
 
     ``offload_image_data_to_disk`` runs INSIDE the ``pytest.raises`` block,
-    directly after ``add_image_to_store`` (review-r2-af50d770d73d): with the
+    directly after ``add_image_to_store``: with the
     guard live, ``add_image_to_store`` raises first and the offload call is
     never reached. With the guard disabled (mutation check), insertion alone
     never writes — only reaching ``offload_image_data_to_disk`` and having IT
@@ -373,7 +371,7 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
     Carries NO marker deliberately — it must pass both before and after the
     guard lands, which is what bounds the false-positive risk of adding it.
     The sentinel outside the cache directory is asserted intact after the
-    round trip too (review-r2-e3a76c7d3fd0), so this test bounds both
+    round trip too, so this test bounds both
     false-positive refusals AND stray writes.
     """
     sentinel, cfg = _escape_layout(tmp_path)
@@ -419,8 +417,8 @@ def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# WR-07 (round 5) — a failed overwrite must leave the existing entry and its   #
-# codec pair fully intact, in memory and on disk                              #
+# Validate-before-delete overwrite: a failed overwrite must leave the         #
+# existing entry and its codec pair fully intact, in memory and on disk       #
 #                                                                              #
 # `add_image_to_store` used to drop the existing key (`del self[img_name]`)   #
 # before the replacement's raster shape was validated, so a bad-shape         #
@@ -483,16 +481,17 @@ def test_successful_overwrite_serves_the_replacement_after_offload_and_reload(tm
 
 
 # --------------------------------------------------------------------------- #
-# review-r2-9998f2b36d4c (round 4) — a legitimate symlinked cache entry must   #
-# be served, not refused, while every escaping key stays refused              #
+# A legitimate symlinked cache entry must be served, not refused, while       #
+# every escaping key stays refused                                            #
 #                                                                              #
-# `_assert_within_cache_dir` resolves the FULL path, which follows the final  #
-# component's own symlink. A cache directory holding `<key>.npy` +            #
-# `<key>.meta.json` as symlinks to a real codec pair elsewhere is adopted by  #
-# `__init__` (the adoption scan uses `Path.is_file()`, which follows          #
-# symlinks) but then refused on read, delete and store-unpickling, because    #
-# the resolved candidate lands outside the cache directory even though the   #
-# LINK itself sits inside it. Reproduced 2026-09-24.                          #
+# Before the fix, `_assert_within_cache_dir` resolved the FULL path, which    #
+# followed the final component's own symlink. A cache directory holding      #
+# `<key>.npy` + `<key>.meta.json` as symlinks to a real codec pair elsewhere  #
+# was adopted by `__init__` (the adoption scan uses `Path.is_file()`, which   #
+# follows symlinks) but then refused on read, delete and store-unpickling,    #
+# because the resolved candidate landed outside the cache directory even      #
+# though the LINK itself sat inside it. Reproduced 2026-09-24; this section   #
+# describes that pre-fix behaviour and the fix that replaced it.              #
 # --------------------------------------------------------------------------- #
 def _symlinked_entry_layout(tmp_path: Path) -> tuple[Path, Path, np.ndarray]:
     """Real codec pair in ``shared/``; ``cache/`` holds only symlinks to it."""
@@ -552,8 +551,8 @@ def test_symlinked_cache_entry_is_served_and_unpickles(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# review-r2-3f625b03fb03 (round 4) — the containment invariant is about       #
-# key-derived paths, not entry-supplied ones                                  #
+# The containment invariant is about key-derived paths, not entry-supplied    #
+# ones                                                                         #
 #                                                                              #
 # An entry inserted through the mapping setter (`store[key] = value`) carries #
 # its own `cache_path`, chosen by the caller and never routed through the     #
@@ -562,8 +561,8 @@ def test_symlinked_cache_entry_is_served_and_unpickles(tmp_path: Path):
 # `_cache_path`. Reproduced 2026-09-24 via a STORE-INSERTED entry (not a      #
 # directly constructed one, whose offload is a no-op): a file outside the     #
 # cache directory was overwritten with raster bytes. This is NOT extended     #
-# into enforcement (owner decision, D-R4-01 #5) — the docstring is narrowed   #
-# to what the key builders actually enforce, and this test pins the enforced  #
+# into enforcement (owner decision) — the docstring is narrowed to what       #
+# the key builders actually enforce, and this test pins the enforced          #
 # half: an entry inserted through `add_image_to_store` always carries a       #
 # `cache_path` under the cache directory (because that route derives it from  #
 # the guarded `_get_npy_path`).                                               #
@@ -581,9 +580,9 @@ def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path:
 
 
 # --------------------------------------------------------------------------- #
-# review-r1-8ff7171c6ca4 (IN-03, round 4) — constructor default is a          #
-# None-sentinel, not a shared mutable LazyDiskCacheConfig() instance (DSN-07  #
-# pattern, matching the 05-10/05-11 sweep at other generator/manager sites)   #
+# Constructor default is a None-sentinel, not a shared mutable                #
+# LazyDiskCacheConfig() instance, matching the same pattern used at other     #
+# generator/manager sites                                                     #
 # --------------------------------------------------------------------------- #
 def test_default_config_is_coerced_from_none_sentinel(tmp_path: Path, monkeypatch):
     """`DiskBackedImageStore()` and `DiskBackedImageStore(config=None)` behave identically.

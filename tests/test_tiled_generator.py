@@ -1,15 +1,15 @@
-"""Tiled-orchestration sensors for Phase 5 (TEST-05).
+"""Tiled-orchestration sensors.
 
-Covers the ``tiled_generator`` findings surfaced in 04-FINDINGS:
+Covers the ``tiled_generator`` findings:
 
-* **BUG-03 / DSN-01** — ``TIGSettings.extend_cache_paths`` must *preserve* the
+* **extend_cache_paths dict-assignment** — ``TIGSettings.extend_cache_paths`` must *preserve* the
   per-tile ``interp_kwargs`` when it rewrites the nested cache path. The original
   code assigned the return value of ``dict.update()`` (always ``None``), so the
   extended settings silently dropped every interpolation kwarg — the exact
   opposite of intent. Because ``TIGSettings`` is a frozen pydantic dataclass,
   the ``None`` re-triggers validation and surfaces as loss (a ``ValidationError``
   today), so the proving test simply asserts the post-fix contract.
-* **DSN-10** — ``pc2img.tiled_generator`` imports ``PointCloudImageGenerator``
+* **Import-order safety** — ``pc2img.tiled_generator`` imports ``PointCloudImageGenerator``
   from the defining module (``pc2img.core``) rather than the package barrel, so
   importing the submodule *first* in a fresh interpreter cannot trip a
   partially-initialized-module ``ImportError``.
@@ -42,7 +42,7 @@ def _settings_with_nested_cache_cfg() -> TIGSettings:
 
 
 def test_extend_cache_paths_preserves_interp_kwargs() -> None:
-    """BUG-03: extending the cache path must keep ``interp_kwargs`` a live dict.
+    """Extending the cache path must keep ``interp_kwargs`` a live dict.
 
     The extended settings must still expose ``interp_kwargs`` as a dict whose
     nested ``lazy_disk_cache_config`` is a (path-extended) ``LazyDiskCacheConfig``
@@ -58,7 +58,7 @@ def test_extend_cache_paths_preserves_interp_kwargs() -> None:
 
 
 def test_tiled_generator_imports_first_in_fresh_interpreter() -> None:
-    """DSN-10: importing the submodule first must not raise on a barrel cycle.
+    """Importing the submodule first must not raise on a barrel cycle.
 
     Runs in a clean subprocess so ``pc2img.tiled_generator`` is genuinely the
     first ``pc2img`` submodule imported — the ordering that would expose a

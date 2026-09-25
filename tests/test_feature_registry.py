@@ -1,11 +1,11 @@
-"""Feature-name DSL + registry-unification sensors (TEST-04, BUG-05 / D-14 / DSN-05).
+"""Feature-name DSL + registry-unification sensors.
 
 These tests are *pure* — no ``PointCloudData`` is built. They exercise the
 regex/parse surface of the two registries and the new ``dependencies_for``
 classmethod directly, so they run fast and share nothing with the heavier
 projection/orchestration fixtures in ``conftest.py``.
 
-Test-first (D-12): the unification assertions below are authored *before* the
+Test-first: the unification assertions below are authored *before* the
 source change and marked ``xfail`` so this file is committed RED. Task 2 removes
 the ``xfail`` markers once the source is unified. The single default-fallback
 characterization test is NOT xfail — it pins behavior that already holds today
@@ -167,10 +167,10 @@ def test_match_derives_deps_via_dependencies_for_without_construction(monkeypatc
 
 
 # --------------------------------------------------------------------------- #
-# G5 — one shared default dependency helper (both ABCs delegate, still override)#
+# One shared default dependency helper (both ABCs delegate, still override)   #
 # --------------------------------------------------------------------------- #
 def test_dependencies_for_stays_overridable_after_unification() -> None:
-    """G5: the shared default must not break subclass / family overrides."""
+    """The shared default must not break subclass / family overrides."""
     from pc2img.features.derivative_features import AverageFeature, GradientFeature
 
     # single-base_feature grammar → the shared default helper
@@ -184,7 +184,7 @@ def test_dependencies_for_stays_overridable_after_unification() -> None:
 
 
 def test_both_feature_abcs_share_one_default_dependency_helper() -> None:
-    """G5: both ABCs derive the single-base_feature default via one helper."""
+    """Both ABCs derive the single-base_feature default via one helper."""
     from pc2img.features import core
     from pc2img.features.core import BaseFeatureStrategy, DerivativeFeatureStrategy
 
@@ -195,7 +195,7 @@ def test_both_feature_abcs_share_one_default_dependency_helper() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# G6 — FeatureSpec no longer self-derives dependencies (match is single writer)#
+# FeatureSpec no longer self-derives dependencies (match is single writer)    #
 # --------------------------------------------------------------------------- #
 def test_feature_spec_does_not_self_derive_dependencies() -> None:
     from pc2img.features.derivative_features import GradientFeature
@@ -206,14 +206,14 @@ def test_feature_spec_does_not_self_derive_dependencies() -> None:
 
 
 def test_match_is_single_writer_of_dependencies() -> None:
-    """G6 characterization (green before and after): match derives deps via dependencies_for."""
+    """Characterization (green before and after): match derives deps via dependencies_for."""
     from pc2img.features.registry import FEATURES
 
     assert FEATURES.match("gradient_x_range").dependencies == ["range"]
 
 
 def test_registry_lookup_error_str_is_not_repr_wrapped() -> None:
-    # WR-02 (05-REVIEW): RegistryLookupError subclasses KeyError, whose __str__
+    # RegistryLookupError subclasses KeyError, whose __str__
     # repr-wraps the message (adds quotes). The FeatureRegistry sites used to
     # raise clean RuntimeError text, so str() must render the plain message —
     # no surrounding quotes — to avoid a diagnostics regression.

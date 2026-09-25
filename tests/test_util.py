@@ -1,15 +1,15 @@
-"""Tests for :mod:`pc2img.util` (TEST-06).
+"""Tests for :mod:`pc2img.util`.
 
-Covers the three Phase-5 findings on this module plus breadth coverage for the
+Covers three findings on this module plus breadth coverage for the
 pure-array helpers:
 
-* **M-07** — ``nanconv`` must not mutate the caller's input array in place.
-* **M-08** — ``nanconv`` must accumulate/divide in float32 (float16 overflows to
+* ``nanconv`` must not mutate the caller's input array in place.
+* ``nanconv`` must accumulate/divide in float32 (float16 overflows to
   ``inf`` on realistic range magnitudes).
-* **M-09** — ``convert_to_image`` on all-NaN input with ``normalize=True`` must
+* ``convert_to_image`` on all-NaN input with ``normalize=True`` must
   degrade to a valid constant uint8 image rather than raising.
 
-The genuine-fix sensors (M-07/M-08/M-09) are authored ``xfail`` first (D-12): they
+The genuine-fix sensors are authored ``xfail`` first: they
 prove the defect is reachable today and flip to passing once ``util.py`` is fixed.
 The ``replace_nan`` / ``to_gray`` breadth tests pass from the start (characterization).
 """
@@ -24,7 +24,7 @@ from pc2img.util import convert_to_image, nanconv, replace_nan, to_gray
 
 
 # --------------------------------------------------------------------------- #
-# float64 oracle for the normalized-convolution math (M-08)                    #
+# float64 oracle for the normalized-convolution math                          #
 # --------------------------------------------------------------------------- #
 def _nanconv_float64_reference(a: np.ndarray, k: np.ndarray) -> np.ndarray:
     """Reference normalized convolution in float64 (no float16 cast, no mutation).
@@ -46,7 +46,7 @@ def _nanconv_float64_reference(a: np.ndarray, k: np.ndarray) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- #
-# M-07 — nanconv must not mutate the caller's input                            #
+# nanconv must not mutate the caller's input                                  #
 # --------------------------------------------------------------------------- #
 def test_nanconv_does_not_mutate_input_nan_mask() -> None:
     a = np.array([[1.0, np.nan, 3.0], [np.nan, 5.0, 6.0], [7.0, 8.0, np.nan]], dtype=np.float32)
@@ -61,7 +61,7 @@ def test_nanconv_does_not_mutate_input_nan_mask() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# M-08 — nanconv must stay finite and float32-accurate on realistic magnitudes #
+# nanconv must stay finite and float32-accurate on realistic magnitudes       #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("magnitude", [5e3, 1.2e4, 5e4])
 @pytest.mark.parametrize("kernel_size", [3, 5, 7])
@@ -77,10 +77,10 @@ def test_nanconv_finite_and_within_float32_tolerance(magnitude: float, kernel_si
 
 
 # --------------------------------------------------------------------------- #
-# PERF-02 / D-03 — reduced-precision opt-in on nanconv                          #
+# Reduced-precision opt-in on nanconv                                         #
 # --------------------------------------------------------------------------- #
 def test_nanconv_default_reproduces_float32_output_byte_for_byte() -> None:
-    # The default (compute_dtype=np.float32) must equal the mandatory M-08 fix path.
+    # The default (compute_dtype=np.float32) must equal the mandatory fixed path.
     a = np.array([[1.0, np.nan, 3.0], [4.0, 5.0, np.nan], [7.0, 8.0, 9.0]], dtype=np.float32)
     k = np.ones((3, 3), dtype=np.float32)
 
@@ -95,7 +95,7 @@ def test_nanconv_reduced_precision_engages_only_when_requested() -> None:
     a = np.full((16, 16), 12000.0, dtype=np.float32)
     k = np.ones((7, 7), dtype=np.float32)
 
-    # Explicit opt-in to reduced precision engages float16 (and, per M-08, overflows).
+    # Explicit opt-in to reduced precision engages float16 (and overflows).
     reduced = nanconv(a, k, compute_dtype=np.float16)
     assert reduced.dtype == np.float16
 
@@ -106,7 +106,7 @@ def test_nanconv_reduced_precision_engages_only_when_requested() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# M-09 — convert_to_image on all-NaN + normalize=True must not raise           #
+# convert_to_image on all-NaN + normalize=True must not raise                 #
 # --------------------------------------------------------------------------- #
 def test_convert_to_image_all_nan_normalize_returns_constant_image() -> None:
     x = np.full((4, 4), np.nan, dtype=np.float32)
@@ -120,7 +120,7 @@ def test_convert_to_image_all_nan_normalize_returns_constant_image() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Breadth: replace_nan (TEST-06)                                               #
+# Breadth: replace_nan                                                        #
 # --------------------------------------------------------------------------- #
 def test_replace_nan_max_policy_fills_with_finite_max() -> None:
     x = np.array([[1.0, np.nan], [3.0, 4.0]], dtype=np.float32)
@@ -150,7 +150,7 @@ def test_replace_nan_no_nan_returns_unmodified_copy() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Breadth: to_gray (TEST-06)                                                   #
+# Breadth: to_gray                                                            #
 # --------------------------------------------------------------------------- #
 def test_to_gray_2d_passthrough_preserves_values() -> None:
     x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)

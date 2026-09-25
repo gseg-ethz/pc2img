@@ -1,19 +1,19 @@
-"""Sensors for ``features/derivative_features.py`` (BUG-05, TEST-04).
+"""Sensors for ``features/derivative_features.py``.
 
-Two distinct kinds of test live here, per the Phase-5 disposition of the four
-04-FINDINGS items that touch this module:
+Two distinct kinds of test live here, per the disposition of the findings
+that touch this module:
 
-* **Genuine defects (DSN-03 + M-12).** ``NormalizedFeature`` mutates the raster it
-  fetches in place (DSN-03, :78-79) and has its percentile-bounds validation
-  commented out (M-12, :68) — both on the same ``compute``. These ship
+* **Genuine defects.** ``NormalizedFeature`` mutated the raster it
+  fetches in place and had its percentile-bounds validation
+  commented out — both on the same ``compute``. These shipped
   *test-first*: the proving tests below are authored ``xfail`` and flip to passing
-  asserts once the one-edit fix lands (D-12).
-* **Kept-behavior (M-10 + M-11).** ``GradientFeature``'s ``1/100`` gradient spacing
+  asserts once the one-edit fix lands.
+* **Kept behaviour.** ``GradientFeature``'s ``1/100`` gradient spacing
   and ``HillshadeFeature``'s non-north-up aspect handedness are DELIBERATE,
-  downstream-validated design (Pitfall 5). They are pinned by *characterization*
+  downstream-validated design. They are pinned by *characterization*
   tests that are green from the start and stay green: the only source change is an
-  opt-in ``pixel_size`` param whose default reproduces today's output byte-for-byte
-  (M-10/D-07), and a docstring note for the aspect convention (M-11/D-08). We assert
+  opt-in ``pixel_size`` param whose default reproduces today's output byte-for-byte,
+  and a docstring note for the aspect convention. We assert
   hillshade azimuth-sweep *self-consistency*, never ESRI-compass truth.
 
 The derivative ``compute(_, fetch)`` call sites ignore the ``pcd`` positional and
@@ -35,11 +35,11 @@ from pc2img.features.registry import FEATURES
 
 
 # --------------------------------------------------------------------------- #
-# DSN-03 + M-12 — genuine defects, now fixed (proving asserts pass)            #
+# Genuine defects, now fixed (proving asserts pass)                           #
 # --------------------------------------------------------------------------- #
 def test_normalized_feature_rejects_inverted_percentiles() -> None:
     # low > high is nonsense; ClipPercentileFeature already rejects it, and the
-    # re-enabled check here (M-12) enforces ``0 <= low < high <= 100``.
+    # re-enabled check here enforces ``0 <= low < high <= 100``.
     with pytest.raises(ValueError):
         NormalizedFeature(base_feature="range", low="90", high="10")
 
@@ -50,7 +50,7 @@ def test_normalized_feature_rejects_out_of_range_percentiles() -> None:
 
 
 def test_normalized_feature_does_not_mutate_fetched_array(fetch_stub) -> None:
-    # DSN-03: compute() must not write into the array it receives from ``fetch``.
+    # compute() must not write into the array it receives from ``fetch``.
     raster = np.array([[0.0, 1.0], [2.0, 3.0]], dtype=np.float64)
     original = raster.copy()
     fetch = fetch_stub({"range": raster})
@@ -61,7 +61,7 @@ def test_normalized_feature_does_not_mutate_fetched_array(fetch_stub) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# M-10 — GradientFeature 1/100 spacing is KEPT behavior (characterization)     #
+# GradientFeature 1/100 spacing is KEPT behaviour (characterization)          #
 # --------------------------------------------------------------------------- #
 def _unit_slope_ramp() -> np.ndarray:
     """An 8x8 raster whose value rises by 1 per column (unit slope along x)."""
@@ -118,12 +118,12 @@ def test_gradient_dsl_without_suffix_keeps_default_spacing() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# M-11 — Hillshade aspect handedness is KEPT behavior (self-consistency only)  #
+# Hillshade aspect handedness is KEPT behaviour (self-consistency only)       #
 # --------------------------------------------------------------------------- #
 def test_hillshade_azimuth_sweep_is_self_consistent(fetch_stub) -> None:
     # An east-rising ramp: value increases along the column axis. We assert only
     # that illuminating it from one azimuth is consistently brighter than from the
-    # opposite azimuth — an *internal* invariant, NOT ESRI-compass truth (D-08).
+    # opposite azimuth — an *internal* invariant, NOT ESRI-compass truth.
     ramp = np.tile(np.linspace(0.0, 10.0, 10, dtype=np.float64), (10, 1))
     fetch_bright = fetch_stub({"range": ramp})
     fetch_dark = fetch_stub({"range": ramp})
@@ -135,7 +135,7 @@ def test_hillshade_azimuth_sweep_is_self_consistent(fetch_stub) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# G8 — percentile-bounds validation centralized (strict/non-strict preserved)  #
+# Percentile-bounds validation centralized (strict/non-strict preserved)      #
 #                                                                              #
 # NormalizedFeature keeps its strict low < high contract (a zero range divides #
 # by zero) while ClipPercentileFeature and rrim keep the non-strict low <= high #

@@ -1,7 +1,7 @@
 """Collection smoke: every advertised conftest fixture resolves and is usable.
 
-Pure, deterministic, and fixture-only — this proves the Wave-1 fixture factory
-(D-11) is wired before any Wave-2/3 test depends on it. It does not exercise the
+Pure, deterministic, and fixture-only — this proves the shared fixture factory
+is wired before any other test depends on it. It does not exercise the
 production pipeline.
 """
 

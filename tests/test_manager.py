@@ -1,21 +1,21 @@
-"""TEST-05 sensors for the ``FeatureManager`` orchestration findings (BUG-05).
+"""Sensors for the ``FeatureManager`` orchestration findings.
 
-Covers the four Phase-5 manager/orchestration findings from ``04-FINDINGS.md``:
+Covers the manager/orchestration findings:
 
-* **DSN-04** — ``FeatureManager.request()`` never reset ``_base_features``, so a
+* ``FeatureManager.request()`` never reset ``_base_features``, so a
   reused generator accumulated stale specs across successive requests.
-* **DSN-08** — the recursive ``request().visit`` had no visited-set guard, so a
+* the recursive ``request().visit`` had no visited-set guard, so a
   cyclic feature dependency graph recursed unbounded into a ``RecursionError``
   instead of failing with a clear, catchable error.
-* **DSN-07** — the ``lazy_disk_cache_config`` parameter defaulted to a *constructed*
+* the ``lazy_disk_cache_config`` parameter defaulted to a *constructed*
   ``LazyDiskCacheConfig()`` (a shared mutable-default anti-pattern) rather than the
   ``None``-sentinel pattern used at the ``core.py`` / tiled sites.
 
-DSN-06 (omitted-config coercion) is proven by the pre-existing xfail at
+Omitted-config coercion is proven by the pre-existing xfail at
 ``test_point_cloud_image_generator.py::test_constructor_normalizes_omitted_lazy_disk_cache_config``
 — that xfail IS the sensor and is flipped in Task 2, so it is not re-authored here.
 
-Per D-12 the genuine-fix sensors are authored xfail first (Task 1) and flipped when
+The genuine-fix sensors are authored xfail first (Task 1) and flipped when
 the fix lands (Task 2).
 """
 
@@ -67,7 +67,7 @@ def self_cyclic_feature() -> Iterator[str]:
 def test_request_twice_does_not_accumulate_base_features(
     synthetic_pcd: Callable[..., PointCloudData],
 ) -> None:
-    """DSN-04: a second ``request()`` reflects only the latest uncached base specs.
+    """A second ``request()`` reflects only the latest uncached base specs.
 
     First request pulls two base features (``range`` + ``scalar_field_intensity``);
     the second requests only ``range``. With the reset in place ``_base_features``
@@ -86,7 +86,7 @@ def test_dependency_cycle_raises_valueerror_not_recursionerror(
     synthetic_pcd: Callable[..., PointCloudData],
     self_cyclic_feature: str,
 ) -> None:
-    """DSN-08: a cyclic dependency graph fails with a clear ``ValueError``.
+    """A cyclic dependency graph fails with a clear ``ValueError``.
 
     Without the visited-set guard this recurses unbounded into a ``RecursionError``
     (a ``RuntimeError`` subclass, NOT a ``ValueError``) — so this ``pytest.raises``
@@ -100,7 +100,7 @@ def test_dependency_cycle_raises_valueerror_not_recursionerror(
 
 
 def test_default_config_uses_none_sentinel() -> None:
-    """DSN-07: the ``lazy_disk_cache_config`` default is the ``None`` sentinel.
+    """The ``lazy_disk_cache_config`` default is the ``None`` sentinel.
 
     A constructed ``LazyDiskCacheConfig()`` default is evaluated once at definition
     time and shared across every default-constructed manager. The ``None``-sentinel

@@ -1,11 +1,11 @@
-"""Behaviour tests for the reparented ``DiskBackedImageData`` (D-04).
+"""Behaviour tests for the reparented ``DiskBackedImageData``.
 
-After the Phase-5 reparent onto ``GSEGUtils.lazy_disk_cache.DiskBackedNDArray``,
+After the reparent onto ``GSEGUtils.lazy_disk_cache.DiskBackedNDArray``,
 the private buffer is ``self._data`` and the offload/load, pickle, finalizer and
 purge machinery is inherited from ``LazyDiskCache``. These tests assert the
 inherited contract directly against the renamed private attribute.
 
-Arithmetic (BUG-02) lives in ``tests/test_image_store.py``, not here.
+Arithmetic lives in ``tests/test_image_store.py``, not here.
 """
 
 import gc
@@ -196,7 +196,7 @@ class TestCacheFileFinalization:
         data_obj = DiskBackedImageData(img, enable_caching=True, cache_path=cache_file, purge_disk_on_gc=True)
         serialized = pickle.dumps(data_obj)
         loaded_obj = pickle.loads(serialized)
-        # Restored instance re-registers a live finalizer (D-19 enable_purge path).
+        # Restored instance re-registers a live finalizer (the enable_purge path).
         assert hasattr(loaded_obj, "_finalizer")
         assert loaded_obj._finalizer.alive
 

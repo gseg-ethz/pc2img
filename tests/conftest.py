@@ -1,4 +1,4 @@
-"""Shared synthetic test-fixture factory for the Phase-5 test suite (D-11).
+"""Shared synthetic test-fixture factory for the pc2img test suite.
 
 Deterministic, fast, and free of committed binary fixtures: every point cloud is
 built at runtime from a seeded ``numpy`` generator, so the tests are reproducible
@@ -9,8 +9,8 @@ scalar fields via the ``scalar_fields=`` kwarg, so no loader round-trip is neede
 Three consumers are served here:
 
 * ``synthetic_pcd`` — a *factory* fixture that returns a callable building a real
-  ``PointCloudData``. Only TEST-03 (projection) and TEST-05 (orchestration) need a
-  real PCD; the other waves are pure-array/stub and use the lighter helpers below.
+  ``PointCloudData``. Only the projection and orchestration tests need a
+  real PCD; the other tests are pure-array/stub and use the lighter helpers below.
 * ``fetch_stub`` — a factory returning a dict-backed ``Callable[[str], NDArray]``
   for the ``compute(_, fetch)`` derivative/DSL call sites (which ignore the pcd).
 * ``fake_projection`` — a duck-typed ``ProjectionStrategy`` returning the full

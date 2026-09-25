@@ -22,13 +22,13 @@ _DEFAULT_PACK_NAME = "rrim_pack_(range,r16,d8,z1)"
 
 
 def test_rrim_module_docstring_is_populated() -> None:
-    """BUG-04: the module docstring is the first statement, so __doc__ populates."""
+    """The module docstring is the first statement, so __doc__ populates."""
     assert isinstance(rrim_module.__doc__, str)
     assert rrim_module.__doc__.strip()
 
 
 def test_rrim_module_docstring_clears_e402() -> None:
-    """BUG-04 proving test: reordering the header so the docstring leads clears the E402 findings."""
+    """Proving test: reordering the header so the docstring leads clears the E402 findings."""
     ruff = Path(sys.executable).with_name("ruff")
     ruff_cmd = str(ruff) if ruff.exists() else shutil.which("ruff")
     if ruff_cmd is None:
@@ -112,10 +112,10 @@ def test_rrim_feature_registry_outputs_rgb_and_components() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# G1 (BUG-05, blocker): RRIM dependency resolution via dependencies_for        #
+# RRIM dependency resolution via dependencies_for                             #
 #                                                                              #
 # FeatureRegistry.match derives deps via cls.dependencies_for(params) WITHOUT  #
-# constructing the class (DSN-05). The three RRIM classes use a regex group    #
+# constructing the class. The three RRIM classes use a regex group             #
 # named ``args`` (not ``base_feature``), so without a dependencies_for         #
 # override the inherited base returns [] and the base raster is never          #
 # scheduled — reproducing "Scalar field 'rrim' not found" end-to-end. These    #
@@ -171,17 +171,18 @@ def test_generate_rrim_component_slope_end_to_end_returns_finite_raster(syntheti
 
 
 # --------------------------------------------------------------------------- #
-# G9 (BUG-05, blocker, round 2): the derived pack-feature name must round-trip #
+# The derived pack-feature name must round-trip                               #
 #                                                                              #
 # RRIMConfig.pack_feature_name() is BOTH a public feature name and the cache   #
 # key. It formatted z_factor with a 6-significant-figure general format, which #
 # (a) switches to exponent notation below 1e-4 — a token _Z_FACTOR_RE rejects, #
-# so the pack dependency the G1 dependencies_for derives raises ValueError at  #
-# request time — and (b) truncates above 6 significant figures, making the     #
-# cache key NON-INJECTIVE (two distinct configs collide on one raster).        #
-# The fix is both halves: widen the grammar AND emit the shortest exactly      #
-# round-tripping form. The existing G1 end-to-end tests above all use default  #
-# z, which is exactly why they pass and why this class of defect was invisible.#
+# so the pack dependency the dependencies_for override derives raises          #
+# ValueError at request time — and (b) truncates above 6 significant figures,  #
+# making the cache key NON-INJECTIVE (two distinct configs collide on one      #
+# raster). The fix is both halves: widen the grammar AND emit the shortest     #
+# exactly round-tripping form. The dependency-resolution end-to-end tests      #
+# above all use default z, which is exactly why they pass and why this class   #
+# of defect was invisible.                                                     #
 # --------------------------------------------------------------------------- #
 _ROUND_TRIP_Z_VALUES = [
     1e-06,
@@ -193,7 +194,7 @@ _ROUND_TRIP_Z_VALUES = [
     2.5,
     10.0,
     100.0,
-    # review-r1-4939108716dd (WR-05): upper exponent boundary, NAME-level only.
+    # Upper exponent boundary, NAME-level only.
     1e16,
     1e17,
     1.2345678e20,
@@ -226,7 +227,7 @@ def test_pack_feature_name_is_injective_for_nearby_z() -> None:
 
 
 def test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name() -> None:
-    """review-r1-4939108716dd (WR-05): round-trip coverage extends to the upper exponent boundary.
+    """Round-trip coverage extends to the upper exponent boundary.
 
     ``_format_number``'s integer branch means every float >= 2**53 (all of
     which are integers) emits a long-digit token, never exponent notation — so
@@ -269,7 +270,7 @@ def test_generate_rrim_small_z_end_to_end(synthetic_pcd) -> None:
 
 
 def test_generate_rrim_z_factor_changes_the_output(synthetic_pcd) -> None:
-    """review-r1-a8cd7b4707b0 (WR-04): z_factor must be observably load-bearing end-to-end.
+    """z_factor must be observably load-bearing end-to-end.
 
     z reaches the final rasters on two distinct paths, and each needs its own
     pair to be provably load-bearing. The rrim composite's slope channel is
@@ -328,7 +329,7 @@ def test_generate_rrim_z_factor_changes_the_output(synthetic_pcd) -> None:
     ],
 )
 def test_z_factor_token_unchanged_for_currently_valid_values(z_factor: float, expected: str) -> None:
-    """Characterization guard (passes BEFORE and AFTER the G9 fix): zero cache-key churn.
+    """Characterization guard (passes BEFORE and AFTER the round-trip fix): zero cache-key churn.
 
     Every z_factor that encodes correctly today must emit a BYTE-IDENTICAL token
     after the formatter change, so no currently-valid cache key is invalidated.
@@ -340,22 +341,23 @@ def test_z_factor_token_unchanged_for_currently_valid_values(z_factor: float, ex
 
 
 # --------------------------------------------------------------------------- #
-# WR-03 — the widened z grammar is a NAME-level precedence change (round 3)    #
+# The widened z grammar is a NAME-level precedence change                     #
 #                                                                             #
 # Widening `_Z_FACTOR_RE` is additive at the TOKEN level, but `_looks_like_    #
 # option_token(tokens[0])` turns that into a NAME-level reinterpretation: a    #
 # first token matching the widened grammar is now read as an OPTION rather     #
 # than as a base-feature name. Same public name, same cache key, different     #
 # computation. Owner decision 2026-07-28: the new precedence is ACCEPTED as    #
-# correct — these are kept-behavior characterization tests (they pass on their #
-# first run, before any source edit), not a fix. Recorded as BC-NOTES 16.      #
+# correct — these are kept-behaviour characterization tests (they pass on their #
+# first run, before any source edit), not a fix. Recorded in the project's     #
+# breaking-change notes.                                                       #
 # --------------------------------------------------------------------------- #
 def test_exponent_token_takes_precedence_over_base_feature_name() -> None:
     """A first token matching the widened z grammar is read as an option, not a base feature.
 
-    Measured 2026-07-28. PRE-05-14 (pattern `^z([+-]?\\d+(?:\\.\\d+)?)$`, which
-    does not match `z1e5`) the SAME name yielded ``base_feature='z1e5'`` and
-    ``z_factor=1.0``. That is the BC event this test pins.
+    Measured 2026-07-28. Before the grammar widened (pattern `^z([+-]?\\d+(?:\\.\\d+)?)$`,
+    which does not match `z1e5`) the SAME name yielded ``base_feature='z1e5'`` and
+    ``z_factor=1.0``. That is the breaking-change event this test pins.
 
     Asserted through `_parse_rrim_config` / `_parse_rrim_component`, never on
     `_Z_FACTOR_RE` directly: the regex is only the mechanism — the consequence
@@ -403,15 +405,16 @@ def test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name() -> 
 
 
 def test_exponent_token_precedence_is_visible_at_the_registry_surface() -> None:
-    """review-r2-d1c47843161c: pin WR-03 precedence at the PUBLIC surface.
+    """Pin the name-precedence change at the PUBLIC surface.
 
-    BC-NOTES entry 16 describes the break at the surface a caller actually
-    touches: "the same public name, resolving to the same cache key, now
+    The project's breaking-change notes describe the break at the surface a caller
+    actually touches: "the same public name, resolving to the same cache key, now
     denotes a different computation". The pins above
     (``test_exponent_token_takes_precedence_over_base_feature_name`` et al.) go
     through the private parser (``_parse_rrim_config`` / ``_parse_rrim_component``),
-    which is the *mechanism*, not the surface the BC record is written about —
-    ``dependencies_for`` is the exact surface G1 rewrote (DSN-05), and it could
+    which is the *mechanism*, not the surface the breaking-change record is written
+    about — ``dependencies_for`` is the exact surface the dependency-resolution
+    rewrite touched, and it could
     drift independently of the private-parser pins staying green. This test
     asserts through ``FEATURES.match``, which is what schedules the dependency
     graph and derives the store key.
@@ -432,7 +435,7 @@ def test_exponent_token_precedence_is_visible_at_the_registry_surface() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# review-r1-8fb6b87813d1 (IN-02): a clip validation error names its clip       #
+# A clip validation error names its clip                                      #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize(
     ("field", "expected"),

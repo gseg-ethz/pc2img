@@ -1,13 +1,13 @@
-"""TEST-03 interpolation sensors for ``strategies/interpolation.py`` (Phase 5, BUG-05).
+"""Interpolation sensors for ``strategies/interpolation.py``.
 
-M-06 is **KEPT-BEHAVIOR** (D-06): the Delaunay interior-culling heuristic is a
-*deliberate* choice — it measurably reduced artifact noise in a downstream
-optical-flow task — so these tests **pin** it (Pitfall 5), they do not "fix" it.
+The interior-culling heuristic is **KEPT BEHAVIOUR**: the Delaunay interior-culling
+heuristic is a *deliberate* choice — it measurably reduced artifact noise in a downstream
+optical-flow task — so these tests **pin** it, they do not "fix" it.
 
 The held-out oracle is ``scipy.interpolate.LinearNDInterpolator``: a query point is
 NaN **iff** it falls outside the convex hull (``Delaunay.find_simplex == -1``). With
 interior culling inactive, ``DelaunayInterpolation`` must reproduce that NaN
-placement exactly. The barycentric weights are **CONFIRMED-CORRECT** (04-FINDINGS)
+placement exactly. The barycentric weights are **CONFIRMED-CORRECT**
 and are pinned here — a linear field is reproduced to ~1e-13 — not re-opened.
 
 All fixtures are pure numpy arrays (no ``PointCloudData``): the interpolation layer
@@ -23,7 +23,7 @@ Grid geometry
   the hole with large, elongated triangles whose area exceeds ``median * 10`` and
   whose aspect ratio exceeds the MAD threshold, so culling **fires** and stamps the
   hole interior NaN even though it lies inside the convex hull. This is exactly the
-  M-06 kept-behavior we pin.
+  kept behaviour we pin.
 """
 
 from __future__ import annotations
@@ -106,10 +106,10 @@ def test_uniform_grid_matches_scipy_oracle_nan_placement():
 
 
 # --------------------------------------------------------------------------- #
-# M-06 characterization — interior culling is DELIBERATE, pin it              #
+# Characterization — interior culling is DELIBERATE, pin it                   #
 # --------------------------------------------------------------------------- #
 def test_interior_culling_stamps_extra_nans_inside_hull():
-    """M-06 kept-behavior: over a hole, default culling adds NaNs the scipy oracle does not.
+    """Kept behaviour: over a hole, default culling adds NaNs the scipy oracle does not.
 
     The removed interior block lies *inside* the convex hull, so ``LinearNDInterpolator``
     fills it. ``DelaunayInterpolation`` culls the large bridging triangles and leaves the
@@ -135,10 +135,10 @@ def test_interior_culling_stamps_extra_nans_inside_hull():
 
 
 # --------------------------------------------------------------------------- #
-# Opt-in thresholds — defaults byte-identical, disable matches oracle (D-06)  #
+# Opt-in thresholds — defaults byte-identical, disable matches oracle         #
 # --------------------------------------------------------------------------- #
 def test_explicit_default_thresholds_reproduce_default_output():
-    """Passing the culling knobs at their documented defaults is byte-identical (PERF-03)."""
+    """Passing the culling knobs at their documented defaults is byte-identical."""
     pts = _holed_points()
     values = _linear_field(pts)
     grid_x, grid_y = _query_mesh()

@@ -1,25 +1,25 @@
-"""TEST-03 projection sensors for ``strategies/projection.py`` (Phase 5, BUG-05).
+"""Projection sensors for ``strategies/projection.py``.
 
 Proving tests for the five ``projection.py`` correctness findings, authored
-test-first (D-12): each genuine fix gets an ``xfail`` proving test in Task 1 that
+test-first: each genuine fix gets an ``xfail`` proving test in Task 1 that
 flips to a passing assert once the source is fixed (Tasks 2 & 3).
 
 Findings covered
 ----------------
-* **M-01 / BUG-01** — ``OrthographicProjection.project_raw`` must return the
+* **Orthographic arity/indexing** — ``OrthographicProjection.project_raw`` must return the
   4-tuple ``(coords, mask, mins, maxs)`` the base ``project()`` unpacks, and must
   select columns rows-then-columns (``xyz[mask][:, cols]``) rather than the
   broadcasting fancy-index that produces a silent diagonal.
-* **M-02** — ``PerspectiveProjection`` must cull behind-camera points
+* **Behind-camera cull** — ``PerspectiveProjection`` must cull behind-camera points
   (camera-space depth ``Z_c <= 0``) so a mirrored phantom cannot land in-bounds.
-* **M-03** — ``PerspectiveProjection`` must honor a camera ``translation`` so the
+* **Translation** — ``PerspectiveProjection`` must honor a camera ``translation`` so the
   model is the full pinhole ``K.(R.X + t)``, not the origin-only ``t = 0`` case.
-* **M-03b** (``<perspective_api_contract>``) — a 4x4 ``rotation_matrix`` raises
+* **API contract** (``<perspective_api_contract>``) — a 4x4 ``rotation_matrix`` raises
   ``TypeError``; a non-orthonormal 3x3 raises ``ValueError`` (fail-fast in
   ``__init__``).
-* **M-04** — ``PerspectiveProjection.project`` works against the documented
+* **project() contract** — ``PerspectiveProjection.project`` works against the documented
   pchandler ``_TransformArray.__matmul__(pcd)`` contract.
-* **M-05 / D-15** — a wrapping FoV (``left > right``, ``crosses_pi=True``) raises
+* **Wrapping-FoV seam guard** — a wrapping FoV (``left > right``, ``crosses_pi=True``) raises
   ``NotImplementedError`` in *both* ``project_raw`` and ``inverse_projection``.
 
 The ``@ pcd`` matmul contract used by the perspective path is
@@ -59,7 +59,7 @@ def _wrapping_fov() -> FoV:
 
 
 # --------------------------------------------------------------------------- #
-# M-01 / BUG-01 — Orthographic arity + column indexing                         #
+# Orthographic arity + column indexing                                        #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("plane", ["xy", "yz", "xz"])
 def test_orthographic_project_columns_and_arity(synthetic_pcd, plane):
@@ -113,7 +113,7 @@ def test_orthographic_roi_box_masks_and_normalizes(synthetic_pcd):
 
 
 # --------------------------------------------------------------------------- #
-# Orthographic + Spherical happy-path breadth (TEST-03)                        #
+# Orthographic + Spherical happy-path breadth                                 #
 # --------------------------------------------------------------------------- #
 def test_spherical_project_happy_path(synthetic_pcd):
     # field_of_view=None → resolves pcd.fov; random cloud → non-wrapping FoV.
@@ -135,7 +135,7 @@ def test_spherical_inverse_roundtrip_shapes():
 
 
 # --------------------------------------------------------------------------- #
-# M-05 / D-15 — Spherical wrapping-FoV seam guard                              #
+# Spherical wrapping-FoV seam guard                                           #
 # --------------------------------------------------------------------------- #
 def test_spherical_project_raw_rejects_wrapping_fov(synthetic_pcd):
     pcd = synthetic_pcd(n=8)
@@ -151,7 +151,7 @@ def test_spherical_inverse_rejects_wrapping_fov():
 
 
 # --------------------------------------------------------------------------- #
-# M-02 / M-03 / M-04 — Perspective cluster                                     #
+# Perspective cluster (behind-camera cull, translation, project() contract)   #
 # --------------------------------------------------------------------------- #
 def test_perspective_masks_behind_camera():
     k = _intrinsics()
@@ -215,7 +215,7 @@ def test_perspective_translation_survives_registry_coercion():
 
 
 def test_perspective_project_raw_is_documented_refusal():
-    # M-04: project_raw is a documented NotImplementedError (the class projects in
+    # project_raw is a documented NotImplementedError (the class projects in
     # one shot via project()), not a silent/undocumented dead override.
     proj = PerspectiveProjection(_intrinsics(), np.eye(3, dtype=np.float32))
     with pytest.raises(NotImplementedError):
@@ -223,12 +223,12 @@ def test_perspective_project_raw_is_documented_refusal():
 
 
 # --------------------------------------------------------------------------- #
-# G2 — PerspectiveProjection K (intrinsics) validation                         #
+# PerspectiveProjection K (intrinsics) validation                             #
 #                                                                              #
 # The rotation is validated (3x3, orthonormal, det+1) but K is stored          #
 # unchecked. A wrong-shape K yields an opaque matmul crash at project() time;  #
 # a non-pinhole K (bottom row != [0,0,1]) makes the perspective divisor        #
-# uv_h[:,2] diverge in sign from depth, defeating the M-02 behind-camera cull. #
+# uv_h[:,2] diverge in sign from depth, defeating the behind-camera cull.      #
 # Validate K at construction with the same fail-fast posture as the rotation.  #
 # --------------------------------------------------------------------------- #
 def test_perspective_rejects_wrong_shape_intrinsics():
@@ -254,7 +254,7 @@ def test_perspective_accepts_valid_pinhole_intrinsics():
 
 
 # --------------------------------------------------------------------------- #
-# G4 — orthonormality/det check accepts a double-precision rotation            #
+# Orthonormality/det check accepts a double-precision rotation                #
 #                                                                              #
 # Characterization: a legitimate float64 proper rotation must be accepted. The #
 # fix moves the orthonormality/det math to float64 so the float32 round-trip   #
@@ -292,7 +292,7 @@ def test_perspective_accepts_float64_proper_rotation():
 
 
 # --------------------------------------------------------------------------- #
-# G7 — OrthographicProjection single-pass np.ix_ gather (behavior-identical)   #
+# OrthographicProjection single-pass np.ix_ gather (behaviour-identical)      #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("plane", ["xy", "yz", "xz"])
 def test_orthographic_project_raw_ix_equivalence(synthetic_pcd, plane):
@@ -306,7 +306,7 @@ def test_orthographic_project_raw_ix_equivalence(synthetic_pcd, plane):
 
 
 def test_spherical_inverse_projection_without_fov_raises_valueerror():
-    # WR-01 (05-REVIEW): a default-constructed SphericalProjection (field_of_view
+    # A default-constructed SphericalProjection (field_of_view
     # is None) cannot invert — inverse_projection has no point cloud to source a
     # FoV from — so it must fail fast with a clear ValueError, not dereference
     # None into a bare AttributeError.
