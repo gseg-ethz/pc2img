@@ -213,28 +213,28 @@ def nanconv(
         If given, output NaNs (pixels with no valid support) are replaced with
         this value in place of the accumulator.
     compute_dtype:
-        Accumulation/division dtype (PERF-02 reduced-precision opt-in, D-03). The
+        Accumulation/division dtype (reduced-precision opt-in, by design). The
         default ``np.float32`` is the correctness path: it never overflows on
-        realistic range/elevation magnitudes and reproduces the mandatory M-08 fix
-        byte-for-byte. Pass a reduced-precision dtype (e.g. ``np.float16``) only
+        realistic range/elevation magnitudes and reproduces the mandatory fixed
+        behaviour byte-for-byte. Pass a reduced-precision dtype (e.g. ``np.float16``) only
         when the caller explicitly wants to trade accuracy/range for memory.
 
     Notes
     -----
-    The caller's ``a`` is never mutated: NaNs are zeroed on a fresh copy (M-07).
+    The caller's ``a`` is never mutated: NaNs are zeroed on a fresh copy.
     """
     dtype = np.dtype(compute_dtype)
 
     n = np.isnan(a)
-    # M-07: fill NaNs on a fresh buffer so the caller's array is left untouched.
+    # Fill NaNs on a fresh buffer so the caller's array is left untouched.
     a_filled = np.where(n, 0.0, a).astype(dtype, copy=False)
     on = np.ones(a.shape, dtype=dtype)
     on[n] = 0
 
-    # M-08 / D-09: accumulate + divide in ``compute_dtype`` (float32 by default).
+    # Accumulate + divide in ``compute_dtype`` (float32 by default).
     # float16's ~65504 ceiling overflows to inf on ordinary summed range values;
     # float32 buys correctness at no CPU cost. Reduced precision engages only when
-    # the caller opts in via ``compute_dtype`` (PERF-02).
+    # the caller opts in via ``compute_dtype``.
     flat = convolve2d(on, k, mode="same").astype(dtype)
 
     c = np.full(flat.shape, np.nan, dtype=dtype)
@@ -412,7 +412,7 @@ def convert_to_image(
     # Normalize if requested or out of [0,1]
     finite = np.isfinite(x)
     if normalize or (x[finite].min(initial=0.0) < 0.0) or (x[finite].max(initial=1.0) > 1.0):
-        # M-09: an all-invalid raster has no finite values to reduce over; degrade
+        # An all-invalid raster has no finite values to reduce over; degrade
         # to a constant/zero image instead of crashing on the empty min/max.
         if not finite.any():
             x = np.zeros_like(x, dtype=np.float32)  # constant image (no finite data)

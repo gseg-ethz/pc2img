@@ -62,7 +62,7 @@ class TIGSettings:
         if "lazy_disk_cache_config" in self.interp_kwargs and isinstance(
             self.interp_kwargs["lazy_disk_cache_config"], LazyDiskCacheConfig
         ):
-            # BUG-03/DSN-01: build the extended dict first, then assign it. Assigning
+            # Build the extended dict first, then assign it. Assigning
             # ``dict.update()`` (which returns None) would null every per-tile
             # interpolation kwarg — the opposite of the intended path extension.
             extended_interp_kwargs = dict(self.interp_kwargs)
@@ -118,7 +118,7 @@ class TiledPointCloudImageGenerator:
         self.interp_cls: type[InterpolationStrategy] = cast(type[InterpolationStrategy], interp_cls)
         self._proj_kwargs = proj_kwargs or {}
         self._interp_kwargs = interp_kwargs or {}
-        # DSN-07: None-sentinel default (no shared mutable LazyDiskCacheConfig()),
+        # None-sentinel default (no shared mutable LazyDiskCacheConfig()),
         # consistent with core.py / manager.py / interpolation.py:141.
         self._lazy_disk_cache_config = lazy_disk_cache_config or LazyDiskCacheConfig()
         self.image_generators: dict[str, PointCloudImageGenerator] = {}
