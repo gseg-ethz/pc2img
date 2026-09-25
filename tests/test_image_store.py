@@ -16,6 +16,7 @@ Authored test-first (Phase 5, D-12): every sensor here is RED until
 
 import pickle
 import re
+import tempfile
 from pathlib import Path
 
 import numpy as np
@@ -146,8 +147,28 @@ def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
 
 
 def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
-    """A key that was NEVER added must raise KeyError and leave the cache dir untouched (G10)."""
-    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    """A key that was NEVER added must raise KeyError and leave the cache dir untouched (G10).
+
+    A codec pair for "never-added" sits on disk (planted by a peer store,
+    constructed AFTER this store so it is never adopted), which is what makes
+    the sensor decide something: under an unlink-first delete ordering the
+    KeyError still fires, but the codec pair is destroyed first. Distinguishes
+    from test_failed_delete_preserves_codec_pair_and_both_stores below: this
+    one pins the minimal statement (an absent key, a pair on disk, a single
+    non-owning store, no re-materialisation); the two-store sensor pins the
+    live-data-loss consequence across two owning stores.
+    """
+    store = DiskBackedImageStore(config=_two_store_config(tmp_path))
+
+    # Planted by a peer store constructed AFTER `store`, so `store` never
+    # adopts "never-added" -- the key is genuinely absent from `store`.
+    peer = DiskBackedImageStore(config=_two_store_config(tmp_path))
+    peer.add_image_to_store("never-added", _gray((4, 4)))
+    peer.offload_image_data_to_disk("never-added")
+    assert peer._get_npy_path("never-added").exists()
+    assert peer._get_meta_path("never-added").exists()
+    assert "never-added" not in store
+
     before = sorted(p.name for p in tmp_path.iterdir())
 
     with pytest.raises(KeyError):
@@ -155,6 +176,8 @@ def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
 
     after = sorted(p.name for p in tmp_path.iterdir())
     assert after == before
+    assert peer._get_npy_path("never-added").exists()
+    assert peer._get_meta_path("never-added").exists()
 
 
 # --------------------------------------------------------------------------- #
@@ -281,21 +304,25 @@ def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Pa
     the unlink reachable even once insertion is guarded, so it is the route the
     proving test has to use.
 
-    The 05-14 G10 contract is pinned in the same test: an untracked *ordinary*
-    key still raises `KeyError` with no disk side effect. Parametrised over the
-    same three escape spellings as the add proving test (review-r2-7c8e11c81eed).
+    Carries the union of two contracts: the entry survives a refused delete
+    byte-identical to what was inserted (ValueError, membership, array
+    equality, sentinel existence + bytes), AND an untracked *ordinary* key
+    still raises `KeyError` with no disk side effect (the 05-14 G10 contract).
+    Parametrised over the same three escape spellings as the add proving test.
     """
     sentinel, cfg = _escape_layout(tmp_path)
     store = DiskBackedImageStore(config=cfg)
 
     key = _escaping_keys(tmp_path)[spelling]
-    store[key] = DiskBackedImageData(_gray((4, 4)))
+    original = _gray((4, 4))
+    store[key] = DiskBackedImageData(original)
     assert key in store
 
     with pytest.raises(ValueError):
         del store[key]
 
     assert key in store, "a refused delete dropped the key from the store"
+    np.testing.assert_array_equal(np.asarray(store[key]), original)
     assert sentinel.exists(), "escaping delete removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES
 
@@ -362,35 +389,15 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
 
 
 # --------------------------------------------------------------------------- #
-# review-r2-70fb459066a6 (BLOCKER, round 4) — a refused delete must be a full  #
-# no-op, in memory as well as on disk                                         #
+# A refused delete must be a full no-op, in memory as well as on disk, on the #
+# OVERWRITE route too                                                        #
 #                                                                              #
-# 05-15's __delitem__ calls super().__delitem__(key) (the in-memory drop)     #
-# BEFORE building the codec paths that run the containment guard. For an      #
-# escaping key the ValueError is raised only AFTER the entry is already gone  #
-# from the store: the refusal is not atomic. Same on the overwrite route      #
-# (add_image_to_store does `del self[img_name]` first). Reproduced 2026-09-24 #
-# on HEAD: `del store["../victim"]` raises ValueError, and afterwards         #
-# `"../victim" in store` is False and `len(store) == 0`.                      #
+# The delete-side sensor for this contract lives in                          #
+# test_escaping_key_delete_refuses_and_leaves_outside_file_intact above (it   #
+# now carries the union of both predecessors' assertions). This block covers #
+# the remaining half: add_image_to_store's overwrite path must not drop the  #
+# existing entry before the replacement is validated.                        #
 # --------------------------------------------------------------------------- #
-
-
-@pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
-def test_refused_delete_leaves_store_membership_intact(tmp_path: Path, spelling: str):
-    """A `del store[escaping_key]` that raises must leave the store unchanged."""
-    sentinel, cfg = _escape_layout(tmp_path)
-    store = DiskBackedImageStore(config=cfg)
-    key = _escaping_keys(tmp_path)[spelling]
-    arr = _gray((4, 4))
-    store[key] = DiskBackedImageData(arr)
-
-    with pytest.raises(ValueError):
-        del store[key]
-
-    assert key in store, "a refused delete dropped the key from the store"
-    np.testing.assert_array_equal(np.asarray(store[key]), arr)
-    assert sentinel.exists(), "refused delete removed a file outside the cache directory"
-    assert sentinel.read_bytes() == _SENTINEL_BYTES
 
 
 def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
@@ -578,14 +585,26 @@ def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path:
 # None-sentinel, not a shared mutable LazyDiskCacheConfig() instance (DSN-07  #
 # pattern, matching the 05-10/05-11 sweep at other generator/manager sites)   #
 # --------------------------------------------------------------------------- #
-def test_default_config_is_coerced_from_none_sentinel():
-    """`DiskBackedImageStore()` and `DiskBackedImageStore(config=None)` behave identically."""
+def test_default_config_is_coerced_from_none_sentinel(tmp_path: Path, monkeypatch):
+    """`DiskBackedImageStore()` and `DiskBackedImageStore(config=None)` behave identically.
+
+    A `tmp_path`-backed config cannot be used here — that would route through
+    the explicit-`cache_path` branch and skip the None-sentinel path entirely.
+    Instead `tempfile.tempdir` is redirected to `tmp_path` BEFORE either store
+    is constructed, so `tempfile.mkdtemp(dir=None)` (the base store's
+    None-`cache_path` branch) lands inside pytest's own tree rather than the
+    system temp directory, and `cache_dir.parent == tmp_path` proves the
+    mkdtemp route was actually taken, not bypassed.
+    """
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
     default_cfg = LazyDiskCacheConfig()
 
     store = DiskBackedImageStore()
     assert isinstance(store.cache_dir, Path)
     assert store._enable_caching == default_cfg.enable_caching
+    assert store.cache_dir.parent == tmp_path
 
     store2 = DiskBackedImageStore(config=None)
     assert isinstance(store2.cache_dir, Path)
     assert store2._enable_caching == default_cfg.enable_caching
+    assert store2.cache_dir.parent == tmp_path
