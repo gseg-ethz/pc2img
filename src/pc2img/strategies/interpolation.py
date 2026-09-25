@@ -98,8 +98,8 @@ class DelaunayInterpolation(InterpolationStrategy):
         Optional global guard controlling when thinning activates based on the
         overall point/pixel ratio.
     interior_culling:
-        Master switch for the M-06 interior-culling heuristic (KEPT-BEHAVIOR,
-        D-06). When ``True`` (default), large / highly-anisotropic triangles are
+        Master switch for the interior-culling heuristic (kept behaviour, by
+        design). When ``True`` (default), large / highly-anisotropic triangles are
         dropped so long, thin bridging triangles over data gaps do not smear a
         raster — the intentional, downstream-validated behavior. Set ``False`` to
         admit *every* triangle inside the convex hull, reproducing
@@ -119,10 +119,10 @@ class DelaunayInterpolation(InterpolationStrategy):
 
     Notes
     -----
-    The ``area_scale`` / ``aspect_ratio_*`` knobs are opt-in (PERF-03 / D-06): their
+    The ``area_scale`` / ``aspect_ratio_*`` knobs are opt-in: their
     defaults equal the previously-hardcoded constants, so a default-constructed
     strategy is byte-identical to prior releases. A future refinement to reduce
-    over-culling on strongly-anisotropic scans is deferred (see 05-05-SUMMARY).
+    over-culling on strongly-anisotropic scans is deferred.
     """
 
     def __init__(
@@ -225,7 +225,7 @@ class DelaunayInterpolation(InterpolationStrategy):
         result = np.full(nQ, fill_value, dtype=float)
         mask = simplices >= 0
 
-        # M-06 KEPT-BEHAVIOR (D-06): cull large / anisotropic bridging triangles so
+        # Kept behaviour, by design: cull large / anisotropic bridging triangles so
         # data gaps are not smeared. Opt-out via ``interior_culling=False`` to admit
         # every in-hull triangle (matches scipy.LinearNDInterpolator NaN placement).
         if self._interior_culling:
@@ -259,7 +259,7 @@ class DelaunayInterpolation(InterpolationStrategy):
             area, _max_edge, aspect_ratio = compute_metrics(tri_vertices)
 
             # Opt-in thresholds; defaults (area_scale=10, mad_factor=6, fallback=10)
-            # reproduce the previously-hardcoded constants byte-for-byte (PERF-03).
+            # reproduce the previously-hardcoded constants byte-for-byte.
             median_ratio = np.median(aspect_ratio)
             mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
             aspect_ratio_thresh = (

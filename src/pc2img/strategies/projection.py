@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     # PerspectiveProjection.__init__ (see below). Guarding it under TYPE_CHECKING
     # keeps `import pc2img.strategies.projection` — which also ships
     # SphericalProjection / OrthographicProjection — working even if a future
-    # pchandler drops or renames the private symbol (T-04-D1).
+    # pchandler drops or renames the private symbol.
     from pchandler.geometry.transforms import _TransformArray
 
 from .registry import PROJECTIONS, _StrategyClass
@@ -38,7 +38,7 @@ def _reject_wrapping_fov(fov: FoV) -> None:
 
     A wrapping FoV would make the ``left`` extent numerically greater than the
     ``right`` extent, so span normalization silently reverses the horizontal
-    pixel axis (the M-05/D-15 silent-reversal bug). Rather than emit reversed
+    pixel axis (a previously-fixed silent-reversal bug). Rather than emit reversed
     columns we refuse, mirroring pchandler's own ``FoV.tile()`` split-first
     refusal. Callers must split the FoV at the ``+/- pi`` boundary first.
 
@@ -140,7 +140,7 @@ class SphericalProjection(ProjectionStrategy):
 
         fov = self._field_of_view if self._field_of_view is not None else pcd.fov
         # Guard both the user-supplied FoV and pcd.fov: a wrapping FoV would
-        # reverse the horizontal axis under span normalization (M-05/D-15).
+        # reverse the horizontal axis under span normalization.
         _reject_wrapping_fov(fov)
         mins = np.array([fov.left, fov.top]).squeeze()
         maxs = np.array([fov.right, fov.bottom]).squeeze()
@@ -228,9 +228,10 @@ class OrthographicProjection(ProjectionStrategy):
         # Select the two plane columns in a single pass: np.ix_(mask, cols) gathers
         # the (M, 2) block directly, byte-identical to the prior two-step
         # pcd.xyz[mask][:, cols] but without materializing the discarded (M, 3)
-        # intermediate (G7). The prior pcd.xyz[mask, cols] fancy-index broadcast the
+        # intermediate. The prior pcd.xyz[mask, cols] fancy-index broadcast the
         # boolean row mask against the 2-element column list and produced a silent
-        # diagonal (M-01/BUG-01), which is why the two-axis gather is required.
+        # diagonal (a previously-fixed correctness bug), which is why the two-axis
+        # gather is required.
         coords = pcd.xyz[np.ix_(mask, cols)]
 
         # Provide the (mins, maxs) the base project() needs for span normalization.
@@ -283,7 +284,7 @@ class PerspectiveProjection(ProjectionStrategy):
 
     Notes
     -----
-    Breaking change (D-17): a 4x4 ``rotation_matrix`` was previously accepted and
+    Breaking change: a 4x4 ``rotation_matrix`` was previously accepted and
     silently treated as an affine extrinsic; it now raises ``TypeError``. The 4x4
     path had zero reachable callers, so this is batched into the release with no
     runtime ``DeprecationWarning`` — version pinning is the migration deferral.
@@ -304,7 +305,7 @@ class PerspectiveProjection(ProjectionStrategy):
     ):
         rot = np.asarray(getattr(rotation_matrix, "arr", rotation_matrix), dtype=np.float32)
         # Fail fast on a non-3x3 rotation. A 4x4 is the notable case: the caller
-        # meant to supply an extrinsic — steer them to translation= (D-01).
+        # meant to supply an extrinsic — steer them to translation= instead.
         if rot.shape != (3, 3):
             raise TypeError(
                 f"PerspectiveProjection expected a 3×3 rotation matrix; got shape {rot.shape}. "
@@ -312,7 +313,7 @@ class PerspectiveProjection(ProjectionStrategy):
             )
         # A proper rotation is orthonormal with det ≈ +1. A scale/shear baked into
         # a 3x3 is silent wrong-geometry; refuse it rather than honor it.
-        # G4: run the orthonormality/det check in float64 from the ORIGINAL matrix.
+        # Run the orthonormality/det check in float64 from the ORIGINAL matrix.
         # Casting a legitimate double-precision rotation down to float32 first can
         # push rot @ rot.T off identity by up to ~1 ULP (~1e-7) and, at atol=1e-6,
         # sits one round-trip away from false-rejecting a valid rotation. Keeping
@@ -340,10 +341,10 @@ class PerspectiveProjection(ProjectionStrategy):
         self._rotation = rot
         self._translation = trans
         intrinsics = np.asarray(getattr(projection_matrix, "arr", projection_matrix), dtype=np.float32)
-        # G2: validate K with the same fail-fast posture as the rotation above.
+        # Validate K with the same fail-fast posture as the rotation above.
         # A wrong-shape K would otherwise crash opaquely inside project()'s matmul,
         # and a non-pinhole K (bottom row != [0,0,1]) would make the perspective
-        # divisor uv_h[:,2] diverge in sign from camera depth, defeating the M-02
+        # divisor uv_h[:,2] diverge in sign from camera depth, defeating the
         # behind-camera cull (a phantom could land in-bounds).
         if intrinsics.shape != (3, 3):
             raise ValueError(f"PerspectiveProjection expected a 3×3 intrinsics matrix K; got shape {intrinsics.shape}.")
@@ -396,7 +397,7 @@ class PerspectiveProjection(ProjectionStrategy):
         with np.errstate(invalid="ignore", divide="ignore"):
             uv = uv_h[:, :2] / uv_h[:, 2].reshape(-1, 1)
 
-        # 3) M-02 behind-camera cull: drop points at/behind the camera plane
+        # 3) Behind-camera cull: drop points at/behind the camera plane
         #    (Z_c ≤ 0) so a double-sign-flip phantom cannot land in-bounds.
         in_front = depth > 0
         in_bounds = np.logical_and(
