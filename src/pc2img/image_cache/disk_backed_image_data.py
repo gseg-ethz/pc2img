@@ -32,7 +32,7 @@ def _assert_image_shape(image_data: np.ndarray) -> None:
 class DiskBackedImageData(DiskBackedNDArray):
     """Disk-backed raster: a thin ``DiskBackedNDArray`` with an image-shape guard.
 
-    Reparented onto :class:`GSEGUtils.lazy_disk_cache.DiskBackedNDArray` (D-04):
+    Reparented onto :class:`GSEGUtils.lazy_disk_cache.DiskBackedNDArray`:
     the working ``__array_ufunc__`` (unwrap -> delegate -> plain ndarray), the
     ``__array__`` / ``__getitem__`` / ``data`` accessors and the offload/load
     buffer hooks are all inherited. This class only adds the single- or

@@ -8,7 +8,7 @@ from .disk_backed_image_data import DiskBackedImageData, _assert_image_shape
 
 
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
-    """Named raster store backed by GSEGUtils' hardened ``DiskBackedStore`` (D-05).
+    """Named raster store backed by GSEGUtils' hardened ``DiskBackedStore``.
 
     Thin WRAPPER over :class:`GSEGUtils.lazy_disk_cache.DiskBackedStore` bound to
     :class:`DiskBackedImageData`: it supplies the factory / value-type and
@@ -17,11 +17,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
 
     The on-disk format is the base store's ``<key>.npy`` + ``<key>.meta.json``
     (``allow_pickle=False``) codec pair. The previous arbitrary-object
-    deserialization sink (DSN-09) is eliminated by construction — there is no
+    deserialization sink is eliminated by construction — there is no
     load-from-serialized-object path here anymore — and a stale legacy cache
     file degrades to a cache miss via the base loader's explicit refusal.
 
-    **Containment invariant (WR-02, narrowed round 4 — review-r2-3f625b03fb03):**
+    **Containment invariant (narrowed after a follow-up review):**
     every on-disk path this store builds FROM A KEY resolves *inside* the
     configured cache directory. A key whose path escapes it is refused with
     :class:`ValueError` at the first path build, so no key can make a write, a
@@ -42,11 +42,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         *,
         config: LazyDiskCacheConfig | None = None,
     ) -> None:
-        # IN-03 (review-r1-8ff7171c6ca4): None-sentinel default, not a shared
-        # mutable LazyDiskCacheConfig() instance (DSN-07 pattern, matching the
-        # 05-10/05-11 sweep at the generator/manager sites). No behaviour
-        # change — an omitted or explicit-None config yields the identical
-        # default instance; an explicit config passes through unchanged.
+        # None-sentinel default, not a shared mutable LazyDiskCacheConfig()
+        # instance, matching the same pattern used at the generator/manager
+        # sites. No behaviour change — an omitted or explicit-None config
+        # yields the identical default instance; an explicit config passes
+        # through unchanged.
         if config is None:
             config = LazyDiskCacheConfig()
         super().__init__(
@@ -55,7 +55,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
             value_type=DiskBackedImageData,
         )
 
-    # --- containment: one authority over every on-disk path (WR-02) ----------
+    # --- containment: one authority over every on-disk path ------------------
 
     def _assert_within_cache_dir(self, path: Path) -> Path:
         """Return ``path`` unchanged, or raise if it escapes the cache directory.
@@ -76,7 +76,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         3. **load** — ``DiskBackedStore._load_entry``,
         4. **delete** — this class's :meth:`__delitem__` unlink.
 
-        Threat posture, measured 2026-09-24 (BUG-05, review-r2-1a435f413f18):
+        Threat posture, measured 2026-09-24:
         ``FeatureRegistry.match`` (:mod:`pc2img.features.registry`) has an
         UNANCHORED default fallback — any name that matches no registered
         pattern becomes a ``ScalarFieldFeature`` pseudo-spec with
@@ -91,10 +91,9 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         is refused with ``ValueError``; without the guard it would write
         outside the cache directory. On the installed GSEGUtils 0.5.x this
         containment guard is **LOAD-BEARING**, not defence-in-depth — it
-        becomes redundant only at the Phase-6 GSEGUtils 0.6 adoption, where
-        upstream absorbs the equivalent check
-        (``.planning/spikes/000-absorption-test/README.md``, verdict
-        VALIDATED). This store is also exported from the public barrel
+        becomes redundant only once upstream GSEGUtils 0.6 absorbs the
+        equivalent check (measured and verdict VALIDATED). This store is
+        also exported from the public barrel
         ``pc2img.image_cache.__all__``, so any caller may pass any key
         directly — the guard is not solely defending the registry route.
 
@@ -142,7 +141,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         re-submits the same feature name. We drop the existing key first so the
         prior overwrite semantics are preserved.
 
-        **Ordering (WR-07, round 5):** every failure that is a function of the
+        **Ordering (validate-before-delete):** every failure that is a function of the
         inputs — containment, then raster shape — is validated BEFORE the
         existing entry is dropped, so a failed overwrite is a full no-op: the
         old entry, and its on-disk codec pair when offloaded, survive
@@ -187,7 +186,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     def __delitem__(self, key: str) -> None:
         """Drop ``key`` and purge its on-disk ``.npy`` + ``.meta.json`` codec pair.
 
-        Three-stage contract, in order (round 4, review-r2-70fb459066a6):
+        Three-stage contract, in order:
 
         1. **Containment first** — both codec paths are built via
            :meth:`_get_npy_path` / :meth:`_get_meta_path` before anything else
@@ -197,10 +196,12 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         2. **Membership second** — only then does the base store's
            ``__delitem__`` run: its entire body is an in-memory ``del``, so it
            raises ``KeyError`` for an untracked key with no side effect on
-           disk (G10). Ordering matters here — building the paths AFTER the
-           base delegation made a refused delete (either a containment
-           ``ValueError`` or, historically, a reversed ``KeyError`` ordering)
-           irreversibly destructive.
+           disk. This ordering fixed two distinct historical defects: building
+           the codec paths after the base delegation made a refused
+           containment delete non-atomic (the unlink could still land before
+           a later-stage ``ValueError`` was raised); separately, the original
+           absent-key-delete defect unlinked the codec pair before the membership check,
+           so an untracked key still destroyed a live pair on disk.
         3. **Unlink last** — the two ``.npy`` / ``.meta.json`` paths, already
            bound to local variables in stage 1, are purged only once stage 2
            has confirmed the key was genuinely tracked.
@@ -215,7 +216,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         adopts every key it finds, so a store constructed *after* another store
         offloaded ``key`` **tracks** it; the delete then succeeds, does purge the
         shared codec pair, and the offloaded peer can no longer serve it. That is
-        the intended G3 semantics — leaving an offloaded pair behind would let a
+        the intended purge semantics — leaving an offloaded pair behind would let a
         store re-adopt and serve a stale raster, so unlinking keeps the ``.npy`` +
         JSON pair the single on-disk source of truth. It is a reason two stores
         must not share one ``cache_path`` unless the caller wants exactly that
@@ -227,7 +228,8 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
 
         ``unlink(missing_ok=True)`` carries the safety for a key that was tracked
         but never offloaded — an absent file is simply a no-op. No new
-        deserialization surface is introduced (the DSN-09 posture is preserved).
+        deserialization surface is introduced (the no-arbitrary-deserialization
+        posture is preserved).
         """
         npy_path = self._get_npy_path(key)
         meta_path = self._get_meta_path(key)
@@ -253,7 +255,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         store's containment guard for an entry whose ``cache_path`` was
         supplied by the caller rather than derived by
         :meth:`add_image_to_store` (see the class docstring's containment
-        invariant, review-r2-3f625b03fb03). ``pickle_container=True`` routes
+        invariant). ``pickle_container=True`` routes
         through the guarded ``_get_npy_path`` / ``_get_meta_path`` builders.
         """
         super().offload(keys=features, pickle_container=pickle_container)
