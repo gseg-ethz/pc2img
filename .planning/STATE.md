@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-09-28T14:12:27.853Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-09-28T14:19:39.519Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 06 execution started
-state_head: ef863067302c89ae4e44c09e1d123afa5063017e
+state_head: f7e565cb53046eaab88f35059235a0961269562d
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 52
-  completed_plans: 41
+  completed_plans: 42
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 3 of 13
+Plan: 4 of 13
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 06 execution started
 
@@ -104,6 +104,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 05 P19 | 50min | 3 tasks | 31 files |
 | Phase 06 P01 | 32min | 3 tasks | 9 files |
 | Phase 06 P02 | 25min | 2 tasks | 11 files |
+| Phase 06 P03 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -182,6 +183,7 @@ Recent decisions affecting current work:
 - [Phase 06]: ruff-pre-commit pinned to v0.15.12 (matches locked ruff) and pre-commit-hooks to v6.0.0; no mypy hook, no license-banner hook per D-11
 - [Phase 06]: Kept per-function noqa: C901 markers instead of raising the global mccabe threshold in pyproject.toml, to keep the rule active for future code
 - [Phase 06]: Exempted .pre-commit-config.yaml from the whole-tree planning-vocabulary hygiene gate — its exclude regex must literally name .planning/ to scope hooks away from it
+- [Phase 06]: README quickstart uses the actual PointCloudImageGenerator constructor keyword names (img_res, proj, interp, lazy_disk_cache_config) from core.py rather than guessed names; CITATION.cff modelled on PCHandler's shape with a single author (Nicholas Meyer) per D-14
 
 ### Pending Todos
 
@@ -221,6 +223,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T14:12:27.684Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-09-28T14:19:39.364Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
