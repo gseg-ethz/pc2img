@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-09-28T14:19:39.519Z"
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-09-28T14:35:28.063Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 06 execution started
-state_head: f7e565cb53046eaab88f35059235a0961269562d
+state_head: f3aef7e6e27755c81530ca6c2f45cf5c83b15cf0
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 52
-  completed_plans: 42
+  completed_plans: 43
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 06 execution started
 
@@ -105,6 +105,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P01 | 32min | 3 tasks | 9 files |
 | Phase 06 P02 | 25min | 2 tasks | 11 files |
 | Phase 06 P03 | 20min | 2 tasks | 2 files |
+| Phase 06 P04 | 55min | 3 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -184,6 +185,7 @@ Recent decisions affecting current work:
 - [Phase 06]: Kept per-function noqa: C901 markers instead of raising the global mccabe threshold in pyproject.toml, to keep the rule active for future code
 - [Phase 06]: Exempted .pre-commit-config.yaml from the whole-tree planning-vocabulary hygiene gate — its exclude regex must literally name .planning/ to scope hooks away from it
 - [Phase 06]: README quickstart uses the actual PointCloudImageGenerator constructor keyword names (img_res, proj, interp, lazy_disk_cache_config) from core.py rather than guessed names; CITATION.cff modelled on PCHandler's shape with a single author (Nicholas Meyer) per D-14
+- [Phase 06]: MIGRATION-v0.11.md drafted: 25 BC-P2I entries (001 fixed as tracer, 002-025 by phase-of-origin), GSEGUtils BC-GSEG-006 cross-referenced not restated, inline verifier proves every surface-removed/signature-shape claim at runtime
 
 ### Pending Todos
 
@@ -223,6 +225,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T14:19:39.364Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-09-28T14:35:27.865Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None
