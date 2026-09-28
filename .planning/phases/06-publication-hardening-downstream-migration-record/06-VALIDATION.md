@@ -73,10 +73,10 @@ Non-pytest gates used in this phase (see 06-RESEARCH.md § Validation Architectu
 | 06-08-T3 | 06-08 | 4 | CICD-02 | T-06-25 | merge only on green checks | gh pr checks + git | `gh pr checks <n> --json name,state` ; two-parent assertion | n/a | ⬜ pending |
 | 06-09-T1 | 06-09 | 5 | CICD-02 | T-06-27 | separate release App credentials | human-action checkpoint | `gh secret list --repo gseg-ethz/pc2img` | n/a | ⬜ pending |
 | 06-09-T2 | 06-09 | 5 | CICD-02 | T-06-26 | strip list applied, footers present | git tree/message assertions | promotion worktree checks (see plan) | n/a | ⬜ pending |
-| 06-10-T1 | 06-10 | 6 | CICD-02 | T-06-29 | human go/no-go immediately before the one-way push | decision checkpoint (blocking-human) | — (human) | n/a | ⬜ pending |
+| 06-10-T1 | 06-10 | 6 | CICD-02 | T-06-45 | human go/no-go immediately before the one-way push | decision checkpoint (blocking-human) | — (human) | n/a | ⬜ pending |
 | 06-10-T2 | 06-10 | 6 | CICD-02 | T-06-33, T-06-34 | release PR by App, unmerged | gh reads | `gh pr list --base main --state open ...` ; run conclusion | n/a | ⬜ pending |
 | 06-10-T3 | 06-10 | 6 | CICD-02 | T-06-30, T-06-31 | bypass_actors empty, preflight before write | jq + drift comparator | `check_ruleset_drift.py "protect-main:..."` | ✅ (kit script) | ⬜ pending |
-| 06-11-T1 | 06-11 | 7 | CICD-02 | T-06-30, T-06-32 | develop ruleset + idempotent apply | jq + comparator + 3 run conclusions | `check_ruleset_drift.py "protect-develop-gsd:..."` | ✅ | ⬜ pending |
+| 06-11-T1 | 06-11 | 7 | CICD-02 | T-06-46, T-06-47 | develop ruleset + idempotent apply | jq + comparator + 3 run conclusions | `check_ruleset_drift.py "protect-develop-gsd:..."` | ✅ | ⬜ pending |
 | 06-11-T2 | 06-11 | 7 | CICD-02 | T-06-35, T-06-36 | true merge, clean merge-tree | git ancestry | `git merge-base --is-ancestor origin/main origin/develop-gsd` | n/a | ⬜ pending |
 | 06-11-T3 | 06-11 | 7 | CICD-02 | T-06-37 | nightly observed once | gh run log | dispatched run conclusion + OK line grep (+ human-check for first cron run) | n/a | ⬜ pending |
 | 06-12-T1 | 06-12 | 8 | CICD-02 | T-06-40 | RTD import | human-action checkpoint | badge 200 | n/a | ⬜ pending |
