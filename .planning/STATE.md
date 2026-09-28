@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-06-PLAN.md
-last_updated: "2026-09-28T15:00:35.998Z"
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-09-28T15:14:01.822Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 06 execution started
-state_head: b99457410c1b5d24ba265a84c56fc4ed6a0a3a09
+state_head: c6a4cc345ca5dd1ae0956de888afb8bf8fff8760
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 52
-  completed_plans: 45
+  completed_plans: 46
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 7 of 13
+Plan: 8 of 13
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 06 execution started
 
@@ -108,6 +108,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P04 | 55min | 3 tasks | 1 files |
 | Phase 06 P05 | 15min | 2 tasks | 6 files |
 | Phase 06 P06 | 11 min | 2 tasks | 21 files |
+| Phase 06 P07 | 38min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -193,6 +194,7 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-06: setup-python-deps composite installs with uv sync --frozen against the committed uv.lock instead of the kit's pip-extras install (dev tooling is a PEP 735 dependency-group, not an extra)
 - [Phase 06]: 06-06: TestPyPI dry run requests attestations (attestations: true/write), a recorded deviation from the template's test-index default, to exercise the full PEP 740 path before the real PyPI publish
 - [Phase 06]: 06-06: release-please-config.json extra-files key removed (pointed at a nonexistent docs/conf.py); .release-please-manifest.json kept unchanged at 0.10.4 rather than overwritten with the kit's 0.0.0 placeholder
+- [Phase 06]: RULESETS.md/RELEASE.md apply-time checklist evidence is real command output run against the assembled tree, not paraphrased from the template's example shape
 
 ### Pending Todos
 
@@ -232,6 +234,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T15:00:35.787Z
-Stopped at: Completed 06-06-PLAN.md
+Last session: 2026-09-28T15:14:01.638Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None
