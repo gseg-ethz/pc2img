@@ -17,11 +17,11 @@ affects: ["06-09+ (ruleset-apply, the first live rulesets application, needs the
 
 # Actuals (#2632)
 actuals:
-  tokens: 3200
+  tokens: 2947
   tasks: 3
   commits: 1
   plan_head_before: a607a3ef7002281c413e46945210608b08fd4358
-  plan_head_after: a607a3ef7002281c413e46945210608b08fd4358
+  plan_head_after: e26c8a5160ca2e0f07dff351c3dcd99f03a2f4a7
 
 # Tech tracking
 tech-stack:
@@ -98,7 +98,7 @@ status: complete
 
 This plan produced **no local task commits** — every acceptance-bearing change happened on GitHub/origin (tag refs, a closed PR, repo secrets, a merged PR), not in the working tree. `git status --short` before and after Task 3 is identical modulo the pre-existing, deliberately untouched user files.
 
-**Plan metadata:** this SUMMARY commit (hash recorded in Self-Check below).
+**Plan metadata:** `e26c8a5` (docs, this SUMMARY).
 
 ## Files Created/Modified
 
@@ -129,7 +129,7 @@ None further — Task 2's owner action (Apps + secrets) is complete and was the 
 
 ## Self-Check: PASSED
 
-No created/modified files to verify (this plan touches no tracked files). Remote state independently re-verified in this session: `archive/v2.0.0a5` present on origin at the recorded SHA; `v2.0.0a5` absent locally and remotely; PR #6 CLOSED with its branch deleted; the three repo secrets present; PR #13 MERGED with a two-parent merge commit `6c10ee0` on `origin/develop-gsd`; `.github/workflows/ruleset-apply.yml` present on `develop-gsd`; both the local and remote phase branches retained.
+No created/modified files to verify (this plan touches no tracked files). Remote state independently re-verified in this session: `archive/v2.0.0a5` present on origin at the recorded SHA; `v2.0.0a5` absent locally and remotely; PR #6 CLOSED with its branch deleted; the three repo secrets present; PR #13 MERGED with a two-parent merge commit `6c10ee0` on `origin/develop-gsd`; `.github/workflows/ruleset-apply.yml` present on `develop-gsd`; both the local and remote phase branches retained. This SUMMARY commit (`e26c8a5`) confirmed present via `git log --oneline --all | grep e26c8a5`.
 
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
