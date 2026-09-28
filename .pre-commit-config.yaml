@@ -1,0 +1,30 @@
+# Lint (pre-commit) — hook set fixed by 06-CONTEXT.md D-11: ruff check + ruff
+# format plus the five standard hygiene hooks. No mypy (pc2img uses pyright).
+# No license-banner hook (owner declined).
+exclude: |
+  (?x)^(
+    # Not shipped — planning/agent artifacts never reach the public tree.
+    \.planning/.*
+    |\.claude/.*
+    # Signed ETH IP-clearance record; a fixer must never rewrite it verbatim (D-23).
+    |docs/ip/rrim-eth-signoff\.md
+    # release-please owns these; letting a fixer touch them would fight the bot.
+    |CHANGELOG\.md
+    |\.release-please-manifest\.json
+  )$
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
