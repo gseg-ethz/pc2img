@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-05-PLAN.md
-last_updated: "2026-09-28T14:44:59.693Z"
+stopped_at: Completed 06-06-PLAN.md
+last_updated: "2026-09-28T15:00:35.998Z"
 last_activity: 2026-09-28
 last_activity_desc: Phase 06 execution started
-state_head: 0919e8ace6f9c120b3f0fa8e501cb815d6f0c36d
+state_head: b99457410c1b5d24ba265a84c56fc4ed6a0a3a09
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 52
-  completed_plans: 44
+  completed_plans: 45
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-09-28 — Phase 06 execution started
 
@@ -107,6 +107,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P03 | 20min | 2 tasks | 2 files |
 | Phase 06 P04 | 55min | 3 tasks | 1 files |
 | Phase 06 P05 | 15min | 2 tasks | 6 files |
+| Phase 06 P06 | 11 min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,9 @@ Recent decisions affecting current work:
 - [Phase 06]: MIGRATION-v0.11.md drafted: 25 BC-P2I entries (001 fixed as tracer, 002-025 by phase-of-origin), GSEGUtils BC-GSEG-006 cross-referenced not restated, inline verifier proves every surface-removed/signature-shape claim at runtime
 - [Phase 06]: Reworded D-13/D-31/D-32 references in new docs/source/conf.py and .readthedocs.yaml comments to plain prose to keep the planning-vocabulary hygiene gate green on newly shipped files.
 - [Phase 06]: ProjectionStrategy.project_raw docstring rewritten to document all four actual return values (coords_raw, mask, mins, maxs) while fixing the RST formatting that caused 8 of 13 -W warnings via inheritance.
+- [Phase 06]: 06-06: setup-python-deps composite installs with uv sync --frozen against the committed uv.lock instead of the kit's pip-extras install (dev tooling is a PEP 735 dependency-group, not an extra)
+- [Phase 06]: 06-06: TestPyPI dry run requests attestations (attestations: true/write), a recorded deviation from the template's test-index default, to exercise the full PEP 740 path before the real PyPI publish
+- [Phase 06]: 06-06: release-please-config.json extra-files key removed (pointed at a nonexistent docs/conf.py); .release-please-manifest.json kept unchanged at 0.10.4 rather than overwritten with the kit's 0.0.0 placeholder
 
 ### Pending Todos
 
@@ -228,6 +232,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T14:44:59.514Z
-Stopped at: Completed 06-05-PLAN.md
+Last session: 2026-09-28T15:00:35.787Z
+Stopped at: Completed 06-06-PLAN.md
 Resume file: None
