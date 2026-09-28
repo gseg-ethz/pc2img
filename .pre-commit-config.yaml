@@ -1,12 +1,11 @@
-# Lint (pre-commit) — hook set fixed by 06-CONTEXT.md D-11: ruff check + ruff
-# format plus the five standard hygiene hooks. No mypy (pc2img uses pyright).
-# No license-banner hook (owner declined).
+# Lint (pre-commit): ruff check + ruff format plus the five standard hygiene
+# hooks. No mypy (pyright is used instead). No license-banner hook.
 exclude: |
   (?x)^(
-    # Not shipped — planning/agent artifacts never reach the public tree.
+    # Local agent-workflow directories — not part of the shipped tree.
     \.planning/.*
     |\.claude/.*
-    # Signed ETH IP-clearance record; a fixer must never rewrite it verbatim (D-23).
+    # Signed ETH IP-clearance record; a fixer must never rewrite it verbatim.
     |docs/ip/rrim-eth-signoff\.md
     # release-please owns these; letting a fixer touch them would fight the bot.
     |CHANGELOG\.md

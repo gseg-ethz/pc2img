@@ -254,7 +254,7 @@ def gaussian_kernel(side_length=5, sig=1.0):
     return kernel / np.sum(kernel)
 
 
-def replace_nan(
+def replace_nan(  # noqa: C901 — one flat branch per NAN_REPLACEMENT_STR policy plus the 2D/3D broadcast; splitting it would scatter the policy table
     image_data: NDArray[np.floating] | NDArray[np.integer],
     replace_nan_with: NAN_REPLACEMENT_STR | float = "max",
     *,
@@ -372,7 +372,7 @@ def to_gray(
     return g
 
 
-def convert_to_image(
+def convert_to_image(  # noqa: C901 — sequential normalize/colormap/dtype conversion ladder; splitting it would scatter the conversion order
     image_data: NDArray,
     *,
     replace_nan_with: NAN_REPLACEMENT_STR | float = "max",

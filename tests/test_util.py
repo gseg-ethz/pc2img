@@ -120,7 +120,7 @@ def test_convert_to_image_all_nan_normalize_returns_constant_image() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Breadth: replace_nan                                                        #
+# --- breadth coverage for replace_nan: each branch below exercised once --- #
 # --------------------------------------------------------------------------- #
 def test_replace_nan_max_policy_fills_with_finite_max() -> None:
     x = np.array([[1.0, np.nan], [3.0, 4.0]], dtype=np.float32)
@@ -150,7 +150,7 @@ def test_replace_nan_no_nan_returns_unmodified_copy() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Breadth: to_gray                                                            #
+# --- breadth coverage for to_gray: each branch below exercised once ------- #
 # --------------------------------------------------------------------------- #
 def test_to_gray_2d_passthrough_preserves_values() -> None:
     x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32)

@@ -152,6 +152,12 @@ _EXEMPTIONS: dict[str, str] = {
     "docs/ip/rrim-eth-signoff.md": (
         "signed ETH IP-clearance record shipped verbatim; editing it would weaken what it attests"
     ),
+    ".pre-commit-config.yaml": (
+        "the exclude regex must literally name the internal planning directory to scope hook "
+        "exclusion out of it; this is a path definition, not a planning-artifact reference, and "
+        "the same trick this module uses to avoid self-matching is not available in a static YAML "
+        "regex literal"
+    ),
 }
 
 # Case-sensitive families: internal identifier codes and artifact filenames.

@@ -374,7 +374,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
     _FUSE_CHOICES = {"max", "sum", "mean"}
 
-    def __init__(
+    def __init__(  # noqa: C901 — flat DSL-option parsing ladder; splitting it would scatter the grammar
         self,
         base_feature: str,
         sigmas: str,
@@ -456,7 +456,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         smoothed[weights <= eps] = np.nan
         return smoothed, weights.astype(np.float32, copy=False)
 
-    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:  # noqa: C901 — multi-scale fuse/normalise pipeline is one sequential pass; splitting it would scatter the per-scale state
         base = fetch(self.base_feature)
         img = np.array(base, dtype=np.float32, copy=True)
 
@@ -551,7 +551,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
 
     _FUSE_CHOICES = {"max", "sum", "mean"}
 
-    def __init__(
+    def __init__(  # noqa: C901 — flat DSL-option parsing ladder; splitting it would scatter the grammar
         self,
         base_feature: str,
         sigmas: str,
@@ -658,7 +658,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         mask |= ~np.isfinite(img)
         return mask
 
-    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:  # noqa: C901 — occlusion-aware fuse/normalise pipeline is one sequential pass; splitting it would scatter the per-scale state
         base = fetch(self.base_feature)
         img = np.array(base, dtype=np.float32, copy=True)
         if img.ndim != 2:
