@@ -97,6 +97,32 @@ class DelaunayInterpolation(InterpolationStrategy):
     density_ratio_trigger:
         Optional global guard controlling when thinning activates based on the
         overall point/pixel ratio.
+    interior_culling:
+        Master switch for the interior-culling heuristic (kept behaviour, by
+        design). When ``True`` (default), large / highly-anisotropic triangles are
+        dropped so long, thin bridging triangles over data gaps do not smear a
+        raster — the intentional, downstream-validated behavior. Set ``False`` to
+        admit *every* triangle inside the convex hull, reproducing
+        ``scipy.interpolate.LinearNDInterpolator`` NaN placement exactly.
+    area_scale:
+        Multiplier on the median triangle area above which a triangle is culled
+        (threshold = ``median(area) * area_scale``). The default ``10.0``
+        reproduces today's behavior byte-for-byte. Pass ``None`` to skip the
+        area criterion while keeping the aspect-ratio one.
+    aspect_ratio_mad_factor:
+        Robust (median + k * MAD) multiplier for the aspect-ratio cull threshold.
+        The default ``6.0`` reproduces today's behavior.
+    aspect_ratio_fallback_scale:
+        Multiplier applied to the median aspect ratio when the MAD is zero (a
+        degenerate, all-congruent triangulation). The default ``10.0`` reproduces
+        today's behavior.
+
+    Notes
+    -----
+    The ``area_scale`` / ``aspect_ratio_*`` knobs are opt-in: their
+    defaults equal the previously-hardcoded constants, so a default-constructed
+    strategy is byte-identical to prior releases. A future refinement to reduce
+    over-culling on strongly-anisotropic scans is deferred.
     """
 
     def __init__(
@@ -107,17 +133,31 @@ class DelaunayInterpolation(InterpolationStrategy):
         enable_density_thinning: bool = False,
         max_points_per_pixel: int = 4,
         density_ratio_trigger: float | None = 4.0,
+        interior_culling: bool = True,
+        area_scale: float | None = 10.0,
+        aspect_ratio_mad_factor: float = 6.0,
+        aspect_ratio_fallback_scale: float = 10.0,
     ) -> None:
         self._lazy_disk_cache_config = lazy_disk_cache_config or LazyDiskCacheConfig()
         self._triangulation_precalc: dict[str, DiskBackedStore[DiskBackedNDArray]] = {}
         self._density_thinning_enabled = enable_density_thinning
         self._max_points_per_pixel = max_points_per_pixel
         self._density_ratio_trigger = density_ratio_trigger
+        self._interior_culling = interior_culling
+        self._area_scale = area_scale
+        self._aspect_ratio_mad_factor = aspect_ratio_mad_factor
+        self._aspect_ratio_fallback_scale = aspect_ratio_fallback_scale
         if self._density_thinning_enabled:
             if self._max_points_per_pixel < 1:
                 raise ValueError("max_points_per_pixel must be >= 1 when density thinning is enabled")
             if self._density_ratio_trigger is not None and self._density_ratio_trigger <= 0:
                 raise ValueError("density_ratio_trigger must be positive when provided")
+        if self._area_scale is not None and self._area_scale <= 0:
+            raise ValueError("area_scale must be positive when provided")
+        if self._aspect_ratio_mad_factor < 0:
+            raise ValueError("aspect_ratio_mad_factor must be non-negative")
+        if self._aspect_ratio_fallback_scale <= 0:
+            raise ValueError("aspect_ratio_fallback_scale must be positive")
 
     @staticmethod
     def _hash_settings(points2d: NDArray, grid_x: NDArray, grid_y: NDArray) -> str:
@@ -185,51 +225,58 @@ class DelaunayInterpolation(InterpolationStrategy):
         result = np.full(nQ, fill_value, dtype=float)
         mask = simplices >= 0
 
-        # Compute triangle metrics once
-        tri_vertices = points2d[triangles]  # shape (M, 3, 2)
+        # Kept behaviour, by design: cull large / anisotropic bridging triangles so
+        # data gaps are not smeared. Opt-out via ``interior_culling=False`` to admit
+        # every in-hull triangle (matches scipy.LinearNDInterpolator NaN placement).
+        if self._interior_culling:
+            # Compute triangle metrics once
+            tri_vertices = points2d[triangles]  # shape (M, 3, 2)
 
-        def compute_metrics(tri_pts):
-            a = tri_pts[:, 1] - tri_pts[:, 0]
-            b = tri_pts[:, 2] - tri_pts[:, 1]
-            c = tri_pts[:, 0] - tri_pts[:, 2]
-            edges = np.stack(
-                [
-                    np.linalg.norm(a, axis=1),
-                    np.linalg.norm(b, axis=1),
-                    np.linalg.norm(c, axis=1),
-                ],
-                axis=1,
+            def compute_metrics(tri_pts):
+                a = tri_pts[:, 1] - tri_pts[:, 0]
+                b = tri_pts[:, 2] - tri_pts[:, 1]
+                c = tri_pts[:, 0] - tri_pts[:, 2]
+                edges = np.stack(
+                    [
+                        np.linalg.norm(a, axis=1),
+                        np.linalg.norm(b, axis=1),
+                        np.linalg.norm(c, axis=1),
+                    ],
+                    axis=1,
+                )
+                # Hero's formula
+                s = edges.sum(axis=1) / 2
+                radicand = np.clip(
+                    s * (s - edges[:, 0]) * (s - edges[:, 1]) * (s - edges[:, 2]), 0, None
+                )  # Guard against numeric instability
+                area = np.sqrt(radicand)
+
+                max_edge = edges.max(axis=1)
+                min_edge = edges.min(axis=1)
+                aspect_ratio = max_edge / np.maximum(min_edge, np.finfo(float).eps)
+                return area, max_edge, aspect_ratio
+
+            area, _max_edge, aspect_ratio = compute_metrics(tri_vertices)
+
+            # Opt-in thresholds; defaults (area_scale=10, mad_factor=6, fallback=10)
+            # reproduce the previously-hardcoded constants byte-for-byte.
+            median_ratio = np.median(aspect_ratio)
+            mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
+            aspect_ratio_thresh = (
+                median_ratio + self._aspect_ratio_mad_factor * mad_ratio
+                if mad_ratio > 0
+                else median_ratio * self._aspect_ratio_fallback_scale
             )
-            # Hero's formula
-            s = edges.sum(axis=1) / 2
-            radicand = np.clip(
-                s * (s - edges[:, 0]) * (s - edges[:, 1]) * (s - edges[:, 2]), 0, None
-            )  # Guard against numeric instability
-            area = np.sqrt(radicand)
 
-            max_edge = edges.max(axis=1)
-            min_edge = edges.min(axis=1)
-            aspect_ratio = max_edge / np.maximum(min_edge, np.finfo(float).eps)
-            return area, max_edge, aspect_ratio
+            # Find bad triangles
+            tri_is_good = np.ones_like(area, dtype=bool)
+            if self._area_scale is not None:
+                area_thresh = np.median(area) * self._area_scale
+                tri_is_good &= area < area_thresh
+            tri_is_good &= aspect_ratio <= aspect_ratio_thresh
 
-        area, max_edge, aspect_ratio = compute_metrics(tri_vertices)
-
-        area_thresh = np.median(area) * 10
-        max_edge_thresh = None
-        median_ratio = np.median(aspect_ratio)
-        mad_ratio = np.median(np.abs(aspect_ratio - median_ratio))
-        aspect_ratio_thresh = median_ratio + 6 * mad_ratio if mad_ratio > 0 else median_ratio * 10
-
-        # Find bad triangles
-        tri_is_good = np.ones_like(area, dtype=bool)
-        if area_thresh is not None:
-            tri_is_good &= area < area_thresh
-        if max_edge_thresh is not None:
-            tri_is_good &= max_edge < max_edge_thresh
-        tri_is_good &= aspect_ratio <= aspect_ratio_thresh
-
-        # Mask out query points whose triangle is bad
-        mask &= tri_is_good[simplices]
+            # Mask out query points whose triangle is bad
+            mask &= tri_is_good[simplices]
 
         logger.debug(f"Valid query point percentage: {mask.sum() / len(mask):.1%}")
 

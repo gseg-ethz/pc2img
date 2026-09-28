@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 RRIM utilities and feature registrations.
 
@@ -9,6 +7,8 @@ shifts, which keeps border handling explicit and avoids wrap-around artefacts.
 That shift kernel is also a clean target for future CuPy/CUDA acceleration if
 RRIM becomes a benchmarking bottleneck.
 """
+
+from __future__ import annotations
 
 import re
 from collections.abc import Callable
@@ -20,6 +20,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from .core import DerivativeFeatureStrategy
+from .derivative_features import _validate_percentile_bounds
 from .registry import FEATURES
 
 RRIMComponent = Literal["slope", "positive", "negative", "structure"]
@@ -39,7 +40,18 @@ _MAX_DISTANCE_RE = re.compile(r"^r(?P<value>\d+)$")
 _DIRECTIONS_RE = re.compile(r"^d(?P<value>\d+)$")
 _SLOPE_CLIP_RE = re.compile(r"^sclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
 _STRUCTURE_CLIP_RE = re.compile(r"^oclip(?P<low>\d+(?:\.\d+)?)-(?P<high>\d+(?:\.\d+)?)$")
-_Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?)$")
+# The exponent group is additive at the TOKEN level — every token accepted
+# before is still accepted — and is what makes a sub-1e-4 z_factor expressible
+# at all. It is NOT additive at the NAME level: `_looks_like_option_token` is
+# consulted on the FIRST token of an RRIM argument list, so a leading token that
+# matches this widened grammar is now read as an OPTION rather than as a
+# base-feature name — option tokens take precedence over base-feature names.
+# `rrim_pack_(z1e5)` therefore means base_feature='range', z_factor=1e5, where
+# it previously meant base_feature='z1e5', z_factor=1.0: same public name, same
+# cache key, different computation. Accepted as the correct precedence (owner
+# decision 2026-07-28) and recorded as a breaking change in the project's
+# breaking-change notes; pinned by tests/test_rrim_features.py.
+_Z_FACTOR_RE = re.compile(r"^z(?P<value>[+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)$")
 _RED_STRENGTH_RE = re.compile(r"^red(?P<value>[+-]?\d+(?:\.\d+)?)$")
 
 
@@ -52,6 +64,19 @@ class RRIMConfig:
     orthographic height rasters and scanner-centred range images. For spherical
     range images the result is an approximation because pixel spacing is angular
     rather than Euclidean.
+
+    Name grammar note: the ``zF`` option token accepts exponent notation
+    (``z1e-05``, ``z1E-05``, ``z1e+20``) in addition to plain decimals, and
+    :meth:`pack_feature_name` emits ``z`` in the shortest form that re-parses to
+    the identical double. A ``z_factor`` therefore round-trips exactly through
+    the derived pack-feature name, which is also the cache key.
+
+    Option tokens take precedence over base-feature names: a *first*
+    argument token matching an option grammar — including the widened ``zF``
+    grammar above, so ``z1e5`` as well as ``z2`` — is parsed as an option, not
+    as ``base_feature``. To address a scalar field whose bare name would be read
+    as an option, spell it ``scalar_field_<name>`` (e.g.
+    ``rrim_pack_(scalar_field_z1e5)``), or rename the field.
     """
 
     base_feature: str = DEFAULT_BASE_FEATURE
@@ -80,17 +105,31 @@ class RRIMResult:
 
 
 def _format_number(value: float) -> str:
+    """Emit the shortest string that re-parses to the identical double.
+
+    The previous 6-significant-figure general format broke the round trip in two
+    ways: it switched to exponent notation below 1e-4 (a token the grammar
+    rejected outright) and it truncated above 6 significant figures, which made
+    the derived cache key NON-injective — two distinct configs collided on one
+    pack name and shared one cached raster. ``repr`` is the shortest exactly
+    round-tripping form, and it is byte-identical to the old output for every
+    value that already encoded correctly, so no valid cache key churns.
+    """
     if float(value).is_integer():
         return str(int(value))
-    return format(value, "g")
+    return repr(float(value))
 
 
 def _validate_clip(name: str, clip: tuple[float, float]) -> tuple[float, float]:
+    # Non-strict percentile bounds via the shared single-source helper
+    # (clipping to a single percentile is a well-defined degenerate operation).
+    # Re-raise naming which clip failed — the shared helper's own message has
+    # no way to know which caller invoked it.
     low, high = clip
-    if not (0.0 <= low <= 100.0 and 0.0 <= high <= 100.0):
-        raise ValueError(f"{name} clip percentiles must lie within [0, 100], got {clip}.")
-    if low > high:
-        raise ValueError(f"{name} clip low percentile must not exceed high percentile, got {clip}.")
+    try:
+        _validate_percentile_bounds(low, high, strict=False)
+    except ValueError as exc:
+        raise ValueError(f"RRIM {name}_clip {clip!r} is invalid: {exc}") from exc
     return float(low), float(high)
 
 
@@ -482,6 +521,13 @@ class RRIMPackFeature(DerivativeFeatureStrategy):
 
     regex_pattern = re.compile(r"^rrim_pack_\((?P<args>.+)\)$")
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__ (self.dependencies = [config.base_feature])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules the base raster WITHOUT constructing the feature.
+        return [_parse_rrim_config(params.get("args")).base_feature]
+
     def __init__(self, args: str) -> None:
         self.config = _parse_rrim_config(args)
         self.dependencies = [self.config.base_feature]
@@ -515,6 +561,14 @@ class RRIMFeature(DerivativeFeatureStrategy):
 
     regex_pattern = re.compile(r"^rrim(?:_\((?P<args>.+)\))?$")
 
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__ (self.dependencies = [base_feature, pack_name])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules both the base raster and the pack raster WITHOUT construction.
+        cfg = _parse_rrim_config(params.get("args"))
+        return [cfg.base_feature, cfg.pack_feature_name()]
+
     def __init__(self, args: str | None = None) -> None:
         self.config = _parse_rrim_config(args)
         self._pack_name = self.config.pack_feature_name()
@@ -545,6 +599,14 @@ class RRIMComponentFeature(DerivativeFeatureStrategy):
     """
 
     regex_pattern = re.compile(r"^rrim_component_\((?P<args>.+)\)$")
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        # Mirror __init__ (slope → [base_feature], else → [pack_name])
+        # by parsing params['args'] through the SAME parser, so FeatureRegistry.match
+        # schedules the correct raster WITHOUT constructing the feature.
+        component, cfg = _parse_rrim_component(params["args"] or "")
+        return [cfg.base_feature] if component == "slope" else [cfg.pack_feature_name()]
 
     def __init__(self, args: str) -> None:
         self.component, self.config = _parse_rrim_component(args)

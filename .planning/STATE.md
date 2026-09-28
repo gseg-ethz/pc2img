@@ -1,44 +1,48 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v1.0
-milestone_name: milestone
-current_phase: 04
-status: "Phase 04 shipped — PR #11"
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-07-10T18:24:38.452Z"
-last_activity: 2026-07-10
+current_phase: 6
+current_phase_name: Publication Hardening & Downstream Migration Record
+status: "Phase 05 shipped — PR #12"
+stopped_at: Phase 05 complete, ready to plan Phase 6
+last_updated: "2026-09-25T12:01:05.577Z"
+last_activity: 2026-09-25
+state_head: c441fe7f227174cb264509e3ca28262aa400a088
 progress:
   total_phases: 7
-  completed_phases: 5
-  total_plans: 20
-  completed_plans: 20
-  percent: 71
-current_phase_name: code-quality-algorithmic-soundness-review
+  completed_phases: 6
+  total_plans: 39
+  completed_plans: 39
+  percent: 83
+milestone_name: milestone
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-08)
+See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 04 — code-quality-algorithmic-soundness-review
+**Current focus:** Phase 05 — Bug Fixes & Module Test Coverage
 
 ## Current Position
 
-Phase: 04 — COMPLETE
-Plan: 7 of 7
-Status: Phase 04 shipped — PR #11
-Last activity: 2026-07-10
+Phase: 6 — Publication Hardening & Downstream Migration Record
+Plan: Not started
+Status: Phase 05 shipped — PR #12
+Last activity: 2026-09-25
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
+
+**Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
+that has since been superseded; it cannot start until Phase 5 re-verifies.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 32
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -50,6 +54,7 @@ Progress: [░░░░░░░░░░] 0%
 | 02 | 3 | - | - |
 | 03 | 3 | - | - |
 | 03.1 | 3 | - | - |
+| 05 | 19 | - | - |
 
 **Recent Trend:**
 
@@ -77,6 +82,27 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P05 | 10min | 2 tasks | 2 files |
 | Phase 04 P06 | 12min | 2 tasks | 2 files |
 | Phase 04 P07 | 9min | 2 tasks | 1 files |
+| Phase 05 P01 | 12min | 2 tasks | 2 files |
+| Phase 05 P02 | 6min | 3 tasks | 2 files |
+| Phase 05 P03 | 8min | 2 tasks | 2 files |
+| Phase 05 P04 | 3min | 2 tasks | 2 files |
+| Phase 05 P05 | 6min | 2 tasks | 2 files |
+| Phase 05 P06 | 8min | 2 tasks | 2 files |
+| Phase 05 P09 | 13min | 4 tasks | 7 files |
+| Phase 05 P07 | 11min | 2 tasks | 6 files |
+| Phase 05 P10 | 16min | 2 tasks | 2 files |
+| Phase 05 P11 | 4min | 2 tasks | 5 files |
+| Phase 05 P12 | 12min | 2 tasks | 4 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 05 P14 | 15min | 3 tasks | 6 files |
+| Phase 05 P15 | 46min | 3 tasks | 7 files |
+| Phase 05 P16 | 55min | 3 tasks | 4 files |
+| Phase 05 P17 | 11min | 2 tasks | 4 files |
+| Phase 05 P18 | 20min | 3 tasks | 4 files |
+| Phase 05 P19 | 50min | 3 tasks | 31 files |
 
 ## Accumulated Context
 
@@ -112,12 +138,59 @@ Recent decisions affecting current work:
 - [Phase 04]: [Phase 04 P07] Synthesized canonical 04-FINDINGS.md: 24 active findings (M-01..M-13 + DSN-01..DSN-11) merged most-severe-first, per-entry schema-linted (8 D-06 fields + file:line anchor); BUG-01=M-01 recorded once cross-referenced; DSN-02/BUG-02 states TypeError->NotImplementedError; no per-finding BUG-05 ids (D-07)
 - [Phase 04]: [Phase 04 P07] Rule-1: plan Task-2 linter regex (mid-pattern (?im)) fails to compile on Python >=3.11 incl project .venv 3.12.13; validated with semantically-identical hoisted-flag form -> 24/24 schema-valid; Phase 5/verifier must use hoisted-flag linter
 - [Phase 04 gap-closure]: Closed SC1 partial gap from 04-VERIFICATION.md — deleted the ~37 lines of commented-out dead code ERA001's heuristic could not flag (orphaned class/def/decorator headers left by 04-04's ERA001-only sweep) across 6 src files + stale DeSpAn pyproject leftovers (commit 4192da5); explanatory prose preserved; suite still 19 passed / 11 xfailed / 0 xpassed, ruff format + hygiene gate clean; appended forward-only correction to 04-04-SUMMARY (18cf7e7 did NOT fully remove TriangulationData/BarycentricInterpolation)
+- [Phase 05]: [Phase 05 P08] Landed owner-approved D-05 Option A — GSEGUtils public `register_lazy_disk_cache_class` hook (function + decorator) turning the closed reload allow-list into an extension point; D-02 posture preserved (explicit allow-list, no importlib, idempotent, TypeError on non-subclass, ValueError on name collision); 4 hook tests (incl. decorator form), full file 24 passed; landed on GSEGUtils branch `gsd/register-lazy-disk-cache-class` off main (commits aad300c + 2cf8083), pushed to origin
+- [Phase 05]: [Phase 05 P08] Delivery route changed at the approved checkpoint from version tag to git-rev bridge — hand-rolled v0.6.0 tag REMOVED (release-please collision + open 0.5.3 PR); setuptools_scm build reports 0.5.2.post4, satisfying existing `GSEGUtils ~= 0.5`; pc2img consumes the hook via [tool.uv.sources] git-rev @ 2cf80835aa724f64a83853c8e35c91cb7640a919 + re-lock (05-09); PyPI `~= 0.6` conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
+- [Phase ?]: [Phase 05 P02] M-04 adapted from 'delete project_raw' to a documented NotImplementedError refusal — deletion leaves the abstractmethod unimplemented and makes PerspectiveProjection uninstantiable (04-FINDINGS M-04 sanctions this); added OrthographicProjection.inverse_projection refusal (class was previously uninstantiable)
+- [Phase ?]: [Phase 05 P02] Perspective rebuilt to pinned contract: keyword-only translation, extrinsic-first Transform.generate([R|t]) @ pcd, Z_c<=0 depth cull (M-02), K·(R·X+t) (M-03), eager 4×4→TypeError / non-orthonormal→ValueError validation (M-03b); D-15 seam guard raises on wrapping FoVs; BC: 4×4 rotation_matrix now raises (D-17)
+- [Phase ?]: PERF-02 opt-in landed as nanconv compute_dtype (default np.float32); reduced precision engages only on explicit opt-in (D-03)
+- [Phase ?]: 05-04: NormalizedFeature strict validation 0<=low<high<=100 + copy-before-mutate (DSN-03/M-12); GradientFeature opt-in pixel_size default 100 with DSL _px suffix, byte-identical (M-10); Hillshade aspect kept + documented (M-11)
+- [Phase ?]: M-06 Delaunay interior-culling kept as default (D-06); thresholds surfaced as opt-in kwargs with byte-identical defaults
+- [Phase ?]: interior_culling=False admits all in-hull triangles, matching scipy.LinearNDInterpolator NaN placement (oracle path for TEST-03)
+- [Phase ?]: 05-06: rrim.py header reordered (docstring first, __future__ second) to populate __doc__ and clear E402x9 (BUG-04); M-13 deferred/logged per D-16, RRIM math untouched
+- [Phase ?]: [Phase 05 P09] Finished the image_cache migration: DiskBackedImageData reparented onto GSEGUtils DiskBackedNDArray (BUG-02/DSN-02 fixed — arithmetic returns a plain ndarray via inherited __array_ufunc__; dropped __array_priority__ A1)
+- [Phase ?]: [Phase 05 P09] DiskBackedImageStore is a thin WRAPPER over DiskBackedStore[DiskBackedImageData]; DSN-09 deserialization sink + .pkl paths deleted (security-by-construction, .npy+JSON allow_pickle=False codec); legacy names re-aliased, overwrite semantics preserved (pre-del)
+- [Phase ?]: [Phase 05 P09] Delivered the 05-08 hook to CI via [tool.uv.sources] git-rev bridge @ 2cf80835 + re-locked uv.lock (git build 0.5.2.post4 satisfies GSEGUtils ~= 0.5); PyPI ~=0.6 conversion + drop-git-entry DEFERRED to Phase 6 (D-17/BC-01)
+- [Phase ?]: [Phase 05 P09] BC (D-17): cache format .pkl -> .npy+.meta.json (legacy .pkl refused as cache miss); DiskBackedImageData arithmetic surface now live (returns ndarray, previously raised)
+- [Phase ?]: 05-07: unified StrategyRegistry+FeatureRegistry on RegistryLookupError(KeyError,RuntimeError); dual inheritance preserves all except-clause catch behavior (BC-01/D-17)
+- [Phase ?]: 05-07: FeatureRegistry.match() reads deps via overridable dependencies_for classmethod (no double __init__); Hillshade needed its own override None->range beyond the plan's Average/Sum/Norm list
+- [Phase ?]: 05-10: tiled DSN-07 uses lightweight 'or LazyDiskCacheConfig()' sentinel; DSN-07 now consistent across all sites (D-17)
+- [Phase ?]: 05-10: BUG-03 manifested as ValidationError (frozen pydantic dataclass re-validates replace(None)); fixed via build-dict-then-assign
+- [Phase ?]: 05-11: DSN-07 sensor asserts the FeatureManager __init__ signature default IS the None sentinel — config is decomposed by DiskBackedStore and never retained, so post-construction object identity is unobservable
+- [Phase ?]: 05-11: DSN-07 manager default uses 'or LazyDiskCacheConfig()' not coerce_lazy_cfg, to avoid a circular import (coerce_lazy_cfg lives in core.py which imports FeatureManager)
+- [Phase ?]: 05-11: DSN-06 fixed via body-level idempotent coerce_lazy_cfg — pydantic @validate_call never runs the BeforeValidator on an omitted default
+- [Phase ?]: [Phase 05 P14] Landed BOTH halves of the owner-locked G9 fix — widened _Z_FACTOR_RE with an optional exponent group AND switched _format_number's non-integer branch to repr(float(v)); neither half alone closes the gap, and repr is byte-identical for every currently-correct z (14-value characterization test), so cache-key churn is paid only where the key was already WRONG
+- [Phase ?]: [Phase 05 P14] G9's %g truncation was also making the RRIM cache key NON-INJECTIVE (z=1.2345678 and z=1.2345681 collided on one pack name and shared a raster) — beyond what 05-UAT.md recorded; now guarded by a dedicated non-collision test
+- [Phase ?]: [Phase 05 P14] G10 fixed by delegating to super().__delitem__ BEFORE the unlink (not by an 'if key in self' pre-check), keeping the base store as the single membership authority; dead cache_dir guard removed. The defect destroyed the OWNING store's raster too, not just a fresh re-scanning one — live data loss
+- [Phase ?]: [Phase 05 P14] Deliberately left out of scope and logged as verified follow-ups: a successful delete still leaves <key>.dat behind (inert residue — a fresh store re-scans *.npy and never re-adopts it), and a non-finite z_factor still breaks the round trip (zinf rejected) because _validate_config has no finiteness check
+- [Phase ?]: [Phase 05 P15] WR-02 closed by ONE containment authority inside _get_npy_path/_get_meta_path, not at the unlink sites — it covers all four disk-touching routes (insert, offload write, load, delete) and leaves __delitem__ byte-identical to ce14b28, so the twice-reviewed G10 ordering could not regress
+- [Phase ?]: [Phase 05 P15] Reproduced WR-02 wider than the finding recorded: the unpatched offload OVERWROTE a file one level above the cache dir with an NPY header before the delete removed it — arbitrary write, not only arbitrary unlink
+- [Phase ?]: [Phase 05 P15] Cache dir deliberately NOT cached on the instance (base store pickles __dict__ wholesale for the joblib/loky tiled path); measured cost 45us per path build, i.e. per raster not per pixel
+- [Phase ?]: [Phase 05 P15] WR-03 landed as BC record + two pinning tests with ZERO behaviour change per the locked owner decision: rrim_pack_(z1e5) means base_feature=range/z=1e5 where pre-05-14 it meant base_feature=z1e5/z=1.0; scalar_field_z1e5 verified as the migration path
+- [Phase ?]: [Phase 05 P15] Gap bookkeeping reconciled with cited evidence: audit-uat for 05-UAT.md 22 open -> 7 (1 deferred + 6 deliberately open); the float32 scaling overflow reads deferred (not resolved) so it stays visible to the ship gate by design
+- [Phase 05]: [Phase 05 P16] Round-4 gap closure: __delitem__ reordered so both codec paths (running the containment guard) are built BEFORE super().__delitem__ — a refused delete (ValueError or KeyError) is now a full no-op in memory and on disk for every escape spelling and the overwrite route (review-r2-70fb459066a6 BLOCKER).
+- [Phase 05]: [Phase 05 P16] Both round-2 reviewer-asserted containment claims REPRODUCED by running code: a symlinked cache entry was wrongly refused (full-path resolve followed the final symlink) -- fixed by resolving only the parent directory; a value-supplied entry cache_path escapes offload(pickle_container=False) -- NOT extended into enforcement, docstring narrowed instead (owner decision D-R4-01 #5).
+- [Phase 05]: [Phase 05 P16] Threat posture corrected everywhere it was stated (store docstring, test comment, BC-NOTES entry 15, UAT reason): the containment guard IS reachable via FeatureRegistry.match's unanchored default fallback (ScalarFieldFeature verbatim key) and is LOAD-BEARING on the installed GSEGUtils 0.5.x, not defence-in-depth as previously claimed; redundant only at the Phase-6 0.6 adoption (spike-000 VALIDATED).
+- [Phase 05]: review-r2-2b9426a42695 and review-r2-6f4507d8c33f were folded by 05-16 into rewrites it made anyway, so they read resolved; review-r2-a7c7f4e498a6 had no host rewrite to fold into, so it is the sole finding newly deferred to the Phase-6 GSEGUtils-0.6 override-deletion todo.
+- [Phase 05]: IN-02 (_validate_clip naming its failing clip) judged NOT a BC-NOTES entry: message-text-only change, same ValueError type, identical accept/reject outcomes, no test asserted the old text -- precedent is G8's unified percentile-bounds message strings, recorded as a 05-VERIFICATION.md deviation rather than a BC entry.
+- [Phase 05]: WR-07 ordering: validate (containment, then shape) -> delete -> build; build-then-swap was measured and rejected (clobbers the old entry's live buffer, races its finalizer).
+- [Phase 05]: WR-07 exception type stays AssertionError, single-sourced via a new _assert_image_shape helper -- no BC-NOTES entry opens.
+- [Phase 05]: OSError-mid-build residual and the held-reference hazard left unfixed, routed to the Phase-6 GSEGUtils carry-out list (05-19 to record).
+- [Phase 05]: Owner decision (2026-09-25, plan-phase session): IN-04 provenance-sweep class widened beyond review-ledger IDs to all planning vocabulary (requirement/design/decision codes, .planning/ paths, plan numbers) in both src/pc2img and tests/. — Keeps main clean of dangling provenance references while preserving all technical reasoning, restated in plain words.
 
 ### Pending Todos
 
 - [Phase 4] Guard module-level private pchandler `_TransformArray` import in `projection.py:12` — a future pchandler drop/rename would break importing the whole projection module (spherical/orthographic included), not just perspective. Source: Phase 1 review IN-03. (`.planning/todos/pending/2026-07-09-guard-transformarray-module-import.md`, `resolves_phase: 4`)
+- [Phase 6] Adopt the PCHandler **security floor** (OIDC trusted publisher, PEP 740 attestations, branch-protection rulesets, required checks, self-merge guard) but DEFER the redundant-CI flow mechanics (`workflow_run` chaining, full suite on release-please PRs, reconcile-PR promotion) — the pchandler template is itself under redesign via dormant **SEED-001**, planted 2026-07-11 after the GSEGUtils 0.5.3 ship ran lint+pytest ~4-5x on unchanged source. Record the divergence from Success Criterion 1 explicitly. (`.planning/todos/pending/2026-07-27-phase-6-adopt-pchandler-security-floor-defer-redundant-ci.md`, `resolves_phase: 6`)
 
 ### Blockers/Concerns
+
+- **Phase 5 reopened 2026-07-27 — NOT shippable.** `05-VERIFICATION.md` flipped `passed` → `gaps_found`; `05-UAT.md` → `status: diagnosed` with 4 open round-2 gaps (G9-G12). Two are blocker-severity correctness defects **introduced by the 05-13 gap-closure fixes** and reproduced against HEAD (`27687c6`): the RRIM `z_factor` cannot round-trip through the derived pack-feature name (`z<1e-4` raises, high-precision z silently drifts), and `DiskBackedImageStore.__delitem__` destroys the on-disk codec pair before `super()` validates membership, so a `KeyError` delete wipes another store's raster. Neither is caught by the 135-test suite; PR #12 is green with both present. **Planned 2026-07-27:** `/gsd-plan-phase 05 --gaps` produced `05-14-PLAN.md` (3 tasks, plan-checker PASSED; commits a058b3b, ab52f46). `current_phase` moved back 6 → 5 and the ROADMAP Phase-5 checkbox un-ticked on 2026-07-27 to match the reopening. Next: `/gsd-execute-phase 05 --gaps-only`, then a review of the gap diff (global review-discipline rule — this is the loop whose absence let G9/G10 through), then re-verify.
+
+  **EXECUTED 2026-07-27 (plan 05-14):** all 3 tasks landed test-first — `5dbd93e` (G9: grammar widened + shortest-round-trip emission; round trip, injectivity, dependency chain and generate() end-to-end now proven), `f776011` (G10: `super().__delitem__` before the unlink; a failed cross-store delete leaves the codec pair intact and both the fresh AND owning store still serve the key), `eeb0e5f` (BC-NOTES 12-14 + COVERAGE.md). Suite 162 passed / 0 failed / 0 residual xfail, coverage 61.63% (floor 55). **Still open:** the gap diff has not yet had its own review, and Phase 5 has not re-verified — the phase remains NOT shippable until both happen.
+
+  Reproduction refined while planning (both verified at HEAD, beyond what the review recorded): G9's `%g` truncation also makes the cache key **non-injective** — `z=1.2345678` and `z=1.2345681` both emit `rrim_pack_(range,r16,d8,z1.23457)` and share one cached raster. G10 destroys the raster for the **owning** store too, not just a fresh re-scanning one, because the owner cleared its in-memory ref on offload. Note the G10 precondition requires `offload_image_data_to_disk(...)` (`pickle_container=True`); a plain `offload()` writes `<key>.dat` and does not reproduce the defect.
+
+  **G9 owner decision (2026-07-27):** do BOTH halves — widen `_Z_FACTOR_RE` to accept exponent notation AND switch `_format_number`'s non-integer branch from `format(v,"g")` to `repr(float(v))`. Chosen over regex-only because the emitted token stays byte-identical for every z that works correctly today; only already-mis-encoded names change.
 
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
 
@@ -141,6 +214,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-10T16:19:16.796Z
-Stopped at: Completed 04-02-PLAN.md
+Last session: 2026-09-25T10:15:17.171Z
+Stopped at: Phase 05 complete, ready to plan Phase 6
 Resume file: None

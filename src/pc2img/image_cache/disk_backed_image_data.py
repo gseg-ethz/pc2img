@@ -4,34 +4,49 @@ from typing import Any, Unpack
 
 import numpy as np
 from GSEGUtils.lazy_disk_cache import (
+    DiskBackedNDArray,
     LazyDiskCache,
     LazyDiskCacheKw,
 )
-from numpy.lib.mixins import NDArrayOperatorsMixin
 from numpy.typing import NDArray
 
 from pc2img.util import convert_to_image
 
 
-class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
-    __array_priority__ = 1000
+def _assert_image_shape(image_data: np.ndarray) -> None:
+    """Assert ``image_data`` is a single-channel 2-D or 3-channel (H, W, 3) raster.
+
+    The single source of the raster-shape rule: both :meth:`DiskBackedImageData.__init__`
+    and the store's overwrite path (:class:`pc2img.image_cache.disk_backed_image_store.DiskBackedImageStore`)
+    call this helper rather than duplicating the condition, so the rule cannot
+    drift between the two call sites. The exception type is deliberately
+    ``AssertionError`` — an internal-invariant signal, not user-input
+    validation — and stays pinned: changing it would be a breaking-change
+    event this helper's extraction does not open.
+    """
+    assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or image_data.shape[-1] == 3), (
+        f"image_data must be 2-D or (H, W, 3); got shape {image_data.shape}"
+    )
+
+
+class DiskBackedImageData(DiskBackedNDArray):
+    """Disk-backed raster: a thin ``DiskBackedNDArray`` with an image-shape guard.
+
+    Reparented onto :class:`GSEGUtils.lazy_disk_cache.DiskBackedNDArray`:
+    the working ``__array_ufunc__`` (unwrap -> delegate -> plain ndarray), the
+    ``__array__`` / ``__getitem__`` / ``data`` accessors and the offload/load
+    buffer hooks are all inherited. This class only adds the single- or
+    3-channel raster-shape assertion (via the module-level
+    :func:`_assert_image_shape` helper) and the :meth:`to_uint8` conversion.
+    """
 
     def __init__(
         self,
         image_data: np.ndarray,
         **lazy_disk_cache_settings: Unpack[LazyDiskCacheKw],
     ):
-        assert image_data.ndim in (2, 3) and (image_data.ndim == 2 or image_data.shape[-1] == 3)
-        self._image_data = image_data
-        self._shape = image_data.shape
-        self._dtype = image_data.dtype
-        super().__init__(**lazy_disk_cache_settings)
-
-    @property
-    def data(self):
-        if self.offloaded:
-            self.load()
-        return self._image_data
+        _assert_image_shape(image_data)
+        super().__init__(image_data, **lazy_disk_cache_settings)
 
     @LazyDiskCache.ensure_loaded
     def to_uint8(
@@ -41,28 +56,4 @@ class DiskBackedImageData(LazyDiskCache, NDArrayOperatorsMixin):
 
         if pre_processing_func is None:
             pre_processing_func = partial(convert_to_image, replace_nan_with="max", normalize=False)
-        return pre_processing_func(self._image_data)
-
-    @LazyDiskCache.ensure_loaded
-    def __array__(self, dtype=None, *, copy=None):
-        if copy is False:
-            raise ValueError("`copy=False` isn't supported. A copy is always created.")
-
-        arr = self._image_data
-        return arr.astype(dtype, copy=True) if dtype else arr.copy()
-
-    @LazyDiskCache.ensure_loaded
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        raise NotImplementedError
-
-    def _describe_buffer(self):
-        return self._shape, self._dtype, self._image_data
-
-    def _drop_buffer(self):
-        self._image_data = None
-
-    def _describe_shape_dtype(self):
-        return self._shape, self._dtype
-
-    def _set_buffer(self, buf: NDArray):
-        self._image_data = buf
+        return pre_processing_func(self._data)

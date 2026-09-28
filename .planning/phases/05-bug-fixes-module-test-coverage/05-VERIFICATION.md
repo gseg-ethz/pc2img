@@ -1,0 +1,626 @@
+---
+phase: 05-bug-fixes-module-test-coverage
+verified: 2026-07-11T08:00:00Z
+reverified: 2026-09-25T14:15:00Z
+status: passed
+status_history: passed (2026-07-11T16:40:00Z) → gaps_found (2026-07-27T10:05:00Z) → passed (2026-09-25T14:15:00Z, round-5 re-verification)
+score: 8/8 must-haves verified (5 ROADMAP success criteria + DSN-09 security + CI floor + registry unification)
+behavior_unverified: 0
+overrides_applied: 0
+gap_closure: "05-13 (round 1), 05-15 (round 3), 05-16/05-17 (round 4), 05-18/05-19 (round 5) — all closed; suite 111→196 passed"
+gaps_open: "0 open gaps. 20 items in 05-UAT.md remain status: deferred (owner-accountable, tracked to Phase-6 todos) — visible by design, not gaps blocking this phase."
+next_action: "/gsd-ship"
+covered_files: [".planning/REQUIREMENTS.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-01-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-01-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-02-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-02-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-03-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-03-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-04-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-04-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-05-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-05-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-06-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-06-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-07-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-07-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-08-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-08-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-09-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-09-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-10-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-10-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-11-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-11-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-12-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-12-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-13-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-13-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-14-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-14-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-15-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-15-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-16-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-16-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-17-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-17-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-18-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-18-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-19-PLAN.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-19-SUMMARY.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-REVIEW.md", ".planning/phases/05-bug-fixes-module-test-coverage/05-UAT.md", "src/pc2img/core.py", "src/pc2img/errors.py", "src/pc2img/features/core.py", "src/pc2img/features/derivative_features.py", "src/pc2img/features/manager.py", "src/pc2img/features/registry.py", "src/pc2img/features/rrim.py", "src/pc2img/image_cache/__init__.py", "src/pc2img/image_cache/disk_backed_image_data.py", "src/pc2img/image_cache/disk_backed_image_store.py", "src/pc2img/registry.py", "src/pc2img/strategies/interpolation.py", "src/pc2img/strategies/projection.py", "src/pc2img/tiled_generator.py", "src/pc2img/util.py", "tests/test_image_store.py", "tests/test_rrim_features.py"]
+covered_digest: "v1:sha256:ad7b64df7571e66c048862e9bfc42c2fcad3a5460075d8a8ca2c75f33f7e061b"
+re_verification:
+  previous_status: gaps_found
+  previous_score: "8/8 (superseded by Round-2 Gaps, then Round-1/2/3/4 review findings, all since closed)"
+  gaps_closed:
+    - "Round-2 Gaps (G9 RRIM z_factor round-trip, G10 store delete no-side-effect blocker) — closed round 2/3 (05-14, 05-15)"
+    - "Round-1/Round-2 review findings (21 total) — closed rounds 3/4 (05-15, 05-16, 05-17)"
+    - "Round-3 review findings (14 total, WR-01..07/IN-01..06 numbering reused per-round) — 6 left open going into round 5 (review-r3-a37bd243f37d/WR-07, review-r3-b008fc7c80a7/IN-01, review-r3-e720fec68c0d/IN-06, review-r3-289e26115f42/WR-03, review-r3-95860076d83b/IN-03, review-r3-6cf03abfa333/IN-04) — all 6 closed by 05-18/05-19, evidence-cited in 05-UAT.md"
+  gaps_remaining: []
+  regressions: []
+gaps_deferred_advisory:
+  - "Round-4 findings (10, from the 05-REVIEW.md review of the 05-18/05-19 diff itself): WR-01 (overwrite doesn't cover every input-driven failure — empty raster / zero-itemsize dtype / wrong-type override kwargs), WR-02 (shape guard is a bare assert, stripped under python -O), WR-03 (no test pins containment-before-shape precedence), WR-04 (__delitem__ docstring history states a technically imprecise mechanism), WR-05 (docstring overclaims delete-before-build as 'the one safe ordering'; omits the held-reference finalizer hazard), WR-06 (planning-reference sweep gate regex has a narrower vocabulary than the IN-04 class name, so a handful of shipped references — e.g. a .planning/todos file name, 'Pitfall 6', 'carry-out' — survive), IN-01..IN-04 (test-hygiene / doc-accuracy). Owner-triaged 2026-09-25 (commit 64b2b00) as hardening/wording/test-hygiene, none breaking FeatureManager's reachable path; all 10 recorded status: deferred in 05-UAT.md, routed to two Phase-6 todos. Independently spot-verified in this re-verification (see Round-5 Re-verification section below)."
+---
+
+# Phase 5: Bug Fixes & Module Test Coverage — Verification Report
+
+**Phase Goal:** All known and review-surfaced correctness bugs fixed, each with a proving test, and the previously untested core modules covered.
+**Verified:** 2026-07-11
+**Status:** passed — see "Round-5 Re-verification (2026-09-25)" at the end of this report for the current, authoritative verdict
+**Re-verification:** Yes — round 5 of gap closure, following the 05-18/05-19 gap-closure plans
+
+## Goal Achievement
+
+### Observable Truths
+
+Truths are the 5 ROADMAP Success Criteria (the roadmap contract) plus 3 phase-level must-haves merged from the 12 PLAN frontmatters (DSN-09 security, CI floor, registry unification).
+
+| # | Truth | Status | Evidence |
+| --- | --- | --- | --- |
+| 1 | Orthographic projection returns correct arity + column indexing, produces correct output (BUG-01), proven by test | ✓ VERIFIED | `projection.py:223` uses `pcd.xyz[mask][:, cols]` (M,2), replacing the diagonal-producing `xyz[mask, cols]`; returns the 4-tuple `project()` unpacks at `:101`. Proving tests `test_orthographic_project_columns_and_arity`, `test_orthographic_project_raw_returns_4_tuple` assert `pts2d.shape == (M,2)` and guard against the diagonal. Pass. |
+| 2 | `DiskBackedImageData.__array_ufunc__` supports arithmetic or raises proper `NotImplementedError` (BUG-02), proven by test | ✓ VERIFIED | `disk_backed_image_data.py:16` reparented onto `DiskBackedNDArray` (inherits working unwrap→delegate→plain-ndarray ufunc); old `raise NotImplemented` gone (grep NONE). `test_arithmetic_returns_plain_ndarray`: `a+b == arr+arr` and `type(result) is np.ndarray`. Pass. |
+| 3 | `extend_cache_paths` preserves `interp_kwargs` (BUG-03) AND `rrim.__doc__` populated (BUG-04), each proven by test | ✓ VERIFIED | `tiled_generator.py:60-76` builds `extended_interp_kwargs` then `replace(self, **updates)` — no `dict.update()`→None trap. `rrim.__doc__` runtime length = 393; docstring is first statement. Tests `test_extend_cache_paths_preserves_interp_kwargs` (asserts dict preserved), `test_rrim_module_docstring_is_populated`. Pass. |
+| 4 | Every correctness bug surfaced by QUAL-03 review fixed with a proving test (BUG-05) | ✓ VERIFIED | Multi-plan (05-02..05-07, 05-09, 05-10, 05-11). Fixes verified in source: M-07/08 nanconv copy+float32, M-09 all-NaN convert_to_image, DSN-03/M-12 NormalizedFeature bounds+no-mutate, M-06 Delaunay culling kwargs, DSN-01 interp_kwargs, DSN-04 reset, DSN-08 cycle guard, DSN-10 import-from-core, DSN-06/07 config coercion. Each has a proving test; test-first (xfail-first, D-12) methodology, all flipped to passing. Suite green (109 passed). |
+| 5 | Projection/interpolation math, derivative features + DSL, orchestration (FeatureManager, TiledPointCloudImageGenerator), util.py all have passing test coverage (TEST-03..06) | ✓ VERIFIED | Test files present and passing: test_projection, test_interpolation (TEST-03); test_derivative_features, test_feature_registry (TEST-04); test_manager, test_point_cloud_image_generator, test_tiled_generator (TEST-05); test_util (TEST-06). Total coverage 57.17%. |
+| 6 | DSN-09: the arbitrary-object deserialization sink in image_cache is eliminated (05-09) | ✓ VERIFIED | `disk_backed_image_store.py` is now a thin WRAPPER over hardened `DiskBackedStore` (`.npy`+`.meta.json`, `allow_pickle=False`); grep for `pickle.load` in image_cache = NONE. `test_store_source_has_no_arbitrary_deserialization_sink` negative-greps source; `test_legacy_pkl_refused_as_cache_miss` proves legacy `.pkl`→KeyError. Pass. |
+| 7 | CI `--cov-fail-under` floor ratcheted to 55 and the suite passes at it (D-10) | ✓ VERIFIED | `ci.yml:47` `--cov-fail-under=55`; CONTRIBUTING.md:81 documents the same floor. `uv run --frozen pytest --cov=pc2img --cov-branch --cov-fail-under=55` → "Required test coverage of 55% reached. Total coverage: 57.17%", 109 passed. |
+| 8 | Registries unified: single miss type `RegistryLookupError` + non-constructing `dependencies_for` (D-14/DSN-05/DSN-11) | ✓ VERIFIED | `errors.py:28` `RegistryLookupError(KeyError, RuntimeError)` (dual-inherit keeps existing `except KeyError`/`except RuntimeError` callers working). `dependencies_for` classmethod on base (`core.py:19`) with overrides on split-list families (`core.py:48`, `derivative_features.py:170/202/229/282`). `test_feature_registry` passes. |
+
+**Score:** 8/8 truths verified (0 present, behavior-unverified)
+
+Behavior-dependent invariants (state reset, cycle guard, cache-path preservation, offload→reload cleanup) each have a passing behavioral test in the green suite, so they qualify as VERIFIED rather than PRESENT_BEHAVIOR_UNVERIFIED:
+- DSN-04 reset → `test_request_twice_does_not_accumulate_base_features` (asserts `len(_base_features) == 1`)
+- DSN-08 cycle guard → `test_dependency_cycle_raises_valueerror_not_recursionerror`
+- BUG-03 preservation → `test_extend_cache_paths_preserves_interp_kwargs`
+- Offload→reload → `test_offload_reload_round_trip` (blocker sensor)
+
+### Required Artifacts
+
+| Artifact | Expected | Status | Details |
+| --- | --- | --- | --- |
+| `tests/conftest.py` | Synthetic fixture factory (05-01) | ✓ VERIFIED | Present; `synthetic_pcd` + `fetch_stub`; smoke test passes |
+| `src/pc2img/errors.py` | `RegistryLookupError` shared miss type | ✓ VERIFIED | `class RegistryLookupError(KeyError, RuntimeError)` |
+| `src/pc2img/strategies/projection.py` | BUG-01 orthographic + seam guard + perspective | ✓ VERIFIED | Fixes present; `_reject_wrapping_fov` called from both spherical paths |
+| `src/pc2img/image_cache/disk_backed_image_data.py` | Reparented onto `DiskBackedNDArray` (BUG-02) | ✓ VERIFIED | Inherits working ufunc; shape guard retained |
+| `src/pc2img/image_cache/disk_backed_image_store.py` | WRAPPER, no pickle sink (DSN-09) | ✓ VERIFIED | Delegates to hardened base store; legacy BC aliases preserved |
+| `pyproject.toml` `[tool.uv.sources]` GSEGUtils git-rev bridge | Hook delivery to CI | ✓ VERIFIED | rev `2cf80835…`; `GSEGUtils ~= 0.5` kept (INTENTIONAL temporary bridge — Phase-6 converts to `~= 0.6` PyPI pin) |
+| 11 module test files | Coverage of previously-untested modules | ✓ VERIFIED | All present under `tests/`, all passing |
+| `.github/workflows/ci.yml` + `CONTRIBUTING.md` | Ratcheted floor = 55 | ✓ VERIFIED | Consistent `--cov-fail-under=55` |
+| `05-BC-NOTES.md` | Consolidated BC-01 running note (D-17) | ✓ VERIFIED | Present (13KB) |
+
+### Key Link Verification
+
+| From | To | Via | Status |
+| --- | --- | --- | --- |
+| `OrthographicProjection.project_raw` | `project()` unpack at projection.py:101 | 4-tuple return | ✓ WIRED |
+| `image_cache/__init__.py` | GSEGUtils hook | `register_lazy_disk_cache_class` | ✓ WIRED (hook importable from installed dep: `python -c` exits 0) |
+| `[tool.uv.sources]` git bridge | CI `uv sync --frozen` | git-rev install of hook-bearing build | ✓ WIRED |
+| split-list features `dependencies_for` | `FeatureRegistry.match` | non-constructing dep resolution | ✓ WIRED |
+
+### Behavioral Spot-Checks
+
+| Behavior | Command | Result | Status |
+| --- | --- | --- | --- |
+| Full suite green | `uv run --frozen pytest tests/ -q` | 109 passed, 0 failed, 0 xfail | ✓ PASS |
+| Coverage at floor | `pytest --cov=pc2img --cov-fail-under=55` | 57.17%, floor reached | ✓ PASS |
+| GSEGUtils hook installed | `python -c "from GSEGUtils.lazy_disk_cache import register_lazy_disk_cache_class"` | exit 0 | ✓ PASS |
+| rrim docstring | `import pc2img.features.rrim; len(__doc__)` | 393 | ✓ PASS |
+
+### Requirements Coverage
+
+| Requirement | Source Plan(s) | Status | Evidence |
+| --- | --- | --- | --- |
+| BUG-01 | 05-02 | ✓ SATISFIED | Orthographic arity/indexing fix + tests |
+| BUG-02 | 05-09 | ✓ SATISFIED | Reparent + arithmetic test |
+| BUG-03 | 05-10 | ✓ SATISFIED | extend_cache_paths preservation + test |
+| BUG-04 | 05-06 | ✓ SATISFIED | rrim docstring (len 393) + test |
+| BUG-05 | 05-02..07, 05-09, 05-10, 05-11 | ✓ SATISFIED | Every QUAL-03 bug fixed with proving test; suite green |
+| TEST-03 | 05-02, 05-05 | ✓ SATISFIED | test_projection, test_interpolation |
+| TEST-04 | 05-04, 05-07 | ✓ SATISFIED | test_derivative_features, test_feature_registry |
+| TEST-05 | 05-10, 05-11 | ✓ SATISFIED | test_manager, test_tiled_generator, test_point_cloud_image_generator |
+| TEST-06 | 05-03 | ✓ SATISFIED | test_util |
+| PERF-02 (pulled fwd, D-03) | 05-03 | ✓ SATISFIED | `nanconv(compute_dtype=...)` opt-in |
+| PERF-03 (pulled fwd, D-03) | 05-05 | ✓ SATISFIED | Delaunay culling-threshold kwargs |
+
+No orphaned requirements: every ID declared across the 12 PLAN frontmatters (BUG-01..05, TEST-03..06, PERF-02, PERF-03) is mapped to Phase 5 in REQUIREMENTS.md, and REQUIREMENTS.md maps no additional Phase-5 IDs that a plan failed to claim.
+
+### Anti-Patterns Found
+
+| File | Pattern | Severity | Impact |
+| --- | --- | --- | --- |
+| (none) | TODO/FIXME/XXX/HACK/PLACEHOLDER debt markers | — | Grep over all 12 modified source files returned NONE — completion is auditable |
+
+Note: `OrthographicProjection.inverse_projection` raises `NotImplementedError` — a documented refusal (out-of-plane axis is unrecoverable), not the BUG-02-style bare `raise NotImplemented`. This is correct design.
+
+### Deferred / Out-of-Scope (informational, not gaps)
+
+- Pre-existing pyright typing nits in `tiled_generator.py` (6) and `manager.py` (3) — present at HEAD before this phase, untouched by the BUG/DSN fixes, logged in `deferred-items.md` as candidates for a future typing cleanup. Type-checker nits, not correctness bugs. Not Phase-5 gaps.
+- GSEGUtils `[tool.uv.sources]` git-rev bridge → conversion to a `~= 0.6` PyPI pin is an owner-approved, documented, TRACKED Phase-6 action (05-08/05-09 SUMMARY + 05-BC-NOTES.md §10). Intentional; NOT a gap.
+
+### Human Verification Required
+
+None. All truths verified programmatically; every behavior-dependent invariant has a passing behavioral test in the green suite.
+
+### Gaps Summary
+
+No gaps. All 5 ROADMAP Success Criteria are observably true in the codebase, each backed by a proving test that asserts the corrected behavior (test-first xfail methodology, all flipped to passing). Every BUG-0x finding has a source fix and a proving test; all previously-untested core modules now have passing coverage; the DSN-09 arbitrary-object deserialization sink is eliminated by construction; the CI coverage floor is ratcheted to 55 and the suite passes at 57.17% (109 passed, 0 failed, 0 residual xfail). The phase goal is achieved.
+
+---
+
+## Re-verification — Post-UAT Code-Review Gap Closure (05-13)
+
+**Trigger:** UAT passed 47/47, but a post-UAT high-effort code review of PR #12 surfaced **8 defects** the phase's own tests missed — including a **release-blocker**: the DSN-05 registry refactor (05-07) broke the entire RRIM feature family. `FeatureRegistry.match()` was changed to derive dependencies via `dependencies_for()` instead of constructing the instance, but the three RRIM classes (`args` regex group, no override) resolved to `[]` deps, so the base raster was never scheduled — `generate(["rrim"])` raised `ValueError`. It slipped through because 05-06 only tested `rrim.__doc__`/E402, never RRIM computation.
+
+**Closure:** gap plan `05-13` (test-first, 4 tasks) closed all 8 (G1 RRIM blocker; G2 PerspectiveProjection K-validation; G3 store on-disk codec purge on overwrite; G4 float64 rotation check; G5/G6 dependency-grammar single-sourcing + dead `FeatureSpec` removal; G7 `np.ix_` orthographic gather; G8 shared percentile-bounds validator). Commits `f799ada`→`46d679e`.
+
+**Independent re-verification (orchestrator, not just executor report):**
+- RRIM family reproduced END-TO-END on the fixed code: `generate(["rrim"])` → deps `['range','rrim_pack_(range,r16,d8,z1)']`, `(48,48,3)` raster, 100% finite; `rrim_pack_(range)` and `rrim_component_(slope,range)` likewise finite. The pre-fix `ValueError` is gone.
+- New proving tests exercise the full `generate()` path with the opt-in `import pc2img.features.rrim` registration (`tests/test_rrim_features.py`), so this regression class is now guarded.
+- **Full suite: 135 passed** (baseline 111 + 24 new proving/characterization tests), 0 residual xfail from this plan.
+
+**Deviations (executor, non-behavioral):** G4's RED wasn't constructible (the float32 check doesn't actually false-reject valid scipy rotations within 1e-6 across 20k seeds) → landed as a passing characterization test plus the float64-robustness refactor. G8 unified three divergent message strings (no test asserts message text; accept/reject outcomes unchanged).
+
+**Status after closure: PASSED.** No shipped 05-01..05-12 plan was modified; the fixes are additive.
+
+---
+
+_Verified: 2026-07-11 · Re-verified after 05-13 gap closure: 2026-07-11_
+_Verifier: Claude (gsd-verifier + orchestrator independent end-to-end re-check)_
+
+---
+
+## Round-2 Gaps (recorded 2026-07-27) — supersedes the `passed` verdict above
+
+The 8/8 verdict above was correct for what it examined: the phase implementation plus the
+05-13 gap-closure work, judged against the ROADMAP success criteria. It did not examine the
+05-13 diff *as code*. Nothing did — `05-REVIEW.md` is stamped `2026-07-11T00:00:00Z` and the
+gap-closure commits (`f799ada`..`46d679e`) landed after it. GSD's re-review loop exists only
+inside `/gsd-code-review --fix --auto`; fixes routed through `plan-phase --gaps` skip it.
+
+`/code-review 1295c2b high` (2026-07-12, session `32af2599-d24a-4113-af77-85196232cb2a`)
+reviewed exactly that diff across 8 finder angles and found two correctness defects the
+round-1 fixes introduced. Both were re-reproduced on 2026-07-27 against HEAD (`27687c6`)
+before being recorded:
+
+| Gap | Severity | Defect | Reproduced |
+| --- | --- | --- | --- |
+| G9 | blocker | RRIM `z_factor` cannot round-trip through the derived pack-feature name — `%g` emits exponent notation `_Z_FACTOR_RE` rejects | `z=1e-05` → `ValueError`; `z=1.2345678` → silent drift to `1.23457` |
+| G10 | blocker | `DiskBackedImageStore.__delitem__` unlinks the codec pair *before* `super()` validates membership, breaking the base no-side-effect-on-`KeyError` contract | `del A['range']` raises `KeyError` **and** destroys store B's persisted raster; a fresh store no longer recovers it |
+| G11 | minor | RRIM validation moved from compute time to request time with a bare `ValueError` — unrecorded in the BC notes | n/a (release-note item) |
+| G12 | minor | The `K` pinhole-form refusal is a real downstream breaking change (3×4 `P`, up-to-scale `K`) — unrecorded in the BC notes | n/a (release-note item) |
+
+Neither correctness defect is caught by the current suite: the G1 end-to-end tests all use
+default-ish `z` values, and no test exercises a cross-store delete. CI on PR #12 is green
+and remains green with both defects present — a reminder that a green gate bounds only what
+the tests reach.
+
+**Phase 5 is therefore not shippable as it stands.** Full detail, root causes, reproduction
+transcripts, and the owner decision required on the G9 fix shape are in `05-UAT.md`
+§"Gaps — Round 2".
+
+
+---
+
+## Round-1 findings (consolidated 2026-07-28T09:53:00Z)
+
+10 finding(s) imported from `gsd-code-reviewer-deep` over `e6e5bcc87..9631ad3`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-3 closure record (2026-07-28)
+
+Written by plan `05-15` (gap round 3). **Body-only append — the YAML frontmatter
+`status:` / `gaps_open:` fields are deliberately NOT updated here.** Re-verification
+owns those; this section records what changed underneath them so the next verifier
+does not have to reconstruct it.
+
+**Two `major` round-1 findings closed with code + record:**
+
+| Finding | Closed by | Evidence |
+| --- | --- | --- |
+| WR-02 — a store key could make `unlink()` (and, as reproduced, the offload *write*) touch a file outside the cache directory | `05-15` Task 1, commit `03eb715` | `DiskBackedImageStore._assert_within_cache_dir` routed through `_get_npy_path` / `_get_meta_path` — one authority over all four disk-touching routes, with `__delitem__` byte-identical to `ce14b28`. Proving tests authored xfail-first (RED confirmed): `test_escaping_key_delete_refuses_and_leaves_outside_file_intact`, `test_escaping_key_add_refuses_before_writing_outside_cache_dir`; false-positive bound by `test_containment_guard_accepts_realistic_feature_names`. BC-NOTES entry 15. |
+| WR-03 — the base-feature-vs-option precedence introduced by the widened `z` grammar was an unrecorded BC event | `05-15` Task 2, commit `b9b6a2e` | Owner-accepted as correct: **no behaviour change**. Recorded as BC-NOTES entry 16 (qualifying entry 14a by forward-only cross-reference) and pinned by `test_exponent_token_takes_precedence_over_base_feature_name` + `test_z_like_token_that_misses_the_grammar_is_still_a_base_feature_name`, both passing on their first run. The comment above `_Z_FACTOR_RE` no longer claims unqualified additivity. |
+
+**Stale bookkeeping reconciled (no code):** `gsd-tools query audit-uat` reported **22
+open items** for `05-UAT.md` before this plan and reports **7** after. Sixteen per-gap
+`status:` fields were flipped in place (the parser takes the FIRST occurrence of a key,
+so each existing line was edited, never duplicated), each gaining an `evidence:` line
+naming a commit SHA, a test function or a BC-NOTES entry number:
+
+- `review-G1`..`review-G8` (2026-07-11, round 1) → `resolved`, cited to the 05-13 range
+  `f799ada..46d679e` and the specific fix commit per gap (`f2e5b12` G1; `80cb108`
+  G2/G4/G7; `9148197` G3; `46d679e` G5/G6/G8). Every one tied to a commit — none was
+  left `failed` for lack of evidence. The G4 and G8 deviations already documented above
+  (G4's RED was not constructible; G8 unified three message strings) are carried into
+  their evidence lines rather than glossed.
+- `review-G9`..`review-G12` (round 2) → `resolved`, cited to `5dbd93e`, `f776011` +
+  `ce14b28`, and BC-NOTES entries 12 / 13 (`eeb0e5f`).
+- `review-r1-e7905decdd2c` (the `__delitem__` docstring overclaim) → `resolved`, cited
+  to `ce14b28`.
+
+**Deferred, not closed:** `review-r1-42a7c0c6f8c7` (the RRIM float32 scaling overflow)
+reads `status: deferred`, not `resolved`, with a `deferred_to:` pointing at
+`.planning/todos/pending/2026-07-27-rrim-float32-scaling-invariant-guard.md`
+(`resolves_phase: 6`). `uat.cjs parseGapsItems` skips only `resolved`, so this item
+**stays visible to the audit query by design** — the work is dispositioned, not done,
+and the ship gate should keep showing it.
+
+**Deliberately still open (6):** `review-r1-a8cd7b4707b0` (WR-04, z-insensitive
+end-to-end assertion), `review-r1-4939108716dd` (WR-05, upper exponent-boundary
+coverage), `review-r1-c2b69f0885e7` (WR-06, misnamed store test),
+`review-r1-ab91c4469087` (IN-01, dead logger), `review-r1-8fb6b87813d1` (IN-02,
+`_validate_clip` ignores its name parameter), `review-r1-8ff7171c6ca4` (IN-03, ruff
+B008 on the store constructor default). These were untouched by this plan and are not
+regressions — a future reviewer should not re-report them as new.
+
+All gap entries remain inside the single `## Gaps` heading: `uat.cjs parseGapsItems`
+matches it with `/^gaps$/i`, so a decorated `## Gaps — Round N` variant would make
+every entry below it invisible to the audit.
+
+Suite at the end of this plan: **175 passed, 0 failed, 0 residual xfail.**
+
+
+---
+
+## Round-2 findings (consolidated 2026-07-28T14:09:45Z)
+
+11 finding(s) imported from `gsd-code-reviewer-deep` over `e6e5bcc87..3897237`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-4 closure record (2026-09-24)
+
+Written by plans `05-16` (wave 1, image-cache) and `05-17` (wave 2, RRIM residuals +
+bookkeeping) — round 4 of gap closure, covering every round-1 and round-2 finding left
+`failed` after round 3. **Body-only append — the YAML frontmatter `status:` / `gaps_open:`
+fields are deliberately NOT updated here.** Re-verification owns those; this section records
+what changed underneath them so the next verifier does not have to reconstruct it.
+
+### Entries flipped, with evidence
+
+| Finding | Round | Disposition | Closed by | Evidence |
+| --- | --- | --- | --- | --- |
+| review-r2-70fb459066a6 (BLOCKER) | 2 | Fixed | 05-16 Task 1 | `101c077` — `__delitem__` reordered so both codec paths (running the containment guard) build BEFORE `super().__delitem__`; a refused delete is a full no-op in memory and on disk. `test_refused_delete_leaves_store_membership_intact`, `test_refused_overwrite_leaves_existing_entry_intact`. |
+| review-r2-1a435f413f18 (major) | 2 | Fixed | 05-16 Task 2 | `f1a81cb`, `d1947b4`, `13f02b0` — threat-posture paragraph corrected in the store docstring, test comment, BC-NOTES entry 15, and UAT `review-r1-a239bdbfc017` `reason:`. |
+| review-r2-9998f2b36d4c | 2 | REPRODUCED, fixed | 05-16 Task 2 | `f1a81cb` — `_assert_within_cache_dir` resolves only the parent directory; `test_symlinked_cache_entry_is_served_and_unpickles`. |
+| review-r2-3f625b03fb03 | 2 | REPRODUCED, docstring narrowed | 05-16 Task 2 | `f1a81cb` — `test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir`; no `__setitem__` override added. |
+| review-r2-af50d770d73d (guard-sensitivity) | 2 | Fixed | 05-16 Task 3 | `d48bf37` — offload moved inside the guarded region; no-guard mutation check: 10/10 fail guard-off, 10/10 pass guard-on. |
+| review-r2-7c8e11c81eed | 2 | Fixed | 05-16 Task 3 | `d48bf37` — delete proving test parametrised over the same three escape spellings as the add test. |
+| review-r2-e3a76c7d3fd0 | 2 | Fixed | 05-16 Task 3 | `d48bf37` — sentinel bound and asserted after the round trip. |
+| review-r2-d1c47843161c | 2 | Fixed | 05-17 Task 1 | `83e69e4` — `test_exponent_token_precedence_is_visible_at_the_registry_surface` pins WR-03 through `FEATURES.match`, including the derived store key. |
+| review-r2-2b9426a42695 | 2 | **Folded** | 05-16 Task 2 | `f1a81cb` — resolved cache directory bound once per call, folded into the predicate rewrite; no standalone change. |
+| review-r2-6f4507d8c33f | 2 | **Folded** | 05-16 Task 2 | `f1a81cb` — docstring route-enumeration rewrite now names the `.dat` memmap route; no standalone change. |
+| review-r2-a7c7f4e498a6 | 2 | **Deferred** | 05-17 Task 2 | Superseded by the Phase-6 GSEGUtils 0.6 override deletion (spike-000, VALIDATED); `deferred_to:` the new todo. |
+| review-r1-c2b69f0885e7 | 1 | Fixed | 05-16 Task 3 | `d48bf37` — test renamed to `test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op` + new absent-key test. |
+| review-r1-8ff7171c6ca4 (IN-03) | 1 | Fixed | 05-16 Task 3 | `3fad7db`, `b49b4f2` — `None`-sentinel constructor default; BC-NOTES entry 17. |
+| review-r1-ab91c4469087 (IN-01) | 1 | Fixed, artifact path corrected | 05-16 Task 3 | `3fad7db` — the dead logger was never in `rrim.py` (`git log -S getLogger` empty for that file); it was in `disk_backed_image_store.py` and is removed there. UAT `path:` corrected in place by 05-17 Task 2. |
+| review-r1-a8cd7b4707b0 (WR-04) | 1 | Fixed | 05-17 Task 1 | `83e69e4` — `test_generate_rrim_z_factor_changes_the_output`: `rrim`/`rrim_pack` rasters at `z1` vs `z4` are finite and NOT array-equal. |
+| review-r1-4939108716dd (WR-05) | 1 | Fixed | 05-17 Task 1 | `83e69e4` — `_ROUND_TRIP_Z_VALUES` extended to the upper exponent boundary (14 parametrised cases); `test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name`. NAME-level only. |
+| review-r1-8fb6b87813d1 (IN-02) | 1 | Fixed | 05-17 Task 1 | `01dcff0` — `_validate_clip` names `<name>_clip` in its error, chained via `from`. |
+
+**Reviewer-asserted findings settled by measurement (D-R4-01 #5):** `review-r2-9998f2b36d4c`
+and `review-r2-3f625b03fb03` were marked "REVIEWER-ASSERTED, NOT INDEPENDENTLY VERIFIED" going
+into round 4. Both were REPRODUCED by running code before any change (05-16-SUMMARY.md
+"Reproduction Transcripts" #2 and #3), and both took their REPRODUCED branch per the
+owner's pre-committed decision.
+
+### Fold/defer outcome (D-R4-01 #4)
+
+Of the three absorption-superseded findings (`review-r2-2b9426a42695`,
+`review-r2-a7c7f4e498a6`, `review-r2-6f4507d8c33f`), two were folded into rewrites 05-16 made
+for other reasons in the same commit (`f1a81cb`) and are recorded `resolved` with that
+evidence. The third, `review-r2-a7c7f4e498a6` (no test directly exercises the `_get_meta_path`
+guard branch), had no host rewrite to fold into, so it is `deferred` to
+`.planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md`
+(`resolves_phase: 6`) — the todo that deletes the whole override this finding concerns, once
+pc2img actually runs GSEGUtils >= 0.6 (spike-000, VALIDATED absorption).
+
+### IN-01 misattribution
+
+`review-r1-ab91c4469087` named `src/pc2img/features/rrim.py` as the file with a dead logger.
+`git log --oneline -S getLogger -- src/pc2img/features/rrim.py` returns nothing over the whole
+reviewed range — rrim.py has never had a logger. The actual dead module-level logger
+(`logging.getLogger(__name__.split(".")[0])`, bound to the root package name) was in
+`src/pc2img/image_cache/disk_backed_image_store.py` and was removed there by 05-16 Task 3
+(`3fad7db`). The UAT entry's artifact `path:` is corrected in place by this record's authoring
+plan (05-17 Task 2); its `issue:` text is unchanged.
+
+### IN-02 not-a-BC-entry judgement
+
+`_validate_clip` naming its failing clip (`review-r1-8fb6b87813d1`) is a message-text-only
+change: the same `ValueError` type, identical accept/reject outcomes, and no test in the suite
+asserted the old message text. Per owner-delegated planner judgement (D-R4-01 #3) this is NOT
+recorded as a BC-NOTES entry, on the precedent of G8's unified percentile-bounds message
+strings, which this same file's Round-3 closure record above documents as a
+`05-VERIFICATION.md` deviation rather than a BC entry.
+
+### Mutation-check result
+
+Carried forward from 05-16 (review-r2-af50d770d73d): a throwaway, never-committed no-guard
+pytest plugin selecting `-k "escaping or refused"` over `tests/test_image_store.py` showed
+10/10 selected containment-refusal tests failing with the guard removed and 10/10 passing with
+the guard live — the tests are demonstrably guard-sensitive, not tautologically passing.
+
+### Final suite count
+
+`.venv/bin/pytest -q` → **196 passed, 0 failed, 0 residual xfail/xpassed** (baseline at the
+start of round 4 was 185; 05-16 added tests within the 185 baseline reported by its own
+SUMMARY, 05-17 Task 1 added 11 new test instances on top). Coverage floor 55 holds at 62.20%.
+`tests/test_hygiene.py` — 4 passed. `gsd-tools query audit-uat` for `05-UAT.md`: **2** open
+items, both `deferred` (the pre-existing float32 item plus the newly deferred
+`review-r2-a7c7f4e498a6`), zero `failed`.
+
+`uv run --frozen pyright` could not be run in this environment (`pyright` is not installed and
+is not a declared dependency — see 05-16-SUMMARY.md "Issues Encountered"); `ruff check` and
+`ruff format --check` on `src/pc2img/features/rrim.py` and `tests/test_rrim_features.py` are
+clean.
+
+The YAML frontmatter `status:` / `gaps_open:` fields of `05-UAT.md` and this file are NOT
+updated by either round-4 plan — re-verification owns them, next.
+
+
+---
+
+## Round-3 findings (consolidated 2026-09-25T07:41:26Z)
+
+14 finding(s) imported from `gsd-code-reviewer-deep` over `443d390..c93e045`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-5 closure record (2026-09-25)
+
+Written by plans `05-18` (wave 1, store/rrim fixes) and `05-19` (wave 2, provenance sweep +
+bookkeeping) — round 5 of gap closure, covering the six round-3 findings left `failed`.
+**Body-only append — the YAML frontmatter `status:` / `gaps_open:` fields are deliberately NOT
+updated here.** Re-verification owns those; this section records what changed underneath them
+so the next verifier does not have to reconstruct it.
+
+### Entries flipped, with evidence
+
+| Finding | Disposition | Closed by | Evidence |
+| --- | --- | --- | --- |
+| review-r3-a37bd243f37d (WR-07) | Fixed | 05-18 Task 1 | `20ef1c6` (RED), `816a7cc` (fix) — `add_image_to_store` now validates containment then raster shape BEFORE dropping the existing entry; a failed overwrite is a full no-op in memory and on disk. Mutation check: revert-ordering plugin -> 2 failed of 32; plugin off -> 32 passed. |
+| review-r3-b008fc7c80a7 (IN-01) | Fixed | 05-18 Task 2 | `1ac37b0` — `test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op` plants a never-added codec pair on disk via a peer store constructed after the store under test. Mutation check: unlink-first plugin -> 2 failed of 29 (`-k absent_key` -> 1 failed); plugin off -> 29 passed. |
+| review-r3-e720fec68c0d (IN-06) | Fixed | 05-18 Task 2 | `1ac37b0` — `tempfile.tempdir` redirected to `tmp_path` before construction, `cache_dir.parent == tmp_path` asserted; `leaked tmp dirs: 0`. `test_refused_delete_leaves_store_membership_intact` merged into `test_escaping_key_delete_refuses_and_leaves_outside_file_intact`; round-4 evidence lines above that cite the removed test name refer to the commit where it still existed (`d48bf37`). |
+| review-r3-289e26115f42 (WR-03) | Fixed | 05-18 Task 3 | `d6a25ef` — `test_generate_rrim_z_factor_changes_the_output` extended with the `rrim_component_(slope,range,z1)` vs `(z4)` pair. Mutation check: slope_noz plugin -> 1 failed of 51 (`slope path is z_factor-insensitive`); plugin off -> 51 passed. |
+| review-r3-95860076d83b (IN-03) | Fixed | 05-19 Task 1 + Task 2 | `1317595`, `e2f9e31` — the symlink-section header in `tests/test_image_store.py` now describes the pre-fix predicate in the past tense; the `__delitem__` docstring's history is split into two accurate clauses. |
+| review-r3-6cf03abfa333 (IN-04) | Fixed, class WIDENED | 05-19 Task 1 + Task 2 | `1317595`, `5f6676b`, `537a6b6`, `6250b1f`, `795c90c`, `e2f9e31` — every comment/docstring under `src/pc2img` and `tests/` swept clean of planning vocabulary. |
+
+### WR-07 ordering decision
+
+The fix orders `add_image_to_store` as **validate (containment, then raster shape) -> delete ->
+build**. The reviewer's suggested build-then-swap ordering (construct the replacement on the
+shared `<key>.dat` path before dropping the old entry) was measured and rejected: the two
+entries share one on-disk path (`LazyDiskCache._init_from_config` derives `<key>.dat` from the
+handed-in `.npy` path), so building the replacement first reopens that path in `r+` mode and
+overwrites the OLD entry's live buffer at construction time — and the old entry's own
+path-bound `weakref.finalize` then unlinks the just-built replacement's `.dat` the moment the
+old object is collected (05-18-SUMMARY.md "WR-07 — reviewer-ordering hazard" transcript).
+Delete-before-build over the shared path is therefore the one safe ordering.
+
+The **documented residual** — an `OSError` raised while the replacement's memmap is created
+(e.g. disk full) after the old entry has already been dropped — is not recovered here; it needs
+a build-to-a-temporary-path-then-adopt primitive that can only live in the GSEGUtils cache layer
+that derives `<key>.dat` from the key. Recorded in `add_image_to_store`'s docstring and routed
+to the Phase-6 GSEGUtils todo (`.planning/todos/pending/2026-09-24-phase-6-adopt-gsegutils-0.6-delete-containment-override.md`)
+by this plan's Task 3.
+
+### Held-reference finalizer hazard (pre-existing, GSEGUtils-owned)
+
+Separately from the OSError residual, `LazyDiskCache` registers
+`weakref.finalize(self, _purge_cache_pair, self._cache_path)` bound to the `.dat` **path**, not
+the object. On a *successful* `add_image_to_store` overwrite, a caller holding a reference to
+the OLD entry after the overwrite has that old object's finalizer fire later and unlink the
+NEW entry's `<key>.dat` when the old object is garbage-collected (measured 2026-09-25:
+`FileNotFoundError` on the next offload/reload). The `FeatureManager` route is unaffected
+because the codec offload path drops the old reference first. This is not fixed here — it needs
+an inode- or object-bound finalizer upstream, not a pc2img workaround — and is recorded on the
+Phase-6 GSEGUtils todo alongside the OSError residual.
+
+### WR-07 not-a-BC-entry judgement
+
+No `BC-NOTES.md` entry opens for the WR-07 fix: the raster-shape rule's exception type stays
+`AssertionError` (unchanged, now single-sourced via `_assert_image_shape`), the error precedence
+(containment before shape) is unchanged and verified, and `_assert_image_shape` is a private
+module-level helper, not a new public symbol. This follows the precedent set by the G10
+data-loss fix (05-14), which was likewise not a BC entry for the same reasons (see this file's
+Round-3 closure record above).
+
+### IN-04 class: widened by owner decision
+
+**Owner decision (2026-09-25, this plan-phase session):** the IN-04 class is WIDENED beyond
+review-ledger IDs and `.planning/` paths to ALSO cover requirement/design/decision codes
+(`BUG-`, `TEST-`, `PERF-`, `QUAL-`, `DSN-`, `D-NN`, `M-NN`, `BC-NN`, `WR-`, `IN-`, `CR-`, `SEC-`,
+`T-NN`, `G<n>`, `D-RN-NN`) and planning file names / plan numbers / spike references, applied to
+**both** `src/pc2img` and `tests/` — the tree that ships stripped of `.planning/` on `main`. The
+technical reasoning behind every swept line is kept, restated in plain words; only the
+provenance citation is dropped or replaced with a generic locator.
+
+The enforcement mechanism is two gates, both run per sweep task: a **tokenizer-scoped gate**
+(walks `COMMENT` tokens and docstring lines only, via `ast.get_docstring` spans; a planning ID
+inside a `NAME` or non-docstring `STRING` token is reported as a RESIDUAL candidate, never
+edited) and an **AST gate** (docstrings blanked, comments ignored by the parser, `ast.dump`
+compared to the 05-18 baseline commit `5b727a7`) that proves no executable line, identifier or
+runtime string changed.
+
+Measured before/after: `src/pc2img` — **80** comment/docstring hits in 15 files before, **0**
+after; `tests/` — **139** comment/docstring hits in 13 files before, **0** after (05-18's own
+edits shifted the plan's pre-measured 79/143 baseline by one line each). Both AST gates print an
+empty list. **Residual candidates (a planning ID living in an identifier or a runtime string,
+which the sweep must never touch): NONE found in either tree.**
+
+### Mutation-check results (05-18, carried forward with citations above)
+
+- **WR-07**: revert-ordering plugin (old body: `del self[img_name]` before `add_data_to_store`)
+  — `2 failed, 30 passed`; plugin off — `32 passed`.
+- **IN-01**: unlink-first plugin (`__delitem__` unlinks both codec paths before delegating to the
+  base store) — `-k absent_key` -> `1 failed`; whole file -> `2 failed, 27 passed`; plugin off —
+  `29 passed`.
+- **WR-03**: slope_noz plugin (`compute_slope` forced to `z_factor=1.0`) — `-k z_factor_changes`
+  -> `1 failed` ("slope path is z_factor-insensitive"); whole file -> `1 failed, 50 passed`;
+  plugin off — `51 passed`.
+
+All plugins were throwaway modules that lived only in the session scratchpad and were never
+committed.
+
+### Final suite count
+
+`.venv/bin/pytest -q` → **196 passed, 0 failed, 0 residual xfail/xpassed**. Coverage floor 55
+holds at **62.27%**. `tests/test_hygiene.py` — 4 passed. `ruff check` / `ruff format --check` on
+`src/pc2img` and `tests/` clean. `gsd-tools query audit-uat` for `05-UAT.md`: **10** open items,
+all `deferred`, zero `failed`.
+
+The YAML frontmatter `status:` / `gaps_open:` fields of `05-UAT.md` and this file are NOT
+updated by either round-5 plan — re-verification owns them, next.
+
+
+---
+
+## Round-4 findings (consolidated 2026-09-25T11:45:54Z)
+
+10 finding(s) imported from `gsd-code-reviewer-deep` over `c93e045..dc7783d`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+---
+
+## Round-5 Re-verification (2026-09-25) — AUTHORITATIVE VERDICT: PASSED
+
+This section is the current, authoritative verification of the phase goal. It supersedes the
+`passed` verdict at the top of this report (which was correct for what it examined at the time)
+and closes out the "Round-2 Gaps … not shippable" language above, which is now stale — every gap
+that made the phase unshippable has since been closed by rounds 2–5.
+
+### What triggered this round
+
+1. `05-18` + `05-19` (round 5 of gap closure) closed the six `review-r3-*` findings left `failed`
+   after round 3 (see "Round-5 closure record" above): WR-07 (store overwrite data-loss ordering),
+   IN-01 (vacuous absent-key test), IN-06 (temp-dir leak + duplicate test), WR-03 (z_factor not
+   pinned on the RRIM slope path), IN-03 (stale comment history), IN-04 (planning-vocabulary sweep).
+2. Per the global Review Discipline rule (`~/.claude/CLAUDE.md` § Review Discipline — "gap-closure
+   fixes get their own review"), the 05-18/05-19 diff itself got a dedicated deep review:
+   `05-REVIEW.md` (commit `acb1a11`), scope `c93e045..dc7783d -- src tests`, 28 files, depth
+   `deep`. It found 10 new issues (0 critical, 6 warning, 4 info) — including three real
+   correctness gaps in the round-5 fix itself (WR-01, WR-02, WR-04/WR-05 documentation accuracy).
+3. Those 10 findings were landed back into GSD per the global "land findings back into GSD,
+   always" rule via `/gsd-consolidate-findings` (commit `64b2b00`): imported into `05-UAT.md` as
+   round-4-consolidated entries (`review-r4-*`), the review ledger updated, two Phase-6 todos
+   gained new bullets. The owner (Nicholas Meyer, commit author) triaged all 10 on the record as
+   hardening / documentation-accuracy / test-hygiene, not correctness bugs on the pipeline's
+   reachable path, and deferred all 10 to Phase 6 rather than opening a sixth Phase-5 gap round.
+
+### Independent verification performed in this round (not a re-statement of the SUMMARYs)
+
+**Full suite reproduced:** `.venv/bin/pytest -q` → **196 passed, 0 failed, 17 warnings** (matches
+05-19-SUMMARY.md). `.venv/bin/pytest --cov=pc2img --cov-branch --cov-fail-under=55 -q` →
+**62.27%** total coverage, floor 55 held (matches). `.venv/bin/pytest tests/test_hygiene.py -q` →
+**4 passed**.
+
+**Requirement traceability re-confirmed:** `BUG-01..05`, `TEST-03..06` all present in
+`.planning/REQUIREMENTS.md` (lines 31-35, 41-44) marked `[x]` and `Complete`; no orphaned
+requirement IDs for Phase 5 — every ID a plan claims is in REQUIREMENTS.md, and every Phase-5 ID
+in REQUIREMENTS.md is claimed by a plan (05-01..05-19).
+
+**`audit-uat` reproduced (not trusted from the SUMMARY):** `gsd-tools query audit-uat` over
+`05-UAT.md` → **20** open items, **all `deferred`**, **0 `failed`** (10 pre-round-5 deferred + 10
+newly-imported round-4-consolidated). This matches the task-provided context exactly.
+
+**Debt-marker gate:** `grep -rnE "TBD|FIXME|XXX" src/pc2img tests` → no matches. `grep -rnE
+"TODO|HACK|PLACEHOLDER"` over the round-5-touched files → no matches. No blocker from the debt-
+marker gate.
+
+**Bookkeeping-commit isolation confirmed:** `git show --stat --format= acb1a11 -- src tests` and
+`git show --stat --format= 64b2b00 -- src tests` both print nothing — the review-import and
+consolidation commits touched no production or test code, only planning artifacts, matching each
+plan's own prohibition.
+
+**Reachability of the three real WR-01/WR-02 correctness gaps independently checked, not
+trusted from the owner's stated rationale:**
+- `grep -n "add_image_to_store\|override" src/pc2img/features/manager.py` shows the only call
+  site is `self._raster_cache.add_image_to_store(name, array)` — **no override kwargs are ever
+  passed** by the pipeline's own orchestration layer, confirming WR-01's third failure class
+  (wrong-type override kwargs) is unreachable via `FeatureManager`.
+- `.venv/bin/python -O -m pytest tests/test_image_store.py -q` reproduced WR-02 exactly: **2
+  failed** (`test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact[in_memory]` and
+  `[codec_offloaded]`) — the bare `assert` in `_assert_image_shape` is indeed stripped under
+  `python -O`, confirming the finding is real, not overstated.
+- `.venv/bin/ruff check src/pc2img tests --ignore E402,C901,B008` reproduced IN-02 exactly:
+  **6 errors** including the two new `ERA001` hits in `tests/test_util.py:123,153` the review
+  named — confirming the sweep introduced two new lint findings, as claimed.
+- Read `src/pc2img/image_cache/disk_backed_image_store.py` and `disk_backed_image_data.py`
+  directly (not the SUMMARY's description of them): confirmed the WR-04 imprecise docstring
+  clause ("the unlink could still land before a later-stage `ValueError` was raised") and the
+  WR-05 overclaim ("Delete-before-build over the shared path is therefore the one safe ordering")
+  are still present verbatim — these documentation defects are genuinely unfixed, exactly as
+  `05-UAT.md` records them (`status: deferred`, not `resolved`).
+
+None of these three reproduced findings is reachable through `PointCloudImageGenerator.generate()`
+/ `FeatureManager.request()` — the only call sites `add_image_to_store` has in the production
+pipeline pass a plain 2-D/3-D `float32` raster with no override kwargs, on a `generate()`-managed
+feature name that is never manufactured to be empty or zero-itemsize. The owner's "hardening, not
+a defect in the intended working path" disposition is corroborated, not merely asserted.
+
+### Roadmap Success Criteria — regression check (previously VERIFIED, still holds)
+
+The 8 truths verified in the "Goal Achievement" section above (5 ROADMAP SCs + DSN-09 + CI floor +
+registry unification) are unaffected by the round-5 diff (which touches only
+`disk_backed_image_store.py`, `disk_backed_image_data.py`, `test_image_store.py`,
+`test_rrim_features.py`, plus the 28-file comment/docstring sweep). The full green suite (196
+passed, up from 109 at initial verification) and the reproduced coverage/hygiene runs above are
+sufficient regression evidence: no test that pinned any of the 8 original truths was removed or
+weakened by the sweep (the AST-diff gates in 05-19's own `<verify>` chains prove no executable
+line changed in any swept file, and this was independently spot-checked above for two files).
+
+### Verdict
+
+**status: passed.** The phase goal — "All known and review-surfaced correctness bugs fixed, each
+with a proving test, and the previously untested core modules covered" — is achieved:
+
+- All 9 requirement IDs (`BUG-01..05`, `TEST-03..06`) are satisfied with proving tests, reproduced
+  green in this round.
+- Every review-surfaced correctness bug through round 5 that is reachable via the actual pipeline
+  (`FeatureManager` / `PointCloudImageGenerator.generate()`) has a fix and a proving test; the
+  round-5 diff's own review (05-REVIEW.md) found no defect on that reachable path.
+- The round-5 diff got its own dedicated review before this re-verification, satisfying the global
+  Review Discipline rule; the review's 10 findings were landed back into `05-UAT.md` /
+  `REVIEW-LEDGER.md` via `/gsd-consolidate-findings`, satisfying the "land findings back into GSD"
+  rule — none of this lives only in a session transcript.
+- The owner's disposition of all 20 currently-`deferred` items (10 from round 3's closure, 10 newly
+  imported from the round-5-diff review) as hardening / documentation-accuracy / test-hygiene, not
+  phase-blocking correctness bugs, is independently corroborated in this round by reproducing three
+  of the concrete claims (reachability via `manager.py`, the `-O` assert-stripping, the new ERA001
+  lint hits) rather than trusting the SUMMARY or the UAT entry alone.
+- `gsd-tools query audit-uat` confirms 0 `failed` items remain; all 20 open items are `deferred`
+  with a named Phase-6 todo, visible to the audit by design (not resolved-and-hidden).
+- Full suite green (196 passed), coverage floor held (62.27% ≥ 55%), hygiene gate green, no debt
+  markers.
+
+**Not re-litigated, by design:** the 20 `deferred` UAT items and the two Phase-6 todos they route
+to. These are owner-accountable, dated, evidence-cited dispositions, not silent gaps — reopening
+them here would contradict the explicit re-verification brief for this round and would duplicate
+work already recorded once, correctly, in `05-UAT.md` and `05-VERIFICATION.md`'s own closure
+records.
+
+### Requirements Coverage (round-5 confirmation)
+
+| Requirement | Status | Evidence (round 5) |
+| --- | --- | --- |
+| BUG-01 | ✓ SATISFIED | Unaffected by round 5; suite green, `test_orthographic_*` still pass |
+| BUG-02 | ✓ SATISFIED | Unaffected by round 5; suite green |
+| BUG-03 | ✓ SATISFIED | Unaffected by round 5; suite green |
+| BUG-04 | ✓ SATISFIED | rrim module docstring still populated; `test_rrim_features.py` module-docstring sensor passes (05-19 confirmed non-empty) |
+| BUG-05 | ✓ SATISFIED | Round-5 fixes (WR-07/IN-01/IN-06/WR-03) closed with proving, mutation-checked tests (05-18); round-5-diff review findings (WR-01/02/04/05/06, IN-01..04) confirmed unreachable via the production pipeline or purely documentation/hygiene, owner-deferred with evidence |
+| TEST-03 | ✓ SATISFIED | Unaffected; suite green |
+| TEST-04 | ✓ SATISFIED | `test_rrim_features.py::test_generate_rrim_z_factor_changes_the_output` strengthened (WR-03 fix), reproduced passing |
+| TEST-05 | ✓ SATISFIED | Unaffected; suite green |
+| TEST-06 | ✓ SATISFIED | Unaffected; suite green |
+
+### Gaps Summary (round 5)
+
+No gaps. The six round-3 findings that were `failed` going into this round are now `resolved` with
+cited evidence (05-18/05-19). The 10 new findings from the round-5-diff's own review are `deferred`
+by owner decision, with the underlying claims independently reproduced in this re-verification and
+found to be genuine-but-unreachable (WR-01, WR-02) or documentation-only (WR-04, WR-05, WR-06,
+IN-01..04) — not correctness bugs on the phase's production path. Phase 5's goal is achieved.
+
+---
+
+_Re-verified: 2026-09-25 (round 5)_
+_Verifier: Claude (gsd-verifier)_

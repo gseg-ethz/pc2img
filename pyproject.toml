@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
 	"pchandler ~= 2.1",
-	"GSEGUtils ~= 0.5",
+	"GSEGUtils >= 0.5.3, < 1.0",
 	"joblib ~= 1.5",
 	"numpy ~= 2.0",
 	"imageio ~= 2.31",
@@ -112,6 +112,11 @@ explicit = true
 # Plan 02 invokes the documented fallback (name them directly in the cuda extras).
 # No entry may point at a local /scratch or third_party/ path (D-12, forbidden).
 [tool.uv.sources]
+# NOTE: the GSEGUtils reload-registration hook (register_lazy_disk_cache_class,
+# landed 05-08) shipped in the published GSEGUtils 0.5.3 (release-please emitted a
+# pre-major PATCH bump, not 0.6.0). pc2img now resolves it straight from PyPI via
+# the `GSEGUtils >= 0.5.3, < 1.0` pin above; the temporary git-rev bridge that
+# carried it during Phase-5 execution has been removed (D-17/BC-01 closed).
 cudf-cu12      = { index = "nvidia" }
 cuspatial-cu12 = { index = "nvidia" }
 cuproj-cu12    = { index = "nvidia" }

@@ -23,7 +23,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Dependency Adaptation & Reproducible Environment** - Make pc2img import and run against PCHandler 2.x + GSEGUtils with pinned deps and a committed uv lockfile (completed 2026-07-09)
 - [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [x] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings (completed 2026-07-10)
-- [ ] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules
+- [x] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules (REOPENED 2026-07-27 — round-2 review gaps G9-G12; the 2026-07-11 completion is superseded) (completed 2026-09-25)
 - [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
 
 ## Phase Details
@@ -177,7 +177,41 @@ Plans:
   4. Every correctness bug surfaced by the QUAL-03 review is fixed with a proving test (BUG-05).
   5. Projection/interpolation math, derivative features + the feature-name DSL, orchestration (`FeatureManager`, `TiledPointCloudImageGenerator`), and `util.py` all have passing test coverage (TEST-03..06).
 
-**Plans**: TBD
+**Plans**: 19/19 plans executed (05-18, 05-19 — round-5 gap closure, planned 2026-09-25, pending)
+
+**Wave 1**
+
+- [x] 05-01-PLAN.md — Shared synthetic fixture factory in tests/conftest.py (D-11) [TEST-03..06]
+- [x] 05-08-PLAN.md — GSEGUtils Option A public class-registration hook + owner-approval checkpoint (D-05) [BUG-05]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 05-02-PLAN.md — projection.py: M-01/BUG-01 orthographic + M-05/D-15 seam guard + M-02/03/04 perspective (D-01) [BUG-01, BUG-05, TEST-03]
+- [x] 05-03-PLAN.md — util.py: nanconv copy-input + float32 (M-07/M-08/D-09) + convert_to_image all-NaN (M-09) [BUG-05, TEST-06]
+- [x] 05-04-PLAN.md — derivative_features.py: DSN-03+M-12 fix + M-10/M-11 kept-behavior params (D-07/D-08) [BUG-05, TEST-04]
+- [x] 05-05-PLAN.md — interpolation.py: M-06 kept-behavior culling thresholds (D-06/PERF-03) + oracle [BUG-05, TEST-03]
+- [x] 05-06-PLAN.md — rrim.py: BUG-04 docstring/E402 reorder; M-13 defer/log (D-16) [BUG-04, BUG-05]
+- [x] 05-07-PLAN.md — registry unification: RegistryLookupError + dependencies_for + DSN-11 (D-14) [BUG-05, TEST-04]
+- [x] 05-09-PLAN.md — image_cache reparent (D-04/BUG-02) + DiskBackedStore WRAPPER + pickle-sink removal (D-05/DSN-09) [BUG-02, BUG-05]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 05-10-PLAN.md — tiled_generator.py: BUG-03 interp_kwargs + DSN-10 + DSN-07 [BUG-03, BUG-05, TEST-05]
+- [x] 05-11-PLAN.md — manager.py + core.py: DSN-04/07/08 + DSN-06 omitted-config coercion [BUG-05, TEST-05]
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [x] 05-12-PLAN.md — Re-measure coverage + ratchet CI floor (D-10) + consolidate BC-01 note (D-17) [BUG-05, TEST-03..06]
+
+**Gap closure** *(post-UAT code-review gaps; additive — no shipped plan modified)*
+
+- [x] 05-13-PLAN.md — Round 1: 8 review gaps G1-G8 (RRIM dependencies_for blocker, K validation, store purge, float64 rotation, single-sourcing) [BUG-05, TEST-03, TEST-04]
+- [x] 05-14-PLAN.md — Round 2: G9-G12 — RRIM z_factor round-trip blocker + store delete no-side-effect-on-KeyError blocker (both introduced by 05-13) + G11/G12 BC-record entries [BUG-05]
+- [x] 05-15-PLAN.md — Round 3: WR-02 store-key path containment (unlink/write escape from the cache dir) + WR-03 base-feature-vs-option precedence BC record & pin + gap-status reconciliation [BUG-05]
+- [x] 05-16-PLAN.md — Round 4 (wave 1, store): refused-delete atomicity BLOCKER (introduced by 05-15) fixed RED-first with G10 intact; symlinked-entry and value-supplied-cache_path claims reproduced→branched; threat posture corrected to load-bearing on GSEGUtils 0.5.x (registry default fallback); guard-sensitive tests + mutation check; IN-01 (actual location: store module), IN-03 None-sentinel + BC entry 17, WR-06 [BUG-05]
+- [x] 05-17-PLAN.md — Round 4 (wave 2, RRIM + bookkeeping): precedence pinned at FEATURES.match surface, z-sensitivity end-to-end, upper z boundary (name-level), _validate_clip names its clip; Phase-6 todo for the absorption-superseded containment findings; UAT/VERIFICATION evidence-cited reconciliation [BUG-05, TEST-04]
+- [x] 05-18-PLAN.md — Round 5 (wave 1, code): WR-07 failed-overwrite atomicity (validate → delete → build; reviewer's build-first ordering measured unsafe on the shared .dat path) RED-first + mutation-checked; IN-01 absent-key test made non-vacuous (pair planted, unlink-first mutation); IN-06 temp-dir leak stopped + duplicate delete-refusal tests merged; WR-03 z_factor pinned on the slope path via the component surface (slope_noz mutation) [BUG-05, TEST-04]
+- [x] 05-19-PLAN.md — Round 5 (wave 2, text + bookkeeping): IN-03 stale/garbled round-4 comments; IN-04 planning-vocabulary sweep of every comment/docstring in src/ AND tests/ (ledger IDs plus BUG-/TEST-/DSN-/D-/M-/BC- codes, widened per owner 2026-09-25; tokenizer-scoped gate + AST gate: no executable change); six UAT flips with evidence, Round-5 closure record, GSEGUtils overwrite residuals filed in the Phase-6 todo [BUG-05]
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
 
@@ -203,5 +237,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 2. Dependency Adaptation & Reproducible Environment | 3/3 | Complete    | 2026-07-09 |
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
-| 5. Bug Fixes & Module Test Coverage | 0/TBD | Not started | - |
+| 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |

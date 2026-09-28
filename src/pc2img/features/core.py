@@ -9,11 +9,40 @@ if TYPE_CHECKING:
     from .manager import FeatureManager
 
 
+def _default_dependencies_for(params: dict[str, str | None]) -> list[str]:
+    """Derive raster dependencies from a parsed regex ``groupdict``.
+
+    The single source of the default single-``base_feature`` dependency grammar,
+    shared by both feature ABCs so the rule is defined in exactly one place. It
+    returns ``[base_feature]`` when the parsed ``groupdict`` carries a
+    ``base_feature`` group, else ``[]``.
+
+    This lets ``FeatureRegistry.match`` resolve dependencies WITHOUT
+    constructing the feature class (which previously ran ``__init__`` twice — once
+    in ``match`` and again at compute time). Families whose ``__init__`` derives
+    dependencies differently (e.g. the split-list ``average``/``sum``/``norm``
+    features, ``hillshade``'s defaulted base, or the RRIM family) OVERRIDE
+    ``dependencies_for`` to mirror their own derivation so ``match`` and
+    construction always agree.
+    """
+    base_feature = params.get("base_feature")
+    return [base_feature] if base_feature is not None else []
+
+
 class BaseFeatureStrategy(ABC):
     """Produces a 1D array of length N (per point)."""
 
     dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        """Default single-``base_feature`` derivation via :func:`_default_dependencies_for`.
+
+        Overridable: subclasses whose grammar differs mirror their own
+        ``__init__`` derivation here (see :func:`_default_dependencies_for`).
+        """
+        return _default_dependencies_for(params)
 
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...
@@ -27,6 +56,15 @@ class DerivativeFeatureStrategy(ABC):
 
     dependencies: list[str] = []
     regex_pattern: re.Pattern[str]
+
+    @classmethod
+    def dependencies_for(cls, params: dict[str, str | None]) -> list[str]:
+        """Default single-``base_feature`` derivation via :func:`_default_dependencies_for`.
+
+        See :meth:`BaseFeatureStrategy.dependencies_for`. Split-list and
+        defaulted-base families (and the RRIM family) override this.
+        """
+        return _default_dependencies_for(params)
 
     @abstractmethod
     def compute(self, pcd: PointCloudData, fetch: "FeatureManager._get") -> np.ndarray: ...

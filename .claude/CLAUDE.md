@@ -27,6 +27,8 @@ math) and must run against the current PCHandler 2.x + GSEGUtils releases.
 - **Branching**: work on `develop-gsd` + per-phase branches; `main` only at milestone ship, stripped of `.planning/` and agent-specific files — Keep the public branch clean of planning artifacts
 - **Publication standard**: branch protection + CI/CD match the PCHandler template — Consistency across GSEG libraries
 - **Commit messages**: conventional-commit scopes use traditional/functional scopes (e.g. `fix(projection):`, `test(features):`), never GSD planning-ID tags (no `(BUGS-05)`-style IDs in the parentheses) — Commits squash to `main` where `.planning/` is stripped, so planning-ID references in scopes would dangle
+- **Review discipline**: the gap-closure-gets-its-own-review rule, the land-findings-in-GSD rule, and the green-CI-proves-little rule are **global** (`~/.claude/CLAUDE.md` § Review Discipline) — they hold for every GSD project, because the hole is in the framework. This repo is where they were learned: Phase 5's 05-13 gap closure fixed 8 findings and introduced 2 blocker-severity defects (`05-UAT.md` §"Gaps — Round 2"), unseen until a manual `/code-review` the next morning, with the phase verified `passed`, shipped to PR #12, and CI green throughout.
+- **Reproduce, don't read** (pc2img-specific instance): the RRIM `z_factor` round-trip break is invisible to code reading and only appears when a value below 1e-4 is instantiated — `%g` switches to exponent notation that the feature-name grammar rejects. Feature names are both public API and cache key, so any change to their formatting is a BC event.
 
 <!-- GSD:project-end -->
 
