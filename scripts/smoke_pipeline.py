@@ -1,10 +1,10 @@
-"""SC1 smoke: single-cloud spherical -> Delaunay -> ``range`` pipeline.
+"""Smoke test: single-cloud spherical -> Delaunay -> ``range`` pipeline.
 
 Runs the full ``PointCloudImageGenerator`` pipeline end-to-end against
 pchandler 2.x + GSEGUtils on a deterministic, in-code synthetic point cloud
-(no external file, D-10) and asserts the ``range`` raster is finite and sane.
-This is the durable SC1 evidence for Phase 2 (D-09); it is intended to be
-promoted to a pytest smoke test in Phase 3.
+(no external file needed) and asserts the ``range`` raster is finite and
+sane. This is the durable end-to-end evidence that the pipeline works
+against the locked pchandler/GSEGUtils environment.
 
 Run with::
 
@@ -24,13 +24,12 @@ import tempfile
 from pathlib import Path
 
 import numpy as np
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 from pchandler import PointCloudData
 from pchandler.geometry.coordinates import rhv2xyz
 
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
-
 from pc2img.core import PointCloudImageGenerator
-from pc2img.strategies import SphericalProjection, DelaunayInterpolation
+from pc2img.strategies import DelaunayInterpolation, SphericalProjection
 
 
 def _check(condition: bool, message: str) -> None:
@@ -41,9 +40,9 @@ def _check(condition: bool, message: str) -> None:
 
 
 def main() -> None:
-    # Deterministic synthetic cloud (D-10). Synthesize from spherical angles via
+    # Deterministic synthetic cloud. Synthesize from spherical angles via
     # rhv2xyz over a real (h, v) range, NOT a flat xy plane: a planar wall gives a
-    # near-degenerate horizontal FoV span and collapses the raster (RESEARCH Pitfall 2).
+    # near-degenerate horizontal FoV span and collapses the raster.
     rng = np.random.default_rng(42)
     n = 8000
     h = rng.uniform(-0.30, 0.30, n)  # horizontal angle (rad)
@@ -57,18 +56,17 @@ def main() -> None:
         # lazy_disk_cache_config=None default is NOT coerced by pydantic @validate_call
         # (it skips default-value validation), so the None default reaches
         # DiskBackedImageStore and raises a ValidationError. Passing an explicit config
-        # is the correct Phase-2 workaround (RESEARCH Blocker / Pitfall 1) -- the
-        # uncoerced None-default public-API bug is a known follow-up deferred to
-        # Phase 4/5 (RESEARCH Open Question 1); this is a workaround, not a fix.
+        # here is a documented workaround for that gap, not a fix to the underlying
+        # default-value coercion behavior.
         #
         # enable_caching=True is required for the offload path to run: LazyDiskCacheConfig
         # defaults enable_caching=False, and DiskBackedImageData.offload() no-ops when
         # caching is disabled -- so cache_path alone writes nothing to disk. With caching
         # enabled, the generator's raster store materializes the ``range`` raster as an
         # on-disk artifact (range.dat), which is what runtime-exercises the GSEGUtils
-        # LazyDiskCache offload codec (SC2 / BC-GSEG-001). This explicit config governs the
-        # generator's raster store only; DelaunayInterpolation() keeps its own default
-        # cache config (caching off), so the Delaunay step does not itself write to disk.
+        # LazyDiskCache offload codec. This explicit config governs the generator's raster
+        # store only; DelaunayInterpolation() keeps its own default cache config (caching
+        # off), so the Delaunay step does not itself write to disk.
         cfg = LazyDiskCacheConfig(cache_path=Path(td), enable_caching=True)
         gen = PointCloudImageGenerator(
             pcd,
@@ -86,7 +84,7 @@ def main() -> None:
 
         # On-disk artifacts prove the GSEGUtils offload codec actually ran (see comment
         # above). With enable_caching=False this list is empty and the pipeline would
-        # otherwise "pass" without exercising the disk format at all (SC2 gap).
+        # otherwise "pass" without exercising the disk format at all.
         artifacts = sorted(p.name for p in Path(td).rglob("*") if p.is_file())
 
         # Shape: ImgRes is (width, height) -> numpy (rows=height, cols=width). A projection
