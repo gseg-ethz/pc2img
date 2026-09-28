@@ -39,7 +39,14 @@ leak into the published wheel metadata and are never installed by
 ```bash
 uv run python scripts/smoke_pipeline.py   # end-to-end smoke: run the single-cloud pipeline
 uv run pytest                             # run the test suite
+uv run pre-commit run --all-files         # the same lint gate CI runs
+uv sync --group doc && uv run sphinx-build -W --keep-going -b html docs/source docs/_build/html
+                                           # build the documentation the same way CI does
 ```
+
+Branch protection and the release flow (what is required to merge, how versions are cut and
+published) are documented in [RULESETS.md](RULESETS.md) and [RELEASE.md](RELEASE.md) — read those
+before touching a workflow file, a ruleset payload, or the release configuration.
 
 `uv run <cmd>` executes inside the synced environment without needing to activate
 `.venv` manually. Because `uv sync` installs pc2img editable, `uv run` resolves
