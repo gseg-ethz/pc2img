@@ -391,6 +391,88 @@ replacing `<id>` with the ruleset id from the listing above, and the equivalent 
 
 ## Pre-promotion gate (recorded once)
 
-Recorded when the merged tree destined for the first promotion to `main` passed its complete
-local gate set in one pass. See the end of this document for the recorded commands and their
-summary output.
+Recorded once, run in one pass against the tree that already carries every wave-1 and wave-2
+plan's changes, immediately before the first filtered promotion to `main`. Every command below
+exited zero.
+
+**Full test suite with the coverage floor:**
+
+```
+$ uv run --frozen pytest --cov=pc2img --cov-branch --cov-report=term-missing --cov-fail-under=55 -q
+...
+Required test coverage of 55% reached. Total coverage: 62.27%
+278 passed, 17 warnings in 4.67s
+```
+
+**Whole-tree pre-commit:**
+
+```
+$ uv run --frozen pre-commit run --all-files
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check for added large files..............................................Passed
+```
+
+**Documentation build, warnings as errors:**
+
+```
+$ uv run --frozen sphinx-build -W --keep-going -b html docs/source docs/_build/html
+...
+build succeeded.
+
+The HTML pages are in docs/_build/html.
+```
+
+No `WARNING:` or `ERROR:` line appeared anywhere in the build output.
+
+**Placeholder grep, whole tree:**
+
+```
+$ grep -rn '<[A-Z_][A-Z_]*>' .github/ release-please-config.json .release-please-manifest.json
+(no output — no placeholder survived parameterisation)
+```
+
+**Planning-vocabulary gate:**
+
+```
+$ uv run --frozen pytest tests/test_hygiene.py -q -k planning_vocabulary
+81 passed, 5 deselected, 12 warnings in 0.13s
+```
+
+**Migration record verifier:**
+
+```
+$ uv run --frozen python <extracted from the inline verifier block>
+[ok] verified 25 entries
+```
+
+**Lockfile freshness:**
+
+```
+$ uv lock --check
+Resolved 193 packages in 5ms
+```
+
+**Build and package check:**
+
+```
+$ rm -rf dist && uv build
+Successfully built dist/pc2img-...tar.gz
+Successfully built dist/pc2img-...-py3-none-any.whl
+
+$ uvx twine check dist/*
+Checking dist/pc2img-....whl: PASSED
+Checking dist/pc2img-....tar.gz: PASSED
+```
+
+**Working tree clean apart from the files this task edited:** confirmed with `git status
+--porcelain` — the only tracked-repository change from this record's own edits is to this file;
+every other entry shown by that command belongs to pre-existing, untracked local state outside
+this record's scope.
+
+**Signed IP-clearance record untouched:** `git log --oneline origin/develop-gsd..HEAD --
+docs/ip/rrim-eth-signoff.md` printed nothing — no commit in this work touched that file.
