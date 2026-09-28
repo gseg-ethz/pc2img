@@ -51,7 +51,40 @@ Non-pytest gates used in this phase (see 06-RESEARCH.md § Validation Architectu
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 6-TBD | TBD | TBD | CICD-02 / BC-01 | — | — | — | — | ❌ W0 | ⬜ pending |
+| 06-01-T1 | 06-01 | 1 | CICD-02 | T-06-01 | planning vocabulary cannot reach shipped files | pytest gate (parametrized) | `uv run --frozen pytest tests/test_hygiene.py -q -k "planning_vocabulary and smoke_pipeline"` | ❌ W0 (gate authored by this task) | ⬜ pending |
+| 06-01-T2 | 06-01 | 1 | CICD-02 | T-06-01 | shipped text accurate, no planning ids | pytest gate + full suite | `uv run --frozen pytest tests/test_hygiene.py -q -k planning_vocabulary` ; `uv run --frozen pytest -q` | ✅ (after T1) | ⬜ pending |
+| 06-01-T3 | 06-01 | 1 | CICD-02 | T-06-SC | lock consistent with new groups | uv lock check + import probe | `uv lock --check` ; `uv run --frozen python -c "import sphinx, sphinx_rtd_theme, yaml, pre_commit"` | ✅ | ⬜ pending |
+| 06-02-T1 | 06-02 | 1 | CICD-02 | T-06-04 | signoff excluded from fixers | pre-commit run (scoped) | `uvx pre-commit run --files .pre-commit-config.yaml setup.py .gitattributes tests/test_tiled_generator.py tests/test_point_cloud_image_generator.py` | ❌ W0 (config authored by this task) | ⬜ pending |
+| 06-02-T2 | 06-02 | 1 | CICD-02 | T-06-06 | ruff clean without weakening rules | ruff + pytest | `ruff check $(git ls-files 'src/*.py' 'tests/*.py' 'setup.py') --statistics` | ✅ | ⬜ pending |
+| 06-03-T1 | 06-03 | 1 | CICD-02 | T-06-08 | long description renders | build + twine | `rm -rf dist && uv build && uvx twine check dist/*` | ✅ | ⬜ pending |
+| 06-03-T2 | 06-03 | 1 | CICD-02 | T-06-07 | single author, valid CFF | yaml assertions | `uv run --no-project --with pyyaml python -c "..."` (see plan) | ❌ W0 (file authored by this task) | ⬜ pending |
+| 06-04-T1 | 06-04 | 1 | BC-01 | T-06-10 | verifier has teeth (empty guard) | inline verifier | extraction command + `uv run --frozen python /tmp/pc2img-migration-verifier.py` | ❌ W0 (record authored by this task) | ⬜ pending |
+| 06-04-T2 | 06-04 | 1 | BC-01 | T-06-10 | ids unique/monotonic, rows mirrored | inline verifier + grep | same verifier ; row-count/uniqueness grep | ✅ (after T1) | ⬜ pending |
+| 06-04-T3 | 06-04 | 1 | BC-01 | T-06-11 | Tier-2 runtime checks, no planning ids | inline verifier + regex | same verifier ; vocabulary regex | ✅ | ⬜ pending |
+| 06-05-T1 | 06-05 | 2 | CICD-02 | T-06-13 | dynamic version, doc group install | sphinx -W + check-yaml | `uv sync --frozen --group doc && uv run --frozen sphinx-build -W --keep-going -b html docs/source docs/_build/html` | ❌ W0 (docs authored by this task) | ⬜ pending |
+| 06-05-T2 | 06-05 | 2 | CICD-02 | T-06-12 | -W green full tree | sphinx -W + pytest + ruff | same sphinx command ; `uv run --frozen pytest -q` | ✅ | ⬜ pending |
+| 06-06-T1 | 06-06 | 2 | CICD-02 | T-06-14, T-06-SC | no placeholder, kit tests green | grep + pytest | `! grep -rn '<[A-Z_][A-Z_]*>' .github/ release-please-config.json .release-please-manifest.json` ; `uv run --frozen pytest .github/scripts/ -q` | ✅ (kit-shipped tests) | ⬜ pending |
+| 06-06-T2 | 06-06 | 2 | CICD-02 | T-06-15, T-06-16, T-06-17 | least privilege, sha pins, no pull_request_target, publish containment | pre-commit + grep gates + publish gate | `uv run --frozen pre-commit run --all-files` ; `uv run --frozen python .github/scripts/check_publish_gate.py` | ✅ | ⬜ pending |
+| 06-07-T1 | 06-07 | 3 | CICD-02 | T-06-19 | evidence, never checkmarks | pytest gate + grep | `uv run --frozen pytest tests/test_hygiene.py -q -k "planning_vocabulary and RULESETS"` | ✅ | ⬜ pending |
+| 06-07-T2 | 06-07 | 3 | CICD-02 | T-06-21 | claim tuples match workflows | gate + diff | env-name diff between RELEASE.md and publish workflows | ✅ | ⬜ pending |
+| 06-07-T3 | 06-07 | 3 | CICD-02 | — | whole tree gated before promotion | full gate set | suite+floor ; pre-commit ; sphinx -W ; verifier ; lock ; build+twine | ✅ | ⬜ pending |
+| 06-08-T1 | 06-08 | 4 | CICD-02 | T-06-23 | archive tag pushed before delete | git remote reads | `git describe --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*' origin/develop-gsd` | n/a (remote state) | ⬜ pending |
+| 06-08-T2 | 06-08 | 4 | CICD-02 | T-06-22 | secrets never logged | human-action checkpoint | `gh secret list --repo gseg-ethz/pc2img` | n/a | ⬜ pending |
+| 06-08-T3 | 06-08 | 4 | CICD-02 | T-06-25 | merge only on green checks | gh pr checks + git | `gh pr checks <n> --json name,state` ; two-parent assertion | n/a | ⬜ pending |
+| 06-09-T1 | 06-09 | 5 | CICD-02 | T-06-27 | separate release App credentials | human-action checkpoint | `gh secret list --repo gseg-ethz/pc2img` | n/a | ⬜ pending |
+| 06-09-T2 | 06-09 | 5 | CICD-02 | T-06-26 | strip list applied, footers present | git tree/message assertions | promotion worktree checks (see plan) | n/a | ⬜ pending |
+| 06-10-T1 | 06-10 | 6 | CICD-02 | T-06-29 | human go/no-go immediately before the one-way push | decision checkpoint (blocking-human) | — (human) | n/a | ⬜ pending |
+| 06-10-T2 | 06-10 | 6 | CICD-02 | T-06-33, T-06-34 | release PR by App, unmerged | gh reads | `gh pr list --base main --state open ...` ; run conclusion | n/a | ⬜ pending |
+| 06-10-T3 | 06-10 | 6 | CICD-02 | T-06-30, T-06-31 | bypass_actors empty, preflight before write | jq + drift comparator | `check_ruleset_drift.py "protect-main:..."` | ✅ (kit script) | ⬜ pending |
+| 06-11-T1 | 06-11 | 7 | CICD-02 | T-06-30, T-06-32 | develop ruleset + idempotent apply | jq + comparator + 3 run conclusions | `check_ruleset_drift.py "protect-develop-gsd:..."` | ✅ | ⬜ pending |
+| 06-11-T2 | 06-11 | 7 | CICD-02 | T-06-35, T-06-36 | true merge, clean merge-tree | git ancestry | `git merge-base --is-ancestor origin/main origin/develop-gsd` | n/a | ⬜ pending |
+| 06-11-T3 | 06-11 | 7 | CICD-02 | T-06-37 | nightly observed once | gh run log | dispatched run conclusion + OK line grep (+ human-check for first cron run) | n/a | ⬜ pending |
+| 06-12-T1 | 06-12 | 8 | CICD-02 | T-06-40 | RTD import | human-action checkpoint | badge 200 | n/a | ⬜ pending |
+| 06-12-T2 | 06-12 | 8 | CICD-02 | T-06-39 | RTD build proves group install | curl badge/site + gh api | badge contains passing ; site 200 ; environment testpypi | n/a | ⬜ pending |
+| 06-12-T3 | 06-12 | 8 | CICD-02 | T-06-38 | exact publisher tuple | human-action checkpoint | proven by 06-13-T1 | n/a | ⬜ pending |
+| 06-13-T1 | 06-13 | 9 | CICD-02 | T-06-41, T-06-42, T-06-44 | OIDC + PEP 740, production untouched | gh runs + integrity endpoint | two run conclusions ; provenance 200 per file ; pypi.org 404 | n/a | ⬜ pending |
+| 06-13-T2 | 06-13 | 9 | CICD-02, BC-01 | T-06-43 | closing state read live | gh/git/jq + verifier on main | rulesets re-read + comparator ; verifier from `origin/main:MIGRATION-v0.11.md` | n/a | ⬜ pending |
+| 06-13-T3 | 06-13 | 9 | CICD-02 | — | bookkeeping only (.planning) | file assertions | todo path/grep checks | ✅ | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 

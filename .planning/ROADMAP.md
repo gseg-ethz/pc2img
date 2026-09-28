@@ -226,7 +226,32 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: TBD
+**Plans**: 13 plans
+
+**Wave 1** *(tree work on the phase branch, parallel)*
+
+- [ ] 06-01-PLAN.md — Planning-vocabulary gate + whole-tree sweep, D-21 move / D-22 delete, pyproject pass (doc group Sphinx 8.2 + theme, dev additions, URLs) + re-lock [CICD-02]
+- [ ] 06-02-PLAN.md — Lint readiness: .pre-commit-config.yaml (ruff + hygiene hooks, signoff excluded) + ruff remediation [CICD-02]
+- [ ] 06-03-PLAN.md — Real README.rst (proven via uv build + twine check) + CITATION.cff [CICD-02]
+- [ ] 06-04-PLAN.md — MIGRATION-v0.11.md draft in migration-spec format with inline verifier (baseline 91b4ab6) [BC-01]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 06-05-PLAN.md — Minimal Sphinx site + .readthedocs.yaml (doc group via build.jobs install) + docstring fixes for -W [CICD-02]
+- [ ] 06-06-PLAN.md — Kit assembly: core + release-pypi root-to-root, tokens, uv composite, in-place edits, kit tests green [CICD-02]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 06-07-PLAN.md — RULESETS.md + RELEASE.md adoption record with apply-time evidence; pre-promotion tree gate [CICD-02]
+
+**Waves 4–9** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
+
+- [ ] 06-08-PLAN.md — Retire v2.0.0a5 -> archive/v2.0.0a5, close PR #6; owner: Apps + RULESET_APP_*/CODECOV_TOKEN; phase PR into develop-gsd merged (merge commit) [CICD-02]
+- [ ] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, BREAKING CHANGE, Release-As 0.11.0), unpushed [CICD-02]
+- [ ] 06-10-PLAN.md — Go/no-go gate; push to main; release PR 0.11.0 opened (unmerged); bootstrap + apply protect-main, read back bypass_actors [] [CICD-02]
+- [ ] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
+- [ ] 06-12-PLAN.md — Owner: RTD import; RTD build verified live; testpypi environment; owner: TestPyPI trusted publisher [CICD-02]
+- [ ] 06-13-PLAN.md — TestPyPI dry run with PEP 740 attestations (+ idempotent re-dispatch); end-of-phase live re-verification; todo bookkeeping [CICD-02, BC-01]
 
 ### Phase 7: GSEGUtils 0.6 Adoption & 0.11.0 Release
 
