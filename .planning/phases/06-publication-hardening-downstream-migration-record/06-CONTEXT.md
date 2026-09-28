@@ -227,6 +227,23 @@ migration record, and its merge of the release PR ships 0.11.0 to PyPI.
 - **D-29:** Timing: **draft in Phase 6**, finalised in Phase 7 (append the GSEGUtils 0.6 entries,
   re-stamp the target to `v0.11.0`, re-run the inline verifier).
 
+### Docs dependencies (decided at plan-phase, 2026-09-28)
+- **D-31:** `doc` **stays a PEP 735 `[dependency-groups]` entry**, the same mechanism as `dev`
+  (consistent with D-10 and Phase 2's "tooling never in wheel metadata"). It is **not** converted to
+  a `[project.optional-dependencies]` extra, even though PCHandler and the kit use extras. CI's docs
+  job (the kit's in-place `pip install .[doc]` edit site) installs with `uv sync --frozen --group doc`.
+  `.readthedocs.yaml` replaces PCHandler's `extra_requirements: [doc]` with a `build.jobs` install
+  step that installs the `doc` group (`pip install --group doc` needs pip >= 25.1, or a uv-based
+  install). Its first real RTD build (at the RTD-import checkpoint) is what proves it. Record this as
+  a deviation from the kit/PCHandler at the site and in the CI/CD record (D-15). Why: the research
+  (Pitfalls 2/3) found both the kit's docs job and RTD's `extra_requirements` are extras-only; the
+  owner chose to keep pc2img's two tooling groups on one mechanism rather than match PCHandler.
+- **D-32:** Align the docs toolchain with PCHandler: `doc = ["sphinx ~= 8.2.3, <8.3",
+  "sphinx_rtd_theme"]` (PCHandler's pin blocks the 8.3 autosummary regression, sphinx-doc/sphinx#14166)
+  instead of `sphinx ~= 5.1` with the default theme. This means a re-lock (`uv lock`). The research's
+  13 `-W` warnings were measured under 5.3.0, so re-measure them under 8.2.x before sizing the
+  docstring fixes.
+
 ### Owner account actions — prompted during execution
 - **D-30:** Every owner-only account action is a `checkpoint:human-action` task **in execution**,
   placed immediately before the first step that needs it, and never collected during planning
