@@ -226,7 +226,7 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 7/13 plans executed
+**Plans**: 8/13 plans executed
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -246,7 +246,7 @@ Plans:
 
 **Waves 4–9** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
 
-- [ ] 06-08-PLAN.md — Retire v2.0.0a5 -> archive/v2.0.0a5, close PR #6; owner: Apps + RULESET_APP_*/CODECOV_TOKEN; phase PR into develop-gsd merged (merge commit) [CICD-02]
+- [x] 06-08-PLAN.md — Retire v2.0.0a5 -> archive/v2.0.0a5, close PR #6; owner: Apps + RULESET_APP_*/CODECOV_TOKEN; phase PR into develop-gsd merged (merge commit) [CICD-02]
 - [ ] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, BREAKING CHANGE, Release-As 0.11.0), unpushed [CICD-02]
 - [ ] 06-10-PLAN.md — Go/no-go gate; push to main; release PR 0.11.0 opened (unmerged); bootstrap + apply protect-main, read back bypass_actors [] [CICD-02]
 - [ ] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
@@ -280,5 +280,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 7/13 | In Progress|  |
+| 6. Publication Hardening & Downstream Migration Record | 8/13 | In Progress|  |
 | 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |
