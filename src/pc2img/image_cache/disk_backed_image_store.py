@@ -31,7 +31,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     through the mapping setter (``store[key] = value``) carries whatever
     ``cache_path`` its caller supplied, and :meth:`offload` with the default
     ``pickle_container=False`` writes through that entry-owned path directly
-    (the ``.dat`` memmap write is a GSEGUtils carry-out — see
+    (the ``.dat`` memmap write is performed by GSEGUtils itself — see
     :meth:`offload`). Only :meth:`add_image_to_store` derives its entry's
     ``cache_path`` from the guarded route.
     """
@@ -91,8 +91,8 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         is refused with ``ValueError``; without the guard it would write
         outside the cache directory. On the installed GSEGUtils 0.5.x this
         containment guard is **LOAD-BEARING**, not defence-in-depth — it
-        becomes redundant only once upstream GSEGUtils 0.6 absorbs the
-        equivalent check (measured and verdict VALIDATED). This store is
+        becomes redundant only once upstream GSEGUtils 0.6 absorbs an
+        equivalent check, which has been confirmed by measurement. This store is
         also exported from the public barrel
         ``pc2img.image_cache.__all__``, so any caller may pass any key
         directly — the guard is not solely defending the registry route.
@@ -198,10 +198,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            raises ``KeyError`` for an untracked key with no side effect on
            disk. This ordering fixed two distinct historical defects: building
            the codec paths after the base delegation made a refused
-           containment delete non-atomic (the unlink could still land before
-           a later-stage ``ValueError`` was raised); separately, the original
-           absent-key-delete defect unlinked the codec pair before the membership check,
-           so an untracked key still destroyed a live pair on disk.
+           containment delete drop the in-memory entry before the
+           ``ValueError`` was raised (a refused delete was not a no-op in
+           memory); separately, the original absent-key defect unlinked the
+           codec pair before the membership check, so an untracked key still
+           destroyed a live pair on disk.
         3. **Unlink last** — the two ``.npy`` / ``.meta.json`` paths, already
            bound to local variables in stage 1, are purged only once stage 2
            has confirmed the key was genuinely tracked.

@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+title: pc2img
+authors:
+  - given-names: Nicholas
+    family-names: Meyer
+    email: meyernic@ethz.ch
+    affiliation: 'ETH Zurich, Switzerland'
+    orcid: 'https://orcid.org/0009-0004-8943-969X'
+
+repository-code: https://github.com/gseg-ethz/pc2img
+url: https://github.com/gseg-ethz/pc2img
+
+license: BSD-3-Clause
+
+message: >
+  The main branch reflects the latest released version of the software.
+  All official releases are archived in the company research data archive,
+  which provides the authoritative, version-specific DOIs.
+  Ongoing development takes place on a separate development branch.
+
+preferred-citation:
+  type: software
+  title: pc2img
+  authors:
+    - given-names: Nicholas
+      family-names: Meyer
+  doi: 10.5281/zenodo.XXXXXXX
+  notes: >
+    This DOI identifies the software concept across all released versions.
+    A concept DOI will be assigned when the software is archived. For
+    reproducibility, please cite the specific version DOI available
+    from the archive landing page.

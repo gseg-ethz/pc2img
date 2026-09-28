@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import numpy as np
-
 from pchandler import PointCloudData
 
 from pc2img.core import PointCloudImageGenerator

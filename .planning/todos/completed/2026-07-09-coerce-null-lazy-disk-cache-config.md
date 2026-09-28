@@ -48,3 +48,7 @@ sane default instead of raising. Options (TBD — pick during Phase 4):
 
 Add a small regression check (config-less construction succeeds) when the fix lands —
 promotable alongside the Phase-3 smoke/pytest work.
+
+## Resolved (verified 2026-09-28)
+
+Fixed in commit `0658181` ("coerce omitted config"); `PointCloudImageGenerator.__init__` now runs `coerce_lazy_cfg` on an omitted config. Closed during Phase 6 discuss.

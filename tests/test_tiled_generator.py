@@ -24,7 +24,6 @@ from __future__ import annotations
 import subprocess
 import sys
 
-import pytest
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
 from pc2img.core import ImgRes

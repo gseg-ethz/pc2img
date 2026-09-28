@@ -17,15 +17,20 @@ import pytest
 
 from pc2img.image_cache import DiskBackedImageData
 
+# Seeded Generator (not the legacy global np.random.rand state, NPY002) — the
+# tests below assert shape/arithmetic, not values, so a fixed seed keeps them
+# deterministic while satisfying ruff's numpy-legacy-random rule.
+_RNG = np.random.default_rng(0)
+
 
 def dummy_gray_image(shape=(10, 10), dtype=np.float32):
     """Create a dummy grayscale image array."""
-    return np.random.rand(*shape).astype(dtype)
+    return _RNG.random(shape).astype(dtype)
 
 
 def dummy_rgb_image(shape=(8, 8, 3), dtype=np.float64):
     """Create a dummy RGB image array."""
-    return np.random.rand(*shape).astype(dtype)
+    return _RNG.random(shape).astype(dtype)
 
 
 class TestImageDataInitialization:

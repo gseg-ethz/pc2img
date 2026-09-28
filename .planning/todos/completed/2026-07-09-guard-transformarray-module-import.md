@@ -35,3 +35,7 @@ non-fatal to the rest of the module. Options (TBD — pick during Phase 4):
   (e.g. raise a clear error only on use) while leaving spherical/orthographic importable.
 - Coordinate with pchandler (requires human approval per project constraints) to expose a
   public equivalent of `_TransformArray`, removing the private-API reliance entirely.
+
+## Resolved (verified 2026-09-28)
+
+The import is guarded under `TYPE_CHECKING` in `src/pc2img/strategies/projection.py` (Phase 4/5 work). Closed during Phase 6 discuss.

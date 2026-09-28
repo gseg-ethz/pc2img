@@ -48,8 +48,10 @@ def test_store_source_has_no_arbitrary_deserialization_sink():
     """Security: the store SOURCE must not call the arbitrary-object load sink.
 
     We negative-grep the store module source. The forbidden token is assembled
-    from a hoisted, MULTILINE-flagged pattern (Pitfall 6: no mid-pattern inline
-    flags under Python >= 3.11) rather than a bare literal.
+    from a pattern with the ``re.MULTILINE`` flag passed as a ``re.compile``
+    argument rather than as a bare literal, since an inline mid-pattern flag
+    group (``(?m)``) is rejected by Python's ``re`` module when it does not
+    appear at the very start of the pattern.
     """
     import pc2img.image_cache.disk_backed_image_store as store_mod
 
@@ -60,7 +62,8 @@ def test_store_source_has_no_arbitrary_deserialization_sink():
 
 
 def test_legacy_pkl_degrades_to_cache_miss(tmp_path: Path):
-    """A legacy pre-Phase-2 `.pkl` degrades to a cache miss (KeyError), never loaded.
+    """A legacy pickle cache file from before the codec change degrades to a
+    cache miss (KeyError), never loaded.
 
     Renamed (out-of-band from a name collision with a
     mutation check's `-k "escaping or refused"`
@@ -434,9 +437,10 @@ def test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact(tmp_path: 
     """A failed overwrite (bad raster shape) is a full no-op on the existing entry.
 
     The exception type is pinned deliberately: a bad raster shape raises
-    `AssertionError` (the rule lives in `DiskBackedImageData.__init__`), and
-    this test locks that type — changing it would be a breaking-change event
-    this gap round does not open.
+    `AssertionError` (the rule is enforced by `_assert_image_shape`, called
+    both from the store's `add_image_to_store` and from
+    `DiskBackedImageData.__init__`), and this test locks that type — changing
+    it would be a breaking-change event that is not opened here.
     """
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     original = _gray((4, 4))

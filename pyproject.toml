@@ -55,15 +55,18 @@ tag_regex = '^v?(?P<version>\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.de
 git_describe_command = "git describe --dirty --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*'"
 
 [project.urls]
-homepage = "https://gseg.igp.ethz.ch/"
-documentation = "https://github.com/gseg-ethz/pc2img"
+Homepage = "https://gseg.igp.ethz.ch/"
+Documentation = "https://pc2img.readthedocs.io/en/latest/"
+Repository = "https://github.com/gseg-ethz/pc2img"
+Issues = "https://github.com/gseg-ethz/pc2img/issues"
+Changelog = "https://github.com/gseg-ethz/pc2img/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 cuda12 = ["pchandler[cuda12]"]
 cuda11 = ["pchandler[cuda11]"]
 # `rrim` is a signposting-only extra: it declares no runtime deps because the RRIM
 # feature needs nothing beyond the core (numpy/scipy are already in `dependencies`).
-# CAVEAT (D-06): a pip extra gates OPTIONAL runtime deps only; it does NOT withhold
+# CAVEAT: a pip extra gates OPTIONAL runtime deps only; it does NOT withhold
 # the `src/pc2img/features/rrim.py` source — that module ships in the wheel regardless
 # of which extras are installed. The legal clearance to ship RRIM is the top-level
 # NOTICE + the patent-expiry basis (docs/ip/rrim-ip-findings.md), NOT this extra.
@@ -78,17 +81,29 @@ rrim = []
 # matplotlib stays an optional extra rather than a hard runtime dependency.
 viz = ["matplotlib ~= 3.9"]
 
-# Tooling deps live in PEP 735 dependency-groups (D-08), never in wheel metadata.
+# Tooling deps live in PEP 735 dependency-groups, never in wheel metadata.
 # `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
 [dependency-groups]
-dev = ["ruff ~= 0.15", "pytest ~= 9.1", "memory_profiler", "pytest-cov ~= 5.0", "coverage ~= 7.0"]
-doc = ["sphinx ~= 5.1"]
+dev = [
+	"ruff ~= 0.15",
+	"pytest ~= 9.1",
+	"memory_profiler",
+	"pytest-cov ~= 5.0",
+	"coverage ~= 7.0",
+	# pre-commit and pyyaml are what the CI lint job and the repository's own
+	# gate scripts run from the locked environment.
+	"pre-commit",
+	"pyyaml",
+]
+# Upper bound blocks a known autosummary regression in the 8.3 line; pinned to
+# match the sibling PCHandler template's doc toolchain.
+doc = ["sphinx ~= 8.2.3, <8.3", "sphinx_rtd_theme"]
 
 # cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
 # cuda-python>=12.6.2,<13 while cudf-cu11 pulls cuda-python>=11.8.5,<12, so a
 # universal lock cannot co-satisfy both extras. Declaring them as conflicting lets
 # uv resolve each in a separate fork, keeping BOTH variants fully hash-pinned in
-# uv.lock (D-06). The cuda11-vs-cuda12 pick is deferred to install time
+# uv.lock. The cuda11-vs-cuda12 pick is deferred to install time
 # (`pip install pc2img[cuda12]` vs `[cuda11]`), driven by the user's NVIDIA driver.
 [tool.uv]
 conflicts = [
@@ -99,7 +114,7 @@ conflicts = [
 ]
 
 # Explicit nvidia index for the RAPIDS packages pulled transitively via
-# pchandler[cudaXX] (D-06). explicit = true means this index is consulted ONLY for
+# pchandler[cudaXX]. explicit = true means this index is consulted ONLY for
 # names bound in [tool.uv.sources] below; everything else stays on PyPI, which
 # contains dependency-confusion on the RAPIDS names to the official index.
 [[tool.uv.index]]
@@ -107,16 +122,16 @@ name = "nvidia"
 url = "https://pypi.nvidia.com"
 explicit = true
 
-# A2 caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
+# Caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
 # pchandler[cudaXX]. If the transitive source pins fail to bind at lock time,
-# Plan 02 invokes the documented fallback (name them directly in the cuda extras).
-# No entry may point at a local /scratch or third_party/ path (D-12, forbidden).
+# the documented fallback is to name them directly in the cuda extras instead.
+# No entry may point at a local /scratch or third_party/ path (forbidden).
 [tool.uv.sources]
-# NOTE: the GSEGUtils reload-registration hook (register_lazy_disk_cache_class,
-# landed 05-08) shipped in the published GSEGUtils 0.5.3 (release-please emitted a
-# pre-major PATCH bump, not 0.6.0). pc2img now resolves it straight from PyPI via
-# the `GSEGUtils >= 0.5.3, < 1.0` pin above; the temporary git-rev bridge that
-# carried it during Phase-5 execution has been removed (D-17/BC-01 closed).
+# NOTE: the GSEGUtils reload-registration hook (register_lazy_disk_cache_class)
+# shipped in the published GSEGUtils 0.5.3 (release-please emitted a pre-major
+# PATCH bump, not 0.6.0). pc2img now resolves it straight from PyPI via the
+# `GSEGUtils >= 0.5.3, < 1.0` pin above; the temporary git-rev bridge that
+# carried it during earlier development has been removed.
 cudf-cu12      = { index = "nvidia" }
 cuspatial-cu12 = { index = "nvidia" }
 cuproj-cu12    = { index = "nvidia" }
@@ -129,15 +144,15 @@ cuml-cu11      = { index = "nvidia" }
 dask-cudf-cu11 = { index = "nvidia" }
 
 [tool.ruff]
-line-length = 120          # matches sibling PCHandler/GSEGUtils template; reverses D-11 (owner-approved, Phase 04-04)
+line-length = 120          # matches sibling PCHandler/GSEGUtils template (owner-approved)
 target-version = "py312"
 src = ["src"]
 
 [tool.ruff.lint]
-# Hygiene-focused families (QUAL-01). E/F/W = pycodestyle+pyflakes,
+# Hygiene-focused families. E/F/W = pycodestyle+pyflakes,
 # I = isort, B = bugbear, C90 = mccabe, UP = pyupgrade, NPY = numpy.
 # F401 (unused import) + F841 (unused local) + ERA001 (commented-out code)
-# are the rules that power the dead-code / unused-import sweep D-09 asks for.
+# are the rules that power the dead-code / unused-import sweep.
 select = ["E", "F", "W", "I", "B", "C90", "UP", "NPY"]
 extend-select = ["ERA001"]   # flag commented-out code blocks (CONCERNS §"Large volume of commented-out dead code")
 ignore = ["E203"]            # match sibling; slice-colon spacing, black-compatible
@@ -156,21 +171,22 @@ ignore = ["E203"]            # match sibling; slice-colon spacing, black-compati
 # Drop-in for black; inherits the 120 line-length set above. quote-style/
 # skip-magic-trailing left at defaults.
 
-# TEST-01: collect ONLY the project suite. third_party/ (gitignored symlinks to the
+# Collect ONLY the project suite. third_party/ (gitignored symlinks to the
 # sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths
-# stops recursion into it — verified: bare `pytest` 1140 collected/7 errors →
-# scoped 26 collected/0 third_party errors.
+# stops recursion into it — verified: an unscoped bare `pytest` run collects
+# from third_party/ too and errors there; scoping to tests/ collects cleanly.
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Modern import machinery: no sys.path injection, avoids duplicate-basename
 # import-file-mismatch, and is the current pytest recommendation. Do NOT add any
 # --cov flag here — coverage stays on the CLI/CI invocation only (see coverage note).
 addopts = "--import-mode=importlib --strict-markers"
-xfail_strict = false   # D-03: an unexpected pass (XPASS) must NOT fail the suite
+xfail_strict = false   # an unexpected pass (XPASS) must NOT fail the suite
 
-# D-05: branch coverage of the whole pc2img package. pchandler has no
-# [tool.coverage.*] block (it passes --cov=pchandler on the CLI with branch off);
-# D-05 requires branch coverage, so this minimal block is a justified addition.
+# Branch coverage of the whole pc2img package. pchandler has no
+# [tool.coverage.*] block of its own (it passes --cov=pchandler on the CLI
+# with branch off); pc2img wants branch coverage, so this minimal block is a
+# justified addition beyond what the sibling template carries.
 [tool.coverage.run]
 branch = true
 source = ["pc2img"]

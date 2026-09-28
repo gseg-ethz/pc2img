@@ -355,14 +355,17 @@ class ClipPercentileFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class MultiScaleGradientFeature(DerivativeFeatureStrategy):
-    """
-    Computes scale-normalised gradients of a base raster at multiple Gaussian scales.
-    Name syntax:
+    """Computes scale-normalised gradients of a base raster at multiple Gaussian scales.
+
+    Name syntax::
+
         multigrad_<base_feature>_<sigma1>-<sigma2>-...<sigmaN>[_<fuse>][_<norm|raw>]
         multigrad_<axis>_<base_feature>_<sigma1>-...   → axis-specific output (axis∈{x,y})
-    Examples:
-        multigrad_range_1-2-4              → max |∇| across σ∈{1,2,4} (default fuse)
-        multigrad_range_1-2-4_mean         → mean |∇| across scales
+
+    Examples::
+
+        multigrad_range_1-2-4              → max gradient magnitude across σ∈{1,2,4} (default fuse)
+        multigrad_range_1-2-4_mean         → mean gradient magnitude across scales
         multigrad_x_range_1-2_mean         → mean ∂/∂x response across σ∈{1,2}
     """
 
@@ -374,7 +377,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
     _FUSE_CHOICES = {"max", "sum", "mean"}
 
-    def __init__(
+    def __init__(  # noqa: C901 — flat DSL-option parsing ladder; splitting it would scatter the grammar
         self,
         base_feature: str,
         sigmas: str,
@@ -456,7 +459,7 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
         smoothed[weights <= eps] = np.nan
         return smoothed, weights.astype(np.float32, copy=False)
 
-    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:  # noqa: C901 — multi-scale fuse/normalise pipeline is one sequential pass; splitting it would scatter the per-scale state
         base = fetch(self.base_feature)
         img = np.array(base, dtype=np.float32, copy=True)
 
@@ -526,9 +529,10 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
-    """
-    Multi-scale gradient with occlusion-aware smoothing and gating.
-    Name syntax:
+    """Multi-scale gradient with occlusion-aware smoothing and gating.
+
+    Name syntax::
+
         multigradocc_<base_feature>_<sigma1>-...[_<options>]
         multigradocc_<axis>_<base_feature>_<sigma1>-...[_<options>]
 
@@ -551,7 +555,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
 
     _FUSE_CHOICES = {"max", "sum", "mean"}
 
-    def __init__(
+    def __init__(  # noqa: C901 — flat DSL-option parsing ladder; splitting it would scatter the grammar
         self,
         base_feature: str,
         sigmas: str,
@@ -658,7 +662,7 @@ class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
         mask |= ~np.isfinite(img)
         return mask
 
-    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:
+    def compute(self, _, fetch: Callable[[str], NDArray]) -> NDArray:  # noqa: C901 — occlusion-aware fuse/normalise pipeline is one sequential pass; splitting it would scatter the per-scale state
         base = fetch(self.base_feature)
         img = np.array(base, dtype=np.float32, copy=True)
         if img.ndim != 2:

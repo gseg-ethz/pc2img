@@ -1,0 +1,29 @@
+# Lint (pre-commit): ruff check + ruff format plus the five standard hygiene
+# hooks. No mypy (pyright is used instead). No license-banner hook.
+exclude: |
+  (?x)^(
+    # Local agent-workflow directories — not part of the shipped tree.
+    \.planning/.*
+    |\.claude/.*
+    # Signed ETH IP-clearance record; a fixer must never rewrite it verbatim.
+    |docs/ip/rrim-eth-signoff\.md
+    # release-please owns these; letting a fixer touch them would fight the bot.
+    |CHANGELOG\.md
+    |\.release-please-manifest\.json
+  )$
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files

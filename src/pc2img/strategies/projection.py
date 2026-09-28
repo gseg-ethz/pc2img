@@ -78,11 +78,20 @@ class ProjectionStrategy(ABC):
         self,
         pcd: PointCloudData,
     ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
-        """
-        Compute raw 2D coordinates in model space and a mask of valid points.
-        Returns:
-          - coords_raw: shape (N, 2) raw coordinates (e.g., angles or xy)
-          - mask: boolean array of length N indicating which points to keep
+        """Compute raw 2D coordinates in model space and a mask of valid points.
+
+        Returns
+        -------
+        coords_raw : NDArray
+            Raw coordinates in model space, shape ``(N, 2)`` (e.g. angles or xy).
+        mask : NDArray
+            Boolean array of length ``N`` indicating which points to keep.
+        mins : NDArray
+            Per-dimension minimum of ``coords_raw`` over the kept points, used by
+            :meth:`project` for span normalization.
+        maxs : NDArray
+            Per-dimension maximum of ``coords_raw`` over the kept points, used by
+            :meth:`project` for span normalization.
         """
         ...
 

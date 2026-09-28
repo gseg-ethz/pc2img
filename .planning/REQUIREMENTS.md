@@ -13,6 +13,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 - [x] **DEP-02**: pc2img runs against the current GSEGUtils release (`lazy_disk_cache`, `config`, `base_types` usage), respecting the `gsegutils`/`GSEGUtils` casing gotcha
 - [x] **DEP-03**: `pyproject.toml` re-enables and correctly pins `pchandler` + `GSEGUtils`, and resolves the numpy pin conflict (numpy 2.x)
 - [x] **DEP-04**: The dev environment is reproducibly set up with `uv` (documented; lockfile committed)
+- [ ] **DEP-05**: pc2img runs against GSEGUtils >= 0.6 with its `DiskBackedImageStore` containment override removed (containment enforced upstream), every escape route re-pinned by a test
 
 ### Branch Untangling
 
@@ -108,17 +109,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-06 | Phase 5 | Complete |
 | CICD-01 | Phase 3 | Complete |
 | CICD-02 | Phase 6 | Pending |
-| BC-01 | Phase 6 | Pending |
+| BC-01 | Phase 6 (draft), Phase 7 (finalise) | Pending |
+| DEP-05 | Phase 7 | Pending |
 | PERF-02 | Phase 5 | Complete (v2 item pulled forward — D-03; `nanconv` float32 default + `compute_dtype` opt-in, 05-03) |
 | PERF-03 | Phase 5 | Complete (v2 item pulled forward — D-03; Delaunay culling-threshold kwargs, 05-05) |
 
 **Coverage:**
 
-- v1 requirements: 24 total (note: earlier "23 total" undercounted by one; there are 24 distinct IDs)
-- Mapped to phases: 24 ✓
+- v1 requirements: 25 total (DEP-05 added 2026-09-28 with Phase 7; earlier "23 total" undercounted by one)
+- Mapped to phases: 25 ✓
 - Unmapped: 0
 - v2 requirements pulled forward and traced to Phase 5: 2 (PERF-02, PERF-03; D-03). The remaining v2 items (PERF-01, PERF-04, GPU-01) stay deferred/untraced.
 
 ---
 *Requirements defined: 2026-07-08*
-*Last updated: 2026-07-08 after roadmap creation (traceability mapped)*
+*Last updated: 2026-09-28 — DEP-05 added, BC-01 split across Phases 6/7 (Phase 6 discuss)*

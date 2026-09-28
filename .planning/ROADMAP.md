@@ -24,7 +24,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Test & CI Foundation** - Scope pytest to tests/, record a coverage baseline, run the suite on PRs as an early safety net (completed 2026-07-09)
 - [x] **Phase 4: Code Quality & Algorithmic Soundness Review** - Clean hygiene, review software design and projection/interpolation/feature math; log correctness findings (completed 2026-07-10)
 - [x] **Phase 5: Bug Fixes & Module Test Coverage** - Fix known + review-surfaced bugs with proving tests and cover the untested core modules (REOPENED 2026-07-27 — round-2 review gaps G9-G12; the 2026-07-11 completion is superseded) (completed 2026-09-25)
-- [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Branch protection + publication CI/CD matching PCHandler; emit a structured breaking-change record
+- [ ] **Phase 6: Publication Hardening & Downstream Migration Record** - Adopt the GSEG git-strategy template, publishable metadata + TestPyPI dry run, first promotion to main, draft migration record
+- [ ] **Phase 7: GSEGUtils 0.6 Adoption & 0.11.0 Release** - Adopt GSEGUtils >= 0.6 and delete the containment override, finalise the migration record, release 0.11.0 to PyPI
 
 ## Phase Details
 
@@ -215,21 +216,62 @@ Plans:
 
 ### Phase 6: Publication Hardening & Downstream Migration Record
 
-**Goal**: The repository meets the PCHandler publication standard and emits a structured breaking-change record for downstream consumers.
+**Goal**: pc2img adopts the GSEG git-strategy template (branch protection + publication CI/CD), is publishable with real metadata, is promoted to `main` for the first time behind active rulesets, and carries a draft structured breaking-change record for downstream consumers.
 **Depends on**: Phase 5
-**Requirements**: CICD-02, BC-01
+**Requirements**: CICD-02, BC-01 (draft)
 **Success Criteria** (what must be TRUE):
 
-  1. Branch protection and publication CI/CD matching the PCHandler template are in place on the mainline.
-  2. The package builds and is publishable to PyPI with correct, non-placeholder metadata.
-  3. A structured, GSD-consumable breaking-change / migration record documents pc2img's own public API/behavior changes this milestone, ready for downstream consumers to rework against.
+  1. The GSEG git-strategy template (`GIT-STRATEGY.md`: core + `release-pypi` components) is assembled per Procedure B; rulesets are active on `main` and `develop-gsd` with `bypass_actors: []`; the apply-time checklist is recorded with evidence; every deviation from the template is recorded in-repo.
+  2. The package builds with real, non-placeholder metadata (README, `CITATION.cff`, project URLs, Read the Docs site) and a TestPyPI dry run publishes via OIDC trusted publishing with PEP 740 attestations.
+  3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
+  4. A draft `MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
+
+**Plans**: 7/13 plans executed
+
+**Wave 1** *(tree work on the phase branch, parallel)*
+
+- [x] 06-01-PLAN.md — Planning-vocabulary gate + whole-tree sweep, D-21 move / D-22 delete, pyproject pass (doc group Sphinx 8.2 + theme, dev additions, URLs) + re-lock [CICD-02]
+- [x] 06-02-PLAN.md — Lint readiness: .pre-commit-config.yaml (ruff + hygiene hooks, signoff excluded) + ruff remediation [CICD-02]
+- [x] 06-03-PLAN.md — Real README.rst (proven via uv build + twine check) + CITATION.cff [CICD-02]
+- [x] 06-04-PLAN.md — MIGRATION-v0.11.md draft in migration-spec format with inline verifier (baseline 91b4ab6) [BC-01]
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [x] 06-05-PLAN.md — Minimal Sphinx site + .readthedocs.yaml (doc group via build.jobs install) + docstring fixes for -W [CICD-02]
+- [x] 06-06-PLAN.md — Kit assembly: core + release-pypi root-to-root, tokens, uv composite, in-place edits, kit tests green [CICD-02]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 06-07-PLAN.md — RULESETS.md + RELEASE.md adoption record with apply-time evidence; pre-promotion tree gate [CICD-02]
+
+**Waves 4–9** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
+
+- [ ] 06-08-PLAN.md — Retire v2.0.0a5 -> archive/v2.0.0a5, close PR #6; owner: Apps + RULESET_APP_*/CODECOV_TOKEN; phase PR into develop-gsd merged (merge commit) [CICD-02]
+- [ ] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, BREAKING CHANGE, Release-As 0.11.0), unpushed [CICD-02]
+- [ ] 06-10-PLAN.md — Go/no-go gate; push to main; release PR 0.11.0 opened (unmerged); bootstrap + apply protect-main, read back bypass_actors [] [CICD-02]
+- [ ] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
+- [ ] 06-12-PLAN.md — Owner: RTD import; RTD build verified live; testpypi environment; owner: TestPyPI trusted publisher [CICD-02]
+- [ ] 06-13-PLAN.md — TestPyPI dry run with PEP 740 attestations (+ idempotent re-dispatch); end-of-phase live re-verification; todo bookkeeping [CICD-02, BC-01]
+
+### Phase 7: GSEGUtils 0.6 Adoption & 0.11.0 Release
+
+**Goal**: pc2img runs on GSEGUtils ≥ 0.6 with the containment override removed, the migration record is finalised, and 0.11.0 is released to PyPI through the protected flow.
+**Depends on**: Phase 6
+**Requirements**: DEP-05, BC-01 (finalise)
+**Success Criteria** (what must be TRUE):
+
+  1. GSEGUtils ≥ 0.6 is pinned and locked (the resolved build verified, not a cached 0.5.x), after the pending spikes (001 orphaned-override hunt, 004 blast radius) have run; the `DiskBackedImageStore` containment override is deleted and every escape route is re-pinned by a test asserting no file is written outside the cache directory.
+  2. Any exception-type change from upstream containment is established by running code and recorded as a BC entry.
+  3. The deferred test-hygiene items are resolved, and the phase's diff has its own code review.
+  4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
+  5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
 **Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -238,4 +280,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 0/TBD | Not started | - |
+| 6. Publication Hardening & Downstream Migration Record | 7/13 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |

@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 6
+current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
-status: "Phase 05 shipped — PR #12"
-stopped_at: Phase 05 complete, ready to plan Phase 6
-last_updated: "2026-09-25T12:01:05.577Z"
-last_activity: 2026-09-25
-state_head: c441fe7f227174cb264509e3ca28262aa400a088
+status: executing
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-09-28T15:14:01.822Z"
+last_activity: 2026-09-28
+last_activity_desc: Phase 06 execution started
+state_head: c6a4cc345ca5dd1ae0956de888afb8bf8fff8760
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 6
-  total_plans: 39
-  completed_plans: 39
-  percent: 83
+  total_plans: 52
+  completed_plans: 46
 milestone_name: milestone
 ---
 
@@ -24,19 +24,18 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 05 — Bug Fixes & Module Test Coverage
+**Current focus:** Phase 06 — Publication Hardening & Downstream Migration Record
 
 ## Current Position
 
-Phase: 6 — Publication Hardening & Downstream Migration Record
-Plan: Not started
-Status: Phase 05 shipped — PR #12
-Last activity: 2026-09-25
+Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
+Plan: 8 of 13
+Status: Ready to execute
+Last activity: 2026-09-28 — Phase 06 execution started
 
 Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
 
-**Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
-that has since been superseded; it cannot start until Phase 5 re-verifies.
+Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Phase 6 is current.
 
 ## Performance Metrics
 
@@ -103,6 +102,13 @@ that has since been superseded; it cannot start until Phase 5 re-verifies.
 | Phase 05 P17 | 11min | 2 tasks | 4 files |
 | Phase 05 P18 | 20min | 3 tasks | 4 files |
 | Phase 05 P19 | 50min | 3 tasks | 31 files |
+| Phase 06 P01 | 32min | 3 tasks | 9 files |
+| Phase 06 P02 | 25min | 2 tasks | 11 files |
+| Phase 06 P03 | 20min | 2 tasks | 2 files |
+| Phase 06 P04 | 55min | 3 tasks | 1 files |
+| Phase 06 P05 | 15min | 2 tasks | 6 files |
+| Phase 06 P06 | 11 min | 2 tasks | 21 files |
+| Phase 06 P07 | 38min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -176,6 +182,19 @@ Recent decisions affecting current work:
 - [Phase 05]: WR-07 exception type stays AssertionError, single-sourced via a new _assert_image_shape helper -- no BC-NOTES entry opens.
 - [Phase 05]: OSError-mid-build residual and the held-reference hazard left unfixed, routed to the Phase-6 GSEGUtils carry-out list (05-19 to record).
 - [Phase 05]: Owner decision (2026-09-25, plan-phase session): IN-04 provenance-sweep class widened beyond review-ledger IDs to all planning vocabulary (requirement/design/decision codes, .planning/ paths, plan numbers) in both src/pc2img and tests/. — Keeps main clean of dangling provenance references while preserving all technical reasoning, restated in plain words.
+- [Phase 06]: Widened Task 2 scope to also fix ci.yml/pyproject.toml vocabulary hits and relocate the phase-2 audit doc, since Task 2's own full-suite verify runs the whole-tree gate (Rule 3 deviation)
+- [Phase 06]: Built the planning-vocabulary gate's .planning/ literal from concatenated string parts so the gate's own tracked source never self-matches its own scan
+- [Phase 06]: ruff-pre-commit pinned to v0.15.12 (matches locked ruff) and pre-commit-hooks to v6.0.0; no mypy hook, no license-banner hook per D-11
+- [Phase 06]: Kept per-function noqa: C901 markers instead of raising the global mccabe threshold in pyproject.toml, to keep the rule active for future code
+- [Phase 06]: Exempted .pre-commit-config.yaml from the whole-tree planning-vocabulary hygiene gate — its exclude regex must literally name .planning/ to scope hooks away from it
+- [Phase 06]: README quickstart uses the actual PointCloudImageGenerator constructor keyword names (img_res, proj, interp, lazy_disk_cache_config) from core.py rather than guessed names; CITATION.cff modelled on PCHandler's shape with a single author (Nicholas Meyer) per D-14
+- [Phase 06]: MIGRATION-v0.11.md drafted: 25 BC-P2I entries (001 fixed as tracer, 002-025 by phase-of-origin), GSEGUtils BC-GSEG-006 cross-referenced not restated, inline verifier proves every surface-removed/signature-shape claim at runtime
+- [Phase 06]: Reworded D-13/D-31/D-32 references in new docs/source/conf.py and .readthedocs.yaml comments to plain prose to keep the planning-vocabulary hygiene gate green on newly shipped files.
+- [Phase 06]: ProjectionStrategy.project_raw docstring rewritten to document all four actual return values (coords_raw, mask, mins, maxs) while fixing the RST formatting that caused 8 of 13 -W warnings via inheritance.
+- [Phase 06]: 06-06: setup-python-deps composite installs with uv sync --frozen against the committed uv.lock instead of the kit's pip-extras install (dev tooling is a PEP 735 dependency-group, not an extra)
+- [Phase 06]: 06-06: TestPyPI dry run requests attestations (attestations: true/write), a recorded deviation from the template's test-index default, to exercise the full PEP 740 path before the real PyPI publish
+- [Phase 06]: 06-06: release-please-config.json extra-files key removed (pointed at a nonexistent docs/conf.py); .release-please-manifest.json kept unchanged at 0.10.4 rather than overwritten with the kit's 0.0.0 placeholder
+- [Phase 06]: RULESETS.md/RELEASE.md apply-time checklist evidence is real command output run against the assembled tree, not paraphrased from the template's example shape
 
 ### Pending Todos
 
@@ -203,6 +222,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 03.1 inserted after Phase 3: RRIM (Red Relief Image) IP status clarification (URGENT)
+- Phase 7 added 2026-09-28: GSEGUtils 0.6 Adoption & 0.11.0 Release — code rework split out of Phase 6 (06-CONTEXT D-24); Phase 6 rewritten to template adoption + first promotion to main + draft migration record; DEP-05 added
 
 ## Deferred Items
 
@@ -214,6 +234,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-25T10:15:17.171Z
-Stopped at: Phase 05 complete, ready to plan Phase 6
+Last session: 2026-09-28T15:14:01.638Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None
