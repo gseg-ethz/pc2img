@@ -232,6 +232,10 @@ None — no external service configuration required by this plan. (Owner account
 - The assembled `.github/` tree is placeholder-free, uv-locked, and green (pre-commit, publish gate, kit's own tests, full suite with coverage floor met) on `develop-gsd`'s working tree — ready for plan 06-07 to transcribe these deviations into the `RULESETS.md`/`RELEASE.md` CI/CD adoption record.
 - Not yet done (by design, later plans in this phase per D-17/D-18): the ruleset payloads are not yet applied live, no first promotion to `main` has happened, and the D-30 owner-account-action checkpoints (App installs, secrets, environments) have not yet been prompted.
 
+## Self-Check: PASSED
+
+All 12 key created/modified files verified present on disk (`[ -f ]`); all 3 commits (`e13ca59`, `5e35816`, `30ccf9c`) confirmed in `git log --oneline --all`.
+
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
 *Completed: 2026-09-28*
