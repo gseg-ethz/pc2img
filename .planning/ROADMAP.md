@@ -226,7 +226,7 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 4/13 plans executed
+**Plans**: 5/13 plans executed
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -237,7 +237,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 06-05-PLAN.md — Minimal Sphinx site + .readthedocs.yaml (doc group via build.jobs install) + docstring fixes for -W [CICD-02]
+- [x] 06-05-PLAN.md — Minimal Sphinx site + .readthedocs.yaml (doc group via build.jobs install) + docstring fixes for -W [CICD-02]
 - [ ] 06-06-PLAN.md — Kit assembly: core + release-pypi root-to-root, tokens, uv composite, in-place edits, kit tests green [CICD-02]
 
 **Wave 3** *(blocked on Wave 2)*
@@ -280,5 +280,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 4/13 | In Progress|  |
+| 6. Publication Hardening & Downstream Migration Record | 5/13 | In Progress|  |
 | 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |

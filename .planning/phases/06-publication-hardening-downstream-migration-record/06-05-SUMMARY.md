@@ -156,3 +156,13 @@ None - no external service configuration required. RTD project import is a separ
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
 *Completed: 2026-09-28*
+
+## Self-Check: PASSED
+
+- FOUND: docs/source/conf.py
+- FOUND: docs/source/index.rst
+- FOUND: docs/source/api.rst
+- FOUND: .readthedocs.yaml
+- FOUND: commit be04628 (Task 1)
+- FOUND: commit 8571aa3 (Task 2)
+- Re-ran plan `<verification>`: `sphinx-build -W --keep-going` exit 0, zero warnings; full suite 259 passed; ruff clean.
