@@ -23,7 +23,7 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 05 — Bug Fixes & Module Test Coverage
+**Current focus:** Phase 06 — Publication Hardening & Downstream Migration Record
 
 ## Current Position
 
@@ -34,8 +34,7 @@ Last activity: 2026-09-25
 
 Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
 
-**Phase 6 is NOT the current phase.** It was reached prematurely on a `passed` verification
-that has since been superseded; it cannot start until Phase 5 re-verifies.
+Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Phase 6 is current.
 
 ## Performance Metrics
 
@@ -202,6 +201,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 03.1 inserted after Phase 3: RRIM (Red Relief Image) IP status clarification (URGENT)
+- Phase 7 added 2026-09-28: GSEGUtils 0.6 Adoption & 0.11.0 Release — code rework split out of Phase 6 (06-CONTEXT D-24); Phase 6 rewritten to template adoption + first promotion to main + draft migration record; DEP-05 added
 
 ## Deferred Items
 

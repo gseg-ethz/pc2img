@@ -1,9 +1,9 @@
 ---
 created: 2026-09-24T15:30:00Z
-title: Adopt GSEGUtils 0.6 and delete the DiskBackedImageStore containment override
+title: Phase 7 — adopt GSEGUtils 0.6 and delete the DiskBackedImageStore containment override
 area: image_cache
 severity: minor
-resolves_phase: 6
+resolves_phase: 7
 files:
   - src/pc2img/image_cache/disk_backed_image_store.py
   - tests/test_image_store.py
@@ -158,3 +158,9 @@ Revisit together with the GSEGUtils 0.6 adoption, which rewrites this override a
 - [ ] `review-r4-d8efb7e5d778` — the docstring's "the one safe ordering" overclaims; add the
       held-reference residual (already listed above) to the shipped docstring, since `.planning/` is
       stripped on main.
+
+## Retargeted to Phase 7 (2026-09-28)
+
+Phase 6 discuss (`06-CONTEXT.md` D-24) moved the code rework into the new Phase 7
+("GSEGUtils 0.6 Adoption & 0.11.0 Release", requirement DEP-05). Phase 6 promotes the current
+develop-gsd to main with this override still in place (load-bearing on 0.5.3); Phase 7 deletes it.

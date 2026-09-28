@@ -1,6 +1,6 @@
 ---
 created: 2026-09-25T12:00:00Z
-title: Round-5 review carry-over — comment accuracy, leftover planning references, test hygiene
+title: Phase 6+7 split — round-5 review carry-over — comment accuracy, leftover planning references, test hygiene
 area: tests
 severity: minor
 resolves_phase: 6
@@ -33,3 +33,12 @@ wording / hygiene. Deferred on the record instead of a sixth Phase-5 gap round.
       differentiate (e.g. a `.dat`-only peer entry).
 - [ ] `review-r4-15a5c4928dc8` — 18 `tmp*` entries leaked per full run from 5 other test modules; add an
       autouse `tempfile.tempdir -> tmp_path` fixture in tests/conftest.py (fits the ruff/CI todo).
+
+## Split across Phases 6 and 7 (2026-09-28, `06-CONTEXT.md` Folded Todos)
+
+- **Phase 6** (must land before the first promotion to public main): `review-r4-4a993aa1a335`
+  (planning refs; sweep widened to the whole shipped tree, D-20), `review-r4-16ca6d81fd0c`,
+  `review-r4-66d8cfa20681` (shipped-text accuracy), `review-r4-ba69ab35c32e` (ERA001, needed for
+  a green required lint).
+- **Phase 7**: `review-r4-84a2b5dff14c`, `review-r4-15a5c4928dc8` (test hygiene).
+Close this todo when Phase 7 completes its half.

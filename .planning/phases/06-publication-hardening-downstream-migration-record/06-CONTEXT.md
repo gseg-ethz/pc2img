@@ -227,6 +227,28 @@ migration record, and its merge of the release PR ships 0.11.0 to PyPI.
 - **D-29:** Timing: **draft in Phase 6**, finalised in Phase 7 (append the GSEGUtils 0.6 entries,
   re-stamp the target to `v0.11.0`, re-run the inline verifier).
 
+### Owner account actions — prompted during execution
+- **D-30:** Every owner-only account action is a `checkpoint:human-action` task **in execution**,
+  placed immediately before the first step that needs it, and never collected during planning
+  (owner request 2026-09-28; nothing in planning depends on them, since App and secret names are
+  already known). Each prompt states the exact values to enter (App name, repo, secret names,
+  environment names, and for trusted publishing the owner/repo/workflow filename/environment
+  tuple), and the step right after it verifies the result by running something, not by asking.
+  Order in Phase 6:
+  1. Add pc2img to the `codecov` and `gseg-ruleset-admin` Apps and set the protection-App secrets
+     (`<APPLY_APP_ID_SECRET>` / `<APPLY_APP_KEY_SECRET>` names per the template), plus the
+     `CODECOV_TOKEN`: before the first CI run of the assembled workflows and before the ruleset
+     apply workflow is dispatched.
+  2. Import the project on Read the Docs: once the docs build green on the branch.
+  3. Register the TestPyPI trusted publisher and create the `testpypi` GitHub environment: right
+     before the TestPyPI dry run.
+  4. Add pc2img to the `gseg-release-please` App and set the release-App secrets (a different App
+     from the protection one, template FLOOR): before release-please first runs on `main` at the
+     first promotion.
+
+  Deferred to Phase 7: register the PyPI trusted publisher and create the `pypi` environment,
+  right before the release PR is merged.
+
 ### Claude's Discretion
 - Exact ruff remediation for the 12 hits (fix vs. per-line `noqa` vs. a C901 threshold in config),
   provided `Lint (pre-commit)` is green on the whole shipped tree.
@@ -367,8 +389,9 @@ migration record, and its merge of the release PR ships 0.11.0 to PyPI.
 <deferred>
 ## Deferred Ideas
 
-- **New Phase 7: GSEGUtils 0.6 adoption & release** (D-24). Add via `/gsd-phase` before planning
-  Phase 6 is finalised, so the roadmap and REQUIREMENTS traceability agree.
+- **Phase 7: GSEGUtils 0.6 Adoption & 0.11.0 Release** (D-24): ADDED to ROADMAP.md 2026-09-28 with
+  new requirement DEP-05; BC-01 traced to Phases 6 (draft) and 7 (finalise). The 0.11.0 release-PR
+  merge is Phase 7's last step, not part of `/gsd-complete-milestone`.
 - Tag-protection ruleset on `refs/tags/v*`: deferred by the template itself (it would need a
   bypass actor for release-please's moving tags).
 - Tighter review policy (1 required approval): the template's future-tightening item, for when a
