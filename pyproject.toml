@@ -55,8 +55,11 @@ tag_regex = '^v?(?P<version>\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.de
 git_describe_command = "git describe --dirty --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*'"
 
 [project.urls]
-homepage = "https://gseg.igp.ethz.ch/"
-documentation = "https://github.com/gseg-ethz/pc2img"
+Homepage = "https://gseg.igp.ethz.ch/"
+Documentation = "https://pc2img.readthedocs.io/en/latest/"
+Repository = "https://github.com/gseg-ethz/pc2img"
+Issues = "https://github.com/gseg-ethz/pc2img/issues"
+Changelog = "https://github.com/gseg-ethz/pc2img/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 cuda12 = ["pchandler[cuda12]"]
@@ -81,8 +84,20 @@ viz = ["matplotlib ~= 3.9"]
 # Tooling deps live in PEP 735 dependency-groups, never in wheel metadata.
 # `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
 [dependency-groups]
-dev = ["ruff ~= 0.15", "pytest ~= 9.1", "memory_profiler", "pytest-cov ~= 5.0", "coverage ~= 7.0"]
-doc = ["sphinx ~= 5.1"]
+dev = [
+	"ruff ~= 0.15",
+	"pytest ~= 9.1",
+	"memory_profiler",
+	"pytest-cov ~= 5.0",
+	"coverage ~= 7.0",
+	# pre-commit and pyyaml are what the CI lint job and the repository's own
+	# gate scripts run from the locked environment.
+	"pre-commit",
+	"pyyaml",
+]
+# Upper bound blocks a known autosummary regression in the 8.3 line; pinned to
+# match the sibling PCHandler template's doc toolchain.
+doc = ["sphinx ~= 8.2.3, <8.3", "sphinx_rtd_theme"]
 
 # cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
 # cuda-python>=12.6.2,<13 while cudf-cu11 pulls cuda-python>=11.8.5,<12, so a
