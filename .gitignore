@@ -126,6 +126,13 @@ ENV/
 # ...but never track Python bytecode caches under scripts/: the broad !/scripts/**
 # re-include above would otherwise un-ignore scripts/**/__pycache__/ (generated).
 scripts/**/__pycache__/
+# Re-include .github/scripts/ (the GSEG git-strategy kit's CI helper scripts,
+# Phase 6 CI/CD assembly) for the same reason as the top-level scripts/ block
+# above — the generic [Ss]cripts virtualenv-template rule otherwise silently
+# gitignores this directory too.
+!/.github/scripts/
+!/.github/scripts/**
+.github/scripts/**/__pycache__/
 pyvenv.cfg
 .venv
 pip-selfcheck.json

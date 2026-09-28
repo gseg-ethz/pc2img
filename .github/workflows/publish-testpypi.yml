@@ -1,0 +1,69 @@
+name: Publish to TestPyPI
+
+# The test-index twin of publish-pypi.yml, and the ONLY difference that matters
+# is which environment gates which index: this workflow's publishing job runs
+# under the `testpypi` environment and overrides the upload endpoint, so a
+# trusted publisher configured for the production index can never be satisfied
+# by this workflow and vice versa. Keep the two environment names distinct —
+# collapsing them into one would let a dispatch of this workflow publish to the
+# production index.
+#
+# Dispatch-only on purpose: this is a rehearsal of the publishing pipeline, run
+# deliberately, never as an automatic consequence of a release.
+
+"on":
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build distribution (TestPyPI)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: ./.github/actions/setup-python-deps
+
+      - name: Build wheel and sdist
+        run: |
+          pip install build
+          python -m build --wheel --sdist
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: dist-testpypi-${{ github.run_id }}
+          path: dist/
+          retention-days: 1
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/pc2img
+    permissions:
+      id-token: write  # OIDC token for the test index's trusted publisher; no attestations scope
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: dist-testpypi-${{ github.run_id }}
+          path: dist/
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          # attestations are disabled here on purpose: the test index's support
+          # for them is inconsistent, and a rehearsal that proves the pipeline
+          # while NOT signing is more useful than one that fails on signing.
+          attestations: false
+          # allow repeat dispatches from the same commit without failing on an
+          # already-uploaded filename
+          skip-existing: true

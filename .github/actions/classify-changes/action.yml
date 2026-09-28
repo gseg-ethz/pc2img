@@ -1,0 +1,213 @@
+name: Classify changed paths
+description: >
+  Decide whether this run may take the release-artifact fast path. Emits
+  `release-artifacts-only` = 'true' ONLY when every changed path is in the
+  allowlist below. FAILS SAFE — a non-pull-request event, a failed API call,
+  an empty or truncated file list, or any unrecognised path all yield 'false',
+  which means "run everything". The caller MUST run `actions/checkout` BEFORE
+  invoking this composite — GitHub needs the repo on the runner filesystem to
+  find this action.yml — and the caller MUST grant the job
+  `pull-requests: read`, which is the only permission the changed-path read
+  needs. The classification is a composite invoked from inside each
+  required-context job rather than an upstream job feeding `needs:`, because a
+  `needs:` edge from a required context to a classifier job is exactly the
+  skip-propagation path assertion A6 forbids when the config self-inspection
+  component is applied.
+  When the answer cannot be determined, the failing call's own error text is
+  preserved in the emitted reason and a warning annotation naming the runner is
+  raised, so the inert state is visible on the run summary instead of buried in
+  a step nobody opens. Without that, a classifier can sit inert for weeks — the
+  full suite still runs, so nothing is red, and the only symptom is a fast path
+  that never engages.
+
+outputs:
+  release-artifacts-only:
+    description: "'true' when every changed path is a release artifact; 'false' otherwise (run everything)."
+    value: ${{ steps.classify.outputs.release-artifacts-only }}
+
+runs:
+  using: composite
+  steps:
+    - id: classify
+      name: Classify changed paths
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        # Bound through the environment, never interpolated into the script body
+        # below — matching the pattern this file already applies to its token.
+        # None of the three is injectable today; expanding some contexts into a
+        # script body and binding others is the inconsistency that invites a
+        # future editor to expand one that is.
+        EVENT_NAME: ${{ github.event_name }}
+        REPO: ${{ github.repository }}
+        PRNUM: ${{ github.event.pull_request.number }}
+      run: |
+        # THE SHELL CONTRACT, and it is NOT what an earlier version of this
+        # comment claimed. GitHub runs `shell: bash` as
+        # `bash --noprofile --norc -eo pipefail {0}`, so errexit is ALREADY ON
+        # before the first line and `set -uo pipefail` cannot turn it off.
+        #
+        # READ THIS BEFORE ADDING A COMMAND HERE. The fail-safe direction for a
+        # fast path is "run everything", not "break the build" — but that is a
+        # property of how this step is WRITTEN, not of the shell it runs under.
+        # Every command whose result this step interprets is wrapped in an
+        # explicit `if ! ...`, which is where errexit is suppressed. An
+        # UNGUARDED command added to this step aborts it, and this composite is
+        # invoked from inside each required-context job, so the abort fails a
+        # required context. The safety comes from the guards; do not add a
+        # command without one.
+        set -uo pipefail
+
+        # The allowlist is exactly the set of paths a GENERATED RELEASE PULL
+        # REQUEST touches, and nothing else. Anything a human might also edit in
+        # such a pull request does not belong here.
+        #
+        # This is the ONLY place the allowlist is written down, and it is
+        # RECONCILED rather than hand-maintained when the config self-inspection
+        # component is applied: assertion A4 in .github/scripts/check_ci_config.py
+        # DERIVES the expected set from the release tooling's own configuration --
+        # the changelog path plus every declared extra release file, plus the
+        # release manifest path -- and fails the build with a named reason on any
+        # divergence. Declaring a new extra release file re-expands both sides
+        # together or the build goes red; it never silently disables this fast
+        # path. Without that component, keeping this list and the release
+        # tooling's configuration in sync is an apply-time checklist item.
+        #
+        # The two entries below are the release tooling's own conventional
+        # filenames rather than parameters of this kit, which is why they are
+        # literals: A4 compares this string against paths derived from that
+        # tooling's configuration, so a placeholder here would be compared
+        # against a real filename and always differ. A repository that renames
+        # its changelog changes it in the tooling's configuration and here, in
+        # the same commit, and A4 is what enforces that pairing.
+        ALLOW='CHANGELOG.md .release-please-manifest.json'
+
+        # Deterministic sink for the changed-path call's standard error. A fixed
+        # path rather than `mktemp` on purpose: mktemp would be one more command
+        # needing its own `if ! ...` guard — unguarded, it aborts this step under
+        # the inherited errexit — and the whole point of this step is that it
+        # reaches an answer rather than aborting.
+        STDERR_FILE="${RUNNER_TEMP:-/tmp}/classify-changes-stderr.$$"
+
+        # Every emission writes its reason to the log next to the value, so a run
+        # log answers "why did the fast path not engage" without a re-run.
+        emit() {
+          echo "release-artifacts-only=$1" >> "$GITHUB_OUTPUT"
+          echo "classify-changes: $1 — $2"
+        }
+
+        # `emit` states an answer this step KNOWS. The helper below states that
+        # the answer could NOT be determined: the fast path is inert and the full
+        # suite runs. Only the three "could not find out" branches route through
+        # it -- the API call failed, the list came back empty, or the documented
+        # file cap was reached. The non-pull_request branch and the
+        # not-a-release-artifact branch both KNOW the answer is false and stay on
+        # plain `emit`: the CI workflow triggers on pull_request, push AND
+        # schedule and invokes this composite unconditionally, so annotating a
+        # known-false branch would raise a warning on every push and every
+        # nightly run and destroy the signal this exists to create.
+        emit_unknown() {
+          echo "::warning::classify-changes could not determine the changed-path set on runner '${RUNNER_NAME:-unknown}' — $1 — the release-artifact fast path is INERT on this run and the full suite will run"
+          emit false "$1"
+        }
+
+        if [ "${EVENT_NAME}" != "pull_request" ]; then
+          emit false "event ${EVENT_NAME} is not pull_request — there is no PR to classify"
+          exit 0
+        fi
+
+        # Server-computed changed paths, NOT `git diff`: actions/checkout's default
+        # fetch depth is 1, and a shallow diff against a missing merge base emits a
+        # partial or empty diff SILENTLY. The REST endpoint has no fetch-depth
+        # coupling at all.
+        if ! FILES=$(gh api --paginate \
+              "repos/${REPO}/pulls/${PRNUM}/files" \
+              --jq '.[].filename' 2>"$STDERR_FILE"); then
+          # Keep the failing call's own words. Newlines are collapsed so a
+          # multi-line payload cannot forge additional workflow-command lines, and
+          # the text is truncated so a runaway message cannot flood the log.
+          GH_ERR=''
+          if [ -f "$STDERR_FILE" ]; then
+            # Guarded like everything else here: unguarded, a failure would
+            # abort this step under the inherited errexit, which is exactly the
+            # required-context abort the header warns about.
+            GH_ERR=$(tr '\n' ' ' < "$STDERR_FILE" | cut -c1-500) || GH_ERR=''
+          fi
+          rm -f "$STDERR_FILE"
+          emit_unknown "the changed-path API call failed: ${GH_ERR:-<no stderr captured>}"
+          exit 0
+        fi
+        rm -f "$STDERR_FILE"
+
+        if [ -z "$FILES" ]; then
+          emit_unknown "the changed-path list came back empty — anomalous, not 'nothing changed'"
+          exit 0
+        fi
+
+        if ! COUNT=$(printf '%s\n' "$FILES" | wc -l); then
+          emit_unknown "the changed-path list could not be counted"
+          exit 0
+        fi
+        if [ "$COUNT" -ge 3000 ]; then
+          emit_unknown "changed-path list reached the documented 3000-file API cap — untrustworthy"
+          exit 0
+        fi
+
+        # Membership is EXACT and entry-by-entry, over a real word list -- NOT
+        # containment against a concatenated string. THIS IS A FIX FOR A REAL
+        # REQUIRED-GATE BYPASS AND MUST NOT BE RELAXED BACK. The padded-containment
+        # test it replaces (`case " $ALLOW " in *" $changed "*`) accepted a SINGLE
+        # changed path whose own NAME contained a space, because the padded
+        # allowlist string is literally a substring of itself. Git and the
+        # pull-request files API both permit a space in a path, so one pull request
+        # adding one such file emitted 'true' and greened every required context
+        # having executed nothing -- on a branch whose ruleset requires zero
+        # approving reviews. Reproduced by execution, not inferred, and pinned by
+        # .github/scripts/test_classify_changes.py.
+        #
+        # The allowlist is split ONCE, with `read -r -a` rather than an unquoted
+        # `for entry in $ALLOW`. Both word-split on IFS, but only the unquoted
+        # form ALSO performs pathname expansion, which would let a future entry
+        # containing a glob metacharacter be rewritten by whatever happens to sit
+        # in the runner's working directory. `read -r -a` cannot glob at all.
+        # The ALLOW assignment above deliberately keeps its exact shape (and this
+        # comment deliberately does not restate it in quotes, so it cannot be
+        # mistaken for the assignment):
+        # assertion A4 in .github/scripts/check_ci_config.py, when the config
+        # self-inspection component is applied, extracts the allowlist by
+        # matching that literal, so turning it into an array literal would make
+        # A4 unable to find it.
+        IFS=' ' read -r -a ALLOW_ENTRIES <<< "$ALLOW"
+
+        is_allowed() {
+          local candidate="$1" entry
+          # ALLOW is a non-empty literal above, and A4 fails the build whenever it
+          # set-differs from the release tooling's own configuration, so this array
+          # is never empty in a tree that passes the lint gate.
+          for entry in "${ALLOW_ENTRIES[@]}"; do
+            [ "$candidate" = "$entry" ] && return 0
+          done
+          return 1
+        }
+
+        # Order independence: this is a per-path loop with an early exit, so
+        # permuting the order the API returns files in cannot change the verdict.
+        while IFS= read -r changed; do
+          [ -z "$changed" ] && continue
+          # Rejected BEFORE the membership test and by name. No allowlist entry
+          # contains whitespace, so such a path could never be allowed anyway --
+          # but saying so explicitly keeps the reason line honest about what was
+          # actually seen. This is a KNOWN false, not a could-not-determine: it
+          # stays on plain `emit` and raises no warning annotation.
+          case "$changed" in
+            *[[:space:]]*)
+              emit false "changed path contains whitespace, which the allowlist cannot represent: $changed"
+              exit 0 ;;
+          esac
+          if ! is_allowed "$changed"; then
+            emit false "changed path is not a release artifact: $changed"
+            exit 0
+          fi
+        done <<< "$FILES"
+
+        emit true "all $COUNT changed path(s) are release artifacts"
