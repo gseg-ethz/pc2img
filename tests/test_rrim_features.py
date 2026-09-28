@@ -233,9 +233,8 @@ def test_upper_boundary_exponent_spellings_canonicalise_to_one_pack_name() -> No
     which are integers) emits a long-digit token, never exponent notation — so
     the upper boundary is exercised on INPUT spelling (the widened grammar
     accepts ``z1e16``) and on the canonical emitted key, not on the
-    formatter's own output switching form. This is NAME-level only: the
-    float32 raster overflow at such ``z`` is the deferred Phase-6 item
-    (``2026-07-27-rrim-float32-scaling-invariant-guard.md``) and is
+    formatter's own output switching form. This is NAME-level only: the float32
+    raster overflow at such ``z`` is a separately tracked hardening item and is
     deliberately not computed here — no raster is generated with z >= 1e16.
     """
     expected_pack_name = "rrim_pack_(range,r16,d8,z10000000000000000)"

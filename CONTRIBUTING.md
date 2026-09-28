@@ -37,17 +37,13 @@ leak into the published wheel metadata and are never installed by
 ## Everyday commands
 
 ```bash
-uv run python scripts/smoke_pipeline.py   # SC1 smoke: run the single-cloud pipeline end-to-end
-uv run pytest                             # run the test suite (tests land in Phase 3)
+uv run python scripts/smoke_pipeline.py   # end-to-end smoke: run the single-cloud pipeline
+uv run pytest                             # run the test suite
 ```
 
 `uv run <cmd>` executes inside the synced environment without needing to activate
 `.venv` manually. Because `uv sync` installs pc2img editable, `uv run` resolves
 `import pc2img` directly.
-
-> Note: `scripts/smoke_pipeline.py` is created in a later plan of this phase; until
-> then, `uv run pytest` has no tests to collect (the pytest framework is stood up in
-> Phase 3).
 
 Run `pytest` (or a scoped subset like `pytest tests/test_rrim_features.py`) — never
 `pytest .`, which re-collects the gitignored `third_party/` sibling symlinks. Coverage
@@ -63,33 +59,29 @@ The test suite is measured with branch coverage scoped to the `pc2img` package:
 uv run pytest --cov=pc2img --cov-branch --cov-report=term-missing
 ```
 
-**Measured baseline: 57%** (whole-package branch coverage, measured 2026-07-11 on the
-green suite of **109 passed / 0 xfailed**). This is the Phase-5 baseline: every Phase-5
-proving/characterization test now passes (no residual xfail for a finding fixed this phase),
-and the previously-unexercised core modules (`projection.py`, `interpolation.py`,
-`derivative_features.py`, `manager.py`, `tiled_generator.py`, `util.py`, `rrim.py`) got
-behavioral coverage across TEST-03..06. Some large modules (`derivative_features.py`,
+**Measured baseline: 62%** (whole-package branch coverage, measured 2026-09-28 on the
+green suite of **253 passed / 0 xfailed**). The previously-unexercised core modules
+(`projection.py`, `interpolation.py`, `derivative_features.py`, `manager.py`,
+`tiled_generator.py`, `util.py`, `rrim.py`) got behavioral coverage as the module
+test-coverage work landed. Some large modules (`derivative_features.py`,
 `util.py`, `strategies/utils.py`) are still only partially exercised, leaving further ratchet
-headroom for future phases.
+headroom for future work.
 
-_Prior Phase-3 baseline (for the ratchet history): 37% on a 15 passed / 11 xfailed
-foundation suite, measured 2026-07-09; enforced floor was 35%. (An even earlier draft
-recorded 23% because `tests/test_rrim_features.py` loaded `rrim.py` under a throwaway module
-name, so its passing tests didn't attribute to the tracked file; the test now imports the
-real `pc2img.features.rrim`.)_
+_Ratchet history: an earlier foundation suite measured 37% on 15 passed / 11 xfailed, with
+an enforced floor of 35%. (An even earlier draft recorded 23% because
+`tests/test_rrim_features.py` loaded `rrim.py` under a throwaway module name, so its passing
+tests didn't attribute to the tracked file; the test now imports the real
+`pc2img.features.rrim`.)_
 
 **Enforced floor: `--cov-fail-under=55`.** CI (`.github/workflows/ci.yml`) runs the suite
-with `--cov-fail-under=55` on the command line — a couple of points below the measured
-baseline, keeping the same headroom margin convention Phase 3 established (baseline − ~2pts).
-The margin historically absorbed xfail coverage volatility (xfail'd tests execute up to their
-failure line, so their coverage contribution could shift); the suite now carries no xfails,
-but the margin is retained as ratchet headroom against incidental drift. The gate lives on
-the CI command line, not in `pyproject.toml`, so local subset runs never enforce it.
+with `--cov-fail-under=55` on the command line — below the measured baseline, keeping a
+margin against incidental coverage drift. The gate lives on the CI command line, not in
+`pyproject.toml`, so local subset runs never enforce it.
 
 This floor is a **regression ratchet**: it fails CI if coverage drops, without pretending
-the suite is comprehensive. It was ratcheted upward in **Phase 5** (35 → 55) as real coverage
-landed — the bug-fix proving tests flipped from xfail to pass and the untested core modules
-got behavioral coverage. It can be ratcheted further in later phases as more of
+the suite is comprehensive. It was ratcheted upward from 35 to 55 as real coverage
+landed — the bug-fix proving tests flipped from expected-failure to passing and the untested
+core modules got behavioral coverage. It can be ratcheted further as more of
 `derivative_features.py` / `util.py` gets exercised.
 
 ## After changing dependencies

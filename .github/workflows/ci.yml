@@ -9,7 +9,7 @@ on:
 
 # Least-privilege default token: this workflow only reads the repo (checkout +
 # install + test), never writes. Narrowing GITHUB_TOKEN to read-only means a fork
-# PR (or a compromised action) cannot use it to mutate the repo (T-03-04).
+# PR (or a compromised action) cannot use it to mutate the repository.
 permissions:
   contents: read
 
@@ -37,8 +37,8 @@ jobs:
 
       # Coverage flags live here on the command line, never in addopts, so local
       # subset runs stay fast. --cov-fail-under=55 matches the floor recorded in
-      # CONTRIBUTING.md (measured baseline 57% minus a 2-point headroom margin,
-      # ratcheted in Phase 5 as the bug-fix + module-coverage tests landed).
+      # CONTRIBUTING.md, ratcheted upward as the bug-fix and module-coverage
+      # tests landed.
       - name: Run tests
         run: >-
           uv run --frozen pytest
