@@ -29,9 +29,11 @@ jobs:
       - uses: ./.github/actions/setup-python-deps
 
       - name: Build wheel and sdist
-        run: |
-          pip install build
-          python -m build --wheel --sdist
+        # PEP 517 isolated build of sdist + wheel into dist/; replaces the
+        # kit's pip/build sequence since the setup-python-deps composite's
+        # venv ships no pip. Uses the checked-out tags (fetch-depth 0 +
+        # fetch-tags true above) for the setuptools_scm version derivation.
+        run: uv build
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
@@ -48,7 +50,13 @@ jobs:
       name: testpypi
       url: https://test.pypi.org/p/pc2img
     permissions:
-      id-token: write  # OIDC token for the test index's trusted publisher; no attestations scope
+      id-token: write      # OIDC token for the test index's trusted publisher
+      # attestations: write — recorded deviation from the template default
+      # (which disables attestations on the test index as inconsistent):
+      # pc2img's TestPyPI dry run is meant to exercise the full OIDC +
+      # PEP 740 attestation path end to end before the real PyPI publish,
+      # so this job mirrors publish-pypi.yml's permission grant.
+      attestations: write
     steps:
       - name: Download dist artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
@@ -60,10 +68,12 @@ jobs:
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
           repository-url: https://test.pypi.org/legacy/
-          # attestations are disabled here on purpose: the test index's support
-          # for them is inconsistent, and a rehearsal that proves the pipeline
-          # while NOT signing is more useful than one that fails on signing.
-          attestations: false
+          # attestations enabled on purpose (recorded deviation): the
+          # template disables this on the test index by default as
+          # "inconsistent", but the TestPyPI dry run's whole point here is
+          # to prove the PEP 740 attestation path works before the real
+          # PyPI publish.
+          attestations: true
           # allow repeat dispatches from the same commit without failing on an
           # already-uploaded filename
           skip-existing: true

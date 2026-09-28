@@ -3,12 +3,12 @@ description: >
   Set up Python 3.12 via uv and install the locked development environment.
   The caller MUST run `actions/checkout` BEFORE invoking this composite —
   GitHub needs the repo on the runner filesystem to find this action.yml.
-  Recorded deviation from the kit (D-10): the kit's own composite installs
-  with `pip install .[dev]`, which assumes `dev` is a
+  Recorded deviation from the upstream template: the template's own composite
+  installs the `dev` extra via pip, which assumes `dev` is a
   `[project.optional-dependencies]` extra. pc2img's dev tooling (ruff,
   pytest, pre-commit, pyyaml, ...) lives in a PEP 735 `[dependency-groups]`
-  entry instead, so `pip install .[dev]` would install nothing extra. This
-  composite installs from the committed, hash-pinned `uv.lock` with
+  entry instead, so that extras-based install would pull in nothing extra.
+  This composite installs from the committed, hash-pinned `uv.lock` with
   `uv sync --frozen` instead, and puts the resulting venv first on PATH so
   every subsequent bare-name step (`pytest`, `pre-commit`, `sphinx-build`,
   `python`, ...) resolves into the locked environment rather than the

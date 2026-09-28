@@ -125,7 +125,9 @@ jobs:
         if: steps.classify.outputs.release-artifacts-only != 'true'
         shell: bash
         run: |
-          python -m pip install pre-commit
+          # The uv venv the composite above built ships no pip; pre-commit
+          # comes from the locked `dev` dependency group instead, already on
+          # PATH via that composite's venv/bin prepend — no separate install.
           pre-commit run --all-files
 
       - name: Check publish gate
@@ -201,6 +203,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          # setuptools_scm derives the version from tags during the editable
+          # install the setup-python-deps composite performs below; the
+          # `lint` and `docs` jobs already carry this for the same reason.
+          fetch-depth: 0   # setuptools_scm reads tags
 
       # The release-artifact fast path. MUST follow the checkout, same reason as
       # in `lint` above.
@@ -233,6 +240,11 @@ jobs:
           # ESCALATE warnings to exit 1. The warn-only semantics come from the
           # step-level `continue-on-error` flag, not from this action's inputs.
           working-directory: .
+          # Point the type check at the locked uv venv explicitly, so it
+          # resolves imports (pchandler, GSEGUtils, ...) from the environment
+          # the composite above built rather than whatever ambient Python the
+          # action itself falls back to.
+          python-path: .venv/bin/python
 
       - name: Upload type-check report
         if: always() && steps.classify.outputs.release-artifacts-only != 'true'
@@ -244,7 +256,12 @@ jobs:
 
       - name: Run tests
         if: steps.classify.outputs.release-artifacts-only != 'true'
-        run: pytest -m "not benchmark" --cov=pc2img --cov-report=xml:coverage-unit.xml
+        # --cov-branch --cov-fail-under=55: coverage floor carried forward
+        # from the previous CI workflow as a recorded addition to the
+        # upstream template — the template's own Tests job has no coverage
+        # gate. Branch coverage matches pyproject.toml's [tool.coverage.run]
+        # config.
+        run: pytest -m "not benchmark" --cov=pc2img --cov-report=xml:coverage-unit.xml --cov-branch --cov-fail-under=55
 
       # Coverage upload is optional tooling, not part of the gate: this action
       # does not set `fail_ci_if_error`, so a missing token or an upload failure
@@ -298,11 +315,15 @@ jobs:
         if: steps.classify.outputs.release-artifacts-only != 'true'
         working-directory: .
         run: |
-          # The extra name and the source/build directories below are this
-          # repository's own packaging and Sphinx conventions rather than
-          # parameters of this kit — match them to `pyproject.toml` and the
-          # documentation layout.
-          pip install .[doc]
+          # The source/build directories below are this repository's own
+          # Sphinx conventions rather than parameters of this kit — match
+          # them to the documentation layout. pc2img's doc tooling is a PEP
+          # 735 dependency group (`[dependency-groups] doc`), not a
+          # `[project.optional-dependencies]` extra, so the kit's own
+          # extras-based install line would install nothing extra; install
+          # from the locked env instead (consistent with the uv-based setup
+          # composite used elsewhere in this workflow).
+          uv sync --frozen --group doc
 
           # Assert the derivation instead of trusting the green. The
           # `fetch-depth: 0` above is the fix; this is the check that would have

@@ -37,9 +37,11 @@ jobs:
       - uses: ./.github/actions/setup-python-deps
 
       - name: Build wheel and sdist
-        run: |
-          pip install build
-          python -m build --wheel --sdist
+        # PEP 517 isolated build of sdist + wheel into dist/; replaces the
+        # kit's pip/build sequence since the setup-python-deps composite's
+        # venv ships no pip. Uses the checked-out tags (fetch-depth 0 +
+        # fetch-tags true above) for the setuptools_scm version derivation.
+        run: uv build
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
