@@ -17,26 +17,93 @@ to the `v0.11.0` release tag when this record is finalized.
 
 ## Summary
 
-<!-- Filled in Task 2. -->
+This milestone's first six phases (branch untangling, dependency adaptation, CI/test foundation,
+RRIM IP clearance, code-quality/algorithmic-soundness review, and bug fixes/module test coverage)
+reshape pc2img's public surface and on-disk behavior in twenty-five identified changes: sixteen
+`should-review` behavior/semantic/signature changes (concentrated in the Phase-5 bug-fix pass —
+registry error unification, projection refusals, RRIM validation timing, the on-disk cache codec),
+one `must-edit` on-disk-format change (the pickle-to-npy cache codec, which requires regenerating a
+persisted cache directory), five `informational` entries recording closed or historical decisions
+(two dead-code removals, a dependency-audit attestation, a closed dependency-bridge conversion, and
+the publication metadata replacement), and four purely `additive` opt-in capabilities. The dominant
+category is `error-behavior`/`semantic-change` should-review entries from the Phase-5 bug-fix pass.
+Unlike PCHandler's v1.0 record, pc2img has no "no breaking import paths" invariant to uphold — one
+on-disk-format `must-edit` entry and two `surface-removed` entries are expected and classified here,
+not escalated as stop-and-ask events.
 
 ## Public API stability statement
 
-<!-- Filled in Task 2. -->
+pc2img has no "no breaking public import paths" invariant equivalent to PCHandler's — this
+milestone deliberately removes two never-functional/duplicate symbols (`make_generator`, a dead
+duplicate `convert_to_image` definition) and changes the on-disk cache codec in a way that requires
+regenerating a persisted cache. The inline verifier below proves the mechanical half of every claim
+it can: Tier 1 confirms the public-surface `__all__` lists of the four barrel modules; Tier 2
+runtime-checks every `signature-shape` claim (constructor kwargs, raised exception types) and every
+`error-behavior`/`on-disk-format` claim that is cheap to instantiate. What the verifier cannot
+check — the numerical correctness of the underlying fixes themselves (the float32 accumulation
+change, the RRIM z-token grammar) — is covered by the project's own test suite and is referenced by
+origin commit sha rather than re-asserted here.
 
 ## Breaking changes & behavior changes
 
 | BC-ID | category | severity | affected_symbols | origin | migration_steps |
 |---|---|---|---|---|---|
 | BC-P2I-001 | error-behavior | should-review | `pc2img.errors.RegistryLookupError`, `pc2img.strategies.registry.StrategyRegistry`, `pc2img.features.registry.FeatureRegistry` | `eb62a60` — registry miss/duplicate exception unified | Catch `RegistryLookupError`, or keep catching `KeyError`/`RuntimeError` — both still match. |
+| BC-P2I-002 | dep-constraint | should-review | (resolver-level; `numpy`, `pchandler`, `GSEGUtils`, `joblib` pins) | `7f0b894`, `4ecf824` — dependency adaptation | Depend on `numpy ~= 2.0` (capped `<2.4` transitively via `pchandler`), `pchandler ~= 2.1`, `GSEGUtils >= 0.5.3, < 1.0`, `joblib ~= 1.5`. Resolver-level only — no source changes downstream. |
+| BC-P2I-003 | dep-constraint | informational | (none — dependency-audit attestation) | `1721c78` — dependency adaptation, zero-call-site attestation | Historical record: the three named pchandler 2.x semantic breaks (`FoVTree` identifiers, world-frame `to_py4dgeo`, `Csv`/`Las` load behavior) have zero call sites in pc2img's own source. No action needed on pc2img's account; verify your own code separately if you call `pchandler` directly. |
+| BC-P2I-004 | surface-removed | informational | `pc2img.registry.make_generator` | `6714214` — hygiene review deleted dead code | `make_generator` was never functional — its 3-positional-argument call landed arguments in the wrong constructor parameters — and had zero callers in-repo. Construct `pc2img.PointCloudImageGenerator` directly instead. |
+| BC-P2I-005 | surface-removed | informational | `pc2img.util.convert_to_image` (dead duplicate definition) | `9d74e6e` — hygiene review deleted a dead duplicate | A dead first `convert_to_image` definition in `util.py` (unreachable — it referenced an unimported `plt` and would `NameError` if ever called, shadowed by the live keyword-only definition) was deleted. The surviving `pc2img.util.convert_to_image` is unchanged. No action needed. |
+| BC-P2I-006 | dep-constraint | should-review | `matplotlib` (colormap support in `pc2img.util.convert_to_image`) | `4ecf824` — hygiene review moved matplotlib to an optional extra | Colormap conversion now needs `pip install pc2img[viz]`; without it, requesting a colormap still raises the existing `RuntimeError("Colormap requires matplotlib")` rather than failing on import. |
+| BC-P2I-007 | error-behavior | should-review | `pc2img.strategies.projection.SphericalProjection.project_raw`, `pc2img.strategies.projection.SphericalProjection.inverse_projection` | bug-fix pass (Phase 5) | A field of view that wraps around ±π now raises `NotImplementedError` from both methods instead of silently producing reversed-column output. Re-orient the point cloud/FoV so it does not cross the ±π seam, or split the cloud; the prior wrapped output was mathematically wrong, so no correct caller depended on it. |
+| BC-P2I-008 | signature-shape | should-review | `pc2img.strategies.projection.PerspectiveProjection` (`rotation_matrix=`) | bug-fix pass (Phase 5) | A 4×4 `rotation_matrix` now raises `TypeError`. Split any 4×4 extrinsic into its 3×3 rotation block and a translation vector, passed via `translation=`. |
+| BC-P2I-009 | semantic-change | should-review | `pc2img.util.nanconv` | bug-fix pass (Phase 5) | Accumulation dtype changed from float16 (which overflowed to `inf` on realistic range magnitudes) to float32 by default, and the input array is no longer mutated in place. Pass `compute_dtype=np.float16` to restore the old memory/accuracy trade explicitly; stop relying on in-place mutation of the array you pass in. |
+| BC-P2I-010 | on-disk-format | must-edit | `pc2img.image_cache.DiskBackedImageStore` | bug-fix pass (Phase 5) | The on-disk cache codec moved from a pickle `.pkl` file to `.npy` + `.meta.json` (`allow_pickle=False`). A persisted cache directory from before this change must be regenerated — a legacy `.pkl` entry degrades to a logged cache miss and recomputes; it is never deserialized. No API call sites change (legacy method names are preserved as aliases). |
+| BC-P2I-011 | semantic-change | should-review | `pc2img.image_cache.DiskBackedImageData` | bug-fix pass (Phase 5) | Arithmetic on a `DiskBackedImageData` (e.g. `a + b`) previously raised `NotImplementedError`; it now succeeds and returns a plain `numpy.ndarray`. Code that caught `NotImplementedError` from raster arithmetic will no longer see it — the operation now succeeds. |
+| BC-P2I-012 | dep-constraint | informational | `GSEGUtils.lazy_disk_cache.register_lazy_disk_cache_class` | bug-fix pass (Phase 5) | Historical record, closed before this milestone shipped: pc2img depends on `GSEGUtils >= 0.5.3` (which carries the `register_lazy_disk_cache_class` hook) directly from PyPI; the temporary git-rev dependency bridge used mid-development was removed. The on-disk store-key containment contract itself is owned upstream — see `BC-GSEG-006` in GSEGUtils's own migration record for its remedies; this entry does not restate them. |
+| BC-P2I-013 | error-behavior | should-review | `pc2img.features.manager.FeatureManager` (dependency resolution) | bug-fix pass (Phase 5) | A cyclic feature-dependency graph previously recursed into a `RecursionError`; it now raises a clear `ValueError("dependency cycle: <name>")`. Catch `ValueError` instead of `RecursionError` on a malformed feature graph; well-formed graphs are unaffected. |
+| BC-P2I-014 | error-behavior | should-review | `pc2img.features.registry.FeatureRegistry.match`, `pc2img.features.manager.FeatureManager.request` | gap-closure pass (Phase 5) | RRIM feature-name validation moved from compute time to request time. A malformed RRIM name inside a batch request now raises a bare `ValueError` from `request()` itself, aborting the entire batch before any feature computes (previously it failed later, per-feature, at compute time). Catch `ValueError` around the `request()` call, not only around the compute phase. |
+| BC-P2I-015 | signature-shape | should-review | `pc2img.strategies.projection.PerspectiveProjection` (`projection_matrix=`) | gap-closure pass (Phase 5) | A non-3×3 or non-pinhole (`K[2,2] != 1`) intrinsics matrix `K` now raises `ValueError` at construction instead of being stored unchecked. Normalize `K` by `K[2,2]` so the bottom row is `[0, 0, 1]`, and pass `K` and `[R|t]` separately rather than a composed projection matrix. Skew in `K[0,1]` is still accepted. |
+| BC-P2I-016 | semantic-change | should-review | `pc2img.features.rrim` (the `zF` option token's emitted cache-key formatting) | gap-closure pass (Phase 5) | The emitted `z` token in a derived RRIM cache-key name switched from 6-significant-figure formatting to the shortest exactly-round-tripping form. The emitted token is byte-identical for every `z` that formatted correctly before (0.5, 2.5, 0.0001, 1.5, 1234567, every integer, …); only names that were already mis-encoding their configuration change (e.g. `z1.23457` from `z=1.2345678`). A persisted cache entry holding a truncated name simply degrades to a cache miss and recomputes under the corrected key. |
+| BC-P2I-017 | error-behavior | should-review | `pc2img.image_cache.DiskBackedImageStore` (key-derived on-disk path builders) | gap-closure pass (Phase 5) | A store key whose on-disk path would escape the configured cache directory (e.g. a parent-directory segment or an absolute path) now raises `ValueError` at the first path build, refused before any file outside the cache directory is touched. Sanitize any raster key that is not a plain name before handing it to the store (strip `..` segments, reject absolute paths, or hash the key); nesting under the cache directory is still allowed, only escaping is refused. |
+| BC-P2I-018 | semantic-change | should-review | `pc2img.features.rrim` (`_parse_rrim_config`, `_parse_rrim_component` first-token precedence) | gap-closure pass (Phase 5) | A first token that fully matches the exponent-notation z-token grammar (e.g. `z1e5`) is now consumed as the `z_factor` option rather than as a base-feature name, so a scalar field named exactly like an exponent z-token changes what a pre-existing RRIM name computes. Address such a scalar field as `scalar_field_z1e5` instead, or rename the field. Only a full-match first token is affected; a near-miss (`z1e5x`, `zx1e5`) is unaffected. |
+| BC-P2I-019 | dep-constraint | should-review | package version / git tags | publication pass, this phase — lands with the first promotion, not yet executed as of this draft | The `v2.0.0a5` tag is retired (renamed to `archive/v2.0.0a5`); git-installed builds move from reporting `2.0.0a5.postN` to `0.10.4.postN` and then `0.11.0`. Drop any pin of the form `~= 2.0` or a `v2.0.0a5`-anchored git reference. |
+| BC-P2I-020 | dep-constraint | should-review | package distribution channel | publication pass, this phase — lands with the first promotion, not yet executed as of this draft | pc2img becomes installable from PyPI. Depend on `pc2img ~= 0.11` and drop any git-URL pin (e.g. a commented-out `@v2.0.0a1`-style reference). |
+| BC-P2I-021 | additive-or-fixed | informational | `README.rst`, `CITATION.cff`, `[project.urls]` | `f7e565c`, `1556e2c` — publication pass, metadata and documentation | Real install/quickstart/feature documentation and citation metadata replace the prior placeholder content; no code-level change for callers. |
 
 ## Additive changes
 
 | BC-ID | category | severity | affected_symbols | origin | migration_steps |
 |---|---|---|---|---|---|
+| BC-P2I-022 | additive-or-fixed | additive | `pc2img.strategies.projection.PerspectiveProjection`, `"perspective"` key of `pc2img.strategies.registry.PROJECTIONS` | `dc257e4` — consolidation of the 2.x branches (folded from the perspective-projection branch) | New registered projection strategy, `PROJECTIONS.create("perspective", ...)`; purely additive, no existing strategy changed. |
+| BC-P2I-023 | additive-or-fixed | additive | `pc2img.util.nanconv` (`compute_dtype=`) | bug-fix pass (Phase 5) | New keyword-only `compute_dtype` parameter selects the accumulation/division dtype; the default (`np.float32`) reproduces the corrected output byte-for-byte, so no action is required unless you want reduced-precision accumulation. |
+| BC-P2I-024 | additive-or-fixed | additive | `pc2img.features.derivative_features.GradientFeature` (`pixel_size=`), feature-name DSL suffix `_px<value>` | bug-fix pass (Phase 5) | New opt-in `pixel_size` constructor kwarg and matching `_px<value>` feature-name suffix; the default (`100`) reproduces the historical `1/100`-scaled output byte-for-byte. No action required. |
+| BC-P2I-025 | additive-or-fixed | additive | the `zF` option token of `pc2img.features.rrim`'s name grammar | gap-closure pass (Phase 5) | The `zF` token now additionally accepts exponent notation (`z1e-05`, `z1E-05`, `z1e+20`); every feature name valid before stays valid. No action required unless you want to express a `z_factor` below `1e-4` in a feature name. |
 
 ## Internal & sweep changes
 
-<!-- Filled in Task 2. -->
+- [bug-fix pass, Phase 5]: `pc2img.features.derivative_features.HillshadeFeature`'s aspect
+  convention — no math changed; the deliberate non-north-up (non-ESRI-compass) aspect handedness
+  is now documented in the class docstring and pinned by a self-consistency characterization test.
+  No public-surface change.
+- [bug-fix pass, Phase 5]: `pc2img.strategies.interpolation.DelaunayInterpolation`'s
+  triangle-culling constants (median-area × 10; aspect median + 6·MAD; × 10 fallback) surfaced as
+  constructor kwargs (`interior_culling`, `area_scale`, `aspect_ratio_mad_factor`,
+  `aspect_ratio_fallback_scale`) with byte-identical defaults to the prior hardcoded behavior. No
+  public-surface change for any existing call site.
+- [gap-closure pass, Phase 5]: `pc2img.image_cache.DiskBackedImageStore.__init__`'s `config`
+  parameter default changed from a shared mutable `LazyDiskCacheConfig()` instance to a
+  `None`-sentinel, coerced in the constructor body. An omitted or explicit-`None` config yields the
+  identical default instance. No public-surface change.
+- [bug-fix pass, Phase 5]: the same `None`-sentinel pattern replaced a shared mutable
+  `LazyDiskCacheConfig()` default at every remaining generator/manager/interpolation/tiled-generator
+  construction site. No public-surface change; prevents cross-instance config aliasing.
+- **Aggregation rule:** one `BC-P2I` entry per observable downstream effect. Two notes that share
+  one observable downstream effect collapse into a single entry; a note that has two independently
+  observable effects (a correctness fix plus a new, separately opt-in capability) is split into two
+  entries by severity — for example `nanconv`'s float16→float32 correctness fix (`BC-P2I-009`,
+  should-review) and its unrelated, byte-identical-by-default `compute_dtype` opt-in
+  (`BC-P2I-023`, additive) are two entries because a default-configured caller sees no change from
+  the `compute_dtype` addition itself.
 
 ## Verifier (inline)
 
@@ -109,6 +176,159 @@ BC_ENTRIES: list[dict[str, object]] = [
             "pc2img.strategies.registry.StrategyRegistry",
             "pc2img.features.registry.FeatureRegistry",
         ],
+    },
+    {
+        "id": "BC-P2I-002",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-003",
+        "category": "dep-constraint",
+        "severity": "informational",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-004",
+        "category": "surface-removed",
+        "severity": "informational",
+        "affected_symbols": ["pc2img.registry.make_generator"],
+    },
+    {
+        "id": "BC-P2I-005",
+        "category": "surface-removed",
+        "severity": "informational",
+        "affected_symbols": ["pc2img.util.convert_to_image"],
+    },
+    {
+        "id": "BC-P2I-006",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.util.convert_to_image"],
+    },
+    {
+        "id": "BC-P2I-007",
+        "category": "error-behavior",
+        "severity": "should-review",
+        "affected_symbols": [
+            "pc2img.strategies.projection.SphericalProjection.project_raw",
+            "pc2img.strategies.projection.SphericalProjection.inverse_projection",
+        ],
+    },
+    {
+        "id": "BC-P2I-008",
+        "category": "signature-shape",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.strategies.projection.PerspectiveProjection"],
+    },
+    {
+        "id": "BC-P2I-009",
+        "category": "semantic-change",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.util.nanconv"],
+    },
+    {
+        "id": "BC-P2I-010",
+        "category": "on-disk-format",
+        "severity": "must-edit",
+        "affected_symbols": ["pc2img.image_cache.DiskBackedImageStore"],
+    },
+    {
+        "id": "BC-P2I-011",
+        "category": "semantic-change",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.image_cache.DiskBackedImageData"],
+    },
+    {
+        "id": "BC-P2I-012",
+        "category": "dep-constraint",
+        "severity": "informational",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-013",
+        "category": "error-behavior",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.features.manager.FeatureManager"],
+    },
+    {
+        "id": "BC-P2I-014",
+        "category": "error-behavior",
+        "severity": "should-review",
+        "affected_symbols": [
+            "pc2img.features.registry.FeatureRegistry.match",
+            "pc2img.features.manager.FeatureManager.request",
+        ],
+    },
+    {
+        "id": "BC-P2I-015",
+        "category": "signature-shape",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.strategies.projection.PerspectiveProjection"],
+    },
+    {
+        "id": "BC-P2I-016",
+        "category": "semantic-change",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.features.rrim"],
+    },
+    {
+        "id": "BC-P2I-017",
+        "category": "error-behavior",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.image_cache.DiskBackedImageStore"],
+    },
+    {
+        "id": "BC-P2I-018",
+        "category": "semantic-change",
+        "severity": "should-review",
+        "affected_symbols": [
+            "pc2img.features.rrim._parse_rrim_config",
+            "pc2img.features.rrim._parse_rrim_component",
+        ],
+    },
+    {
+        "id": "BC-P2I-019",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-020",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-021",
+        "category": "additive-or-fixed",
+        "severity": "informational",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-022",
+        "category": "additive-or-fixed",
+        "severity": "additive",
+        "affected_symbols": ["pc2img.strategies.projection.PerspectiveProjection"],
+    },
+    {
+        "id": "BC-P2I-023",
+        "category": "additive-or-fixed",
+        "severity": "additive",
+        "affected_symbols": ["pc2img.util.nanconv"],
+    },
+    {
+        "id": "BC-P2I-024",
+        "category": "additive-or-fixed",
+        "severity": "additive",
+        "affected_symbols": ["pc2img.features.derivative_features.GradientFeature"],
+    },
+    {
+        "id": "BC-P2I-025",
+        "category": "additive-or-fixed",
+        "severity": "additive",
+        "affected_symbols": ["pc2img.features.rrim"],
     },
 ]
 
