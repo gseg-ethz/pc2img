@@ -355,14 +355,17 @@ class ClipPercentileFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class MultiScaleGradientFeature(DerivativeFeatureStrategy):
-    """
-    Computes scale-normalised gradients of a base raster at multiple Gaussian scales.
-    Name syntax:
+    """Computes scale-normalised gradients of a base raster at multiple Gaussian scales.
+
+    Name syntax::
+
         multigrad_<base_feature>_<sigma1>-<sigma2>-...<sigmaN>[_<fuse>][_<norm|raw>]
         multigrad_<axis>_<base_feature>_<sigma1>-...   → axis-specific output (axis∈{x,y})
-    Examples:
-        multigrad_range_1-2-4              → max |∇| across σ∈{1,2,4} (default fuse)
-        multigrad_range_1-2-4_mean         → mean |∇| across scales
+
+    Examples::
+
+        multigrad_range_1-2-4              → max gradient magnitude across σ∈{1,2,4} (default fuse)
+        multigrad_range_1-2-4_mean         → mean gradient magnitude across scales
         multigrad_x_range_1-2_mean         → mean ∂/∂x response across σ∈{1,2}
     """
 
@@ -526,9 +529,10 @@ class MultiScaleGradientFeature(DerivativeFeatureStrategy):
 
 @FEATURES.register
 class OcclusionAwareMultiScaleGradientFeature(DerivativeFeatureStrategy):
-    """
-    Multi-scale gradient with occlusion-aware smoothing and gating.
-    Name syntax:
+    """Multi-scale gradient with occlusion-aware smoothing and gating.
+
+    Name syntax::
+
         multigradocc_<base_feature>_<sigma1>-...[_<options>]
         multigradocc_<axis>_<base_feature>_<sigma1>-...[_<options>]
 

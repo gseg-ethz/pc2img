@@ -1,11 +1,10 @@
-"""Sphinx configuration for the pc2img documentation site (D-13, D-31, D-32).
+"""Sphinx configuration for the pc2img documentation site.
 
 Minimal by design: no intersphinx, no nitpicky mode, no type-alias map — pc2img's
 public surface does not need the cross-repo cross-referencing PCHandler's conf.py
 carries. ``release``/``version`` are derived from the installed distribution
 (``importlib.metadata``) rather than a literal string or a release-please
-``x-release-please-version`` marker, so there is nothing here for release-please
-to rewrite (see release-please-config.json's ``extra-files`` reconciliation, D-13).
+version marker comment, so there is nothing here for release-please to rewrite.
 """
 
 import importlib.metadata

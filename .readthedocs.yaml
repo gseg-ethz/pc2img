@@ -12,8 +12,8 @@ build:
     post_checkout:
       # setuptools_scm derives the version conf.py displays from git tags;
       # RTD's default checkout is shallow and would fall back to a tagless
-      # 0.0.0-ish version otherwise (D-13's key_links: conf.py -> installed
-      # distribution needs tags).
+      # version otherwise, since conf.py reads the installed distribution's
+      # version and that needs tags present.
       - git fetch --unshallow --tags || true
     install:
       # `doc` is a PEP 735 dependency-group entry (pyproject.toml
@@ -21,8 +21,8 @@ build:
       # RTD's usual `python.install: extra_requirements:` mechanism (which
       # PCHandler's .readthedocs.yaml uses) cannot see it at all — that
       # mechanism is extras-only. pip >= 25.1's `--group` install resolves a
-      # PEP 735 group and installs the project in one step (D-31). The first
-      # real RTD build (at the RTD-import checkpoint) is what proves this.
+      # PEP 735 group and installs the project in one step. The first real
+      # RTD build (at the RTD-import checkpoint) is what proves this.
       - python -m pip install --upgrade "pip>=25.1"
       - python -m pip install --group doc .
 
