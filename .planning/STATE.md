@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 06
-current_phase_name: publication-hardening-downstream-migration-record
-status: "Phase 05 shipped — PR #12"
-stopped_at: Phase 6 context gathered
-last_updated: "2026-09-28T12:30:43.137Z"
+current_phase_name: Publication Hardening & Downstream Migration Record
+status: executing
+stopped_at: Completed 06-01-PLAN.md
+last_updated: "2026-09-28T13:44:23.277Z"
 last_activity: 2026-09-28
-last_activity_desc: Phase 06 planning complete
-state_head: c92e4577a4200593b9b8a13d5430f6d11a0771dd
+last_activity_desc: Phase 06 execution started
+state_head: 813e002973ec0af727b49e33c55ae52c98014a90
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 52
-  completed_plans: 39
+  completed_plans: 40
 milestone_name: milestone
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 06 (publication-hardening-downstream-migration-record) — READY TO EXECUTE
-Plan: Not started
-Status: Phase 05 shipped — PR #12
-Last activity: 2026-09-28 — Phase 06 planning complete
+Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
+Plan: 2 of 13
+Status: Ready to execute
+Last activity: 2026-09-28 — Phase 06 execution started
 
 Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
 
@@ -102,6 +102,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 05 P17 | 11min | 2 tasks | 4 files |
 | Phase 05 P18 | 20min | 3 tasks | 4 files |
 | Phase 05 P19 | 50min | 3 tasks | 31 files |
+| Phase 06 P01 | 32min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -175,6 +176,8 @@ Recent decisions affecting current work:
 - [Phase 05]: WR-07 exception type stays AssertionError, single-sourced via a new _assert_image_shape helper -- no BC-NOTES entry opens.
 - [Phase 05]: OSError-mid-build residual and the held-reference hazard left unfixed, routed to the Phase-6 GSEGUtils carry-out list (05-19 to record).
 - [Phase 05]: Owner decision (2026-09-25, plan-phase session): IN-04 provenance-sweep class widened beyond review-ledger IDs to all planning vocabulary (requirement/design/decision codes, .planning/ paths, plan numbers) in both src/pc2img and tests/. — Keeps main clean of dangling provenance references while preserving all technical reasoning, restated in plain words.
+- [Phase 06]: Widened Task 2 scope to also fix ci.yml/pyproject.toml vocabulary hits and relocate the phase-2 audit doc, since Task 2's own full-suite verify runs the whole-tree gate (Rule 3 deviation)
+- [Phase 06]: Built the planning-vocabulary gate's .planning/ literal from concatenated string parts so the gate's own tracked source never self-matches its own scan
 
 ### Pending Todos
 
@@ -214,6 +217,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T09:52:30.307Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-publication-hardening-downstream-migration-record/06-CONTEXT.md
+Last session: 2026-09-28T13:44:23.114Z
+Stopped at: Completed 06-01-PLAN.md
+Resume file: None
