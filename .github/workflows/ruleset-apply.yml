@@ -232,7 +232,7 @@ jobs:
         with:
           app-id: ${{ secrets.RULESET_APP_ID }}
           private-key: ${{ secrets.RULESET_APP_PRIVATE_KEY }}
-          # THE one place in this phase where a write scope is the correct
+          # THE one place in these workflows where a write scope is the correct
           # answer rather than a concession: this job exists to rewrite branch
           # protection, and the update endpoint is gated on Administration
           # write. It is minted here, after the preflight has already passed,

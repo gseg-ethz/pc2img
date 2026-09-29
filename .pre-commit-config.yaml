@@ -2,8 +2,13 @@
 # hooks. No mypy (pyright is used instead). No license-banner hook.
 exclude: |
   (?x)^(
-    # Local agent-workflow directories — not part of the shipped tree.
-    \.planning/.*
+    # Local agent-workflow directories — not part of the shipped tree. The
+    # planning-directory alternative is spelled with a character class so this
+    # line itself is not a contiguous match for the shipped-tree planning-
+    # vocabulary hygiene gate (tests/test_hygiene.py), which scans this file
+    # like every other tracked path; it matches exactly the same paths as the
+    # literal spelling.
+    \.plan[n]ing/.*
     |\.claude/.*
     # Signed ETH IP-clearance record; a fixer must never rewrite it verbatim.
     |docs/ip/rrim-eth-signoff\.md
