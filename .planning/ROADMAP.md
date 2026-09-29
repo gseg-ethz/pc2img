@@ -224,9 +224,9 @@ Plans:
   1. The GSEG git-strategy template (`GIT-STRATEGY.md`: core + `release-pypi` components) is assembled per Procedure B; rulesets are active on `main` and `develop-gsd` with `bypass_actors: []`; the apply-time checklist is recorded with evidence; every deviation from the template is recorded in-repo.
   2. The package builds with real, non-placeholder metadata (README, `CITATION.cff`, project URLs, Read the Docs site) and a TestPyPI dry run publishes via OIDC trusted publishing with PEP 740 attestations.
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
-  4. A draft `MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
+  4. A draft `.planning/MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`; internal per D-33, stripped from `main`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 8/13 plans executed
+**Plans**: 8/18 plans executed (06-14..06-18 — review-round gap closure, planned 2026-09-29, pending; 06-09..06-13 re-waved behind them)
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -244,10 +244,21 @@ Plans:
 
 - [x] 06-07-PLAN.md — RULESETS.md + RELEASE.md adoption record with apply-time evidence; pre-promotion tree gate [CICD-02]
 
-**Waves 4–9** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
+**Wave 4** *(remote sequence start)*
 
 - [x] 06-08-PLAN.md — Retire v2.0.0a5 -> archive/v2.0.0a5, close PR #6; owner: Apps + RULESET_APP_*/CODECOV_TOKEN; phase PR into develop-gsd merged (merge commit) [CICD-02]
-- [ ] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, BREAKING CHANGE, Release-As 0.11.0), unpushed [CICD-02]
+
+**Gap closure — waves 5–9** *(review-round fixes before the first promotion — D-33/D-34/D-35; the fix diff gets its own review before re-merge)*
+
+- [ ] 06-14-PLAN.md — CR-01 archival describe glob narrowed + git-archive regression test; WR-05 ref guards on both publish workflows + guard test; WR-08 placeholder DOI removed [CICD-02]
+- [ ] 06-15-PLAN.md — D-33 migration record -> .planning/MIGRATION-v0.11.md; D-34 full adoption record -> .planning/CICD-ADOPTION-RECORD.md and RULESETS.md/RELEASE.md condensed (WR-10 back-merge after every promotion, IN-05 procedural wording); README projections (IN-10) [CICD-02, BC-01]
+- [ ] 06-16-PLAN.md — WR-03 project_raw docstring + contract tests; WR-04 pre-commit exemption removed; IN-13 vocabulary gate extended to prose phrases; IN-04 declined-component notes [CICD-02]
+- [ ] 06-17-PLAN.md — Full gate re-run recorded; CONTRIBUTING baseline (IN-10); blocking checkpoint: /gsd-code-review 06 + /code-review high over the fix diff, findings landed [CICD-02, BC-01]
+- [ ] 06-18-PLAN.md — Ten round-1 gaps resolved with evidence; phase PR into develop-gsd merged (merge commit) [CICD-02, BC-01]
+
+**Waves 10–14** *(remote sequence, one plan per wave, owner checkpoints at point of need — after the gap plans)*
+
+- [ ] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, self-contained BREAKING CHANGE summary per D-33a, Release-As 0.11.0), unpushed [CICD-02]
 - [ ] 06-10-PLAN.md — Go/no-go gate; push to main; release PR 0.11.0 opened (unmerged); bootstrap + apply protect-main, read back bypass_actors [] [CICD-02]
 - [ ] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
 - [ ] 06-12-PLAN.md — Owner: RTD import; RTD build verified live; testpypi environment; owner: TestPyPI trusted publisher [CICD-02]
