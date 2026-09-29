@@ -19,9 +19,6 @@ live read to a file with ``includes_parents=false`` first — a parent
 organization ruleset is not drift in a committed file and would be reported as
 one.
 
-(not part of this assembly: the config self-inspection and
-continuous-enforcement components were declined; see RULESETS.md)
-
 Exits 0 = every pair compared clean; exits 1 = at least one surviving difference
 or at least one unreadable payload. Every failure is accumulated and annotated
 before the single exit, so one run reports the whole set rather than the first
