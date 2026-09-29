@@ -17,6 +17,12 @@ name: Publish to PyPI
 # arbitrary project build code holds no publishing credential at all, and the
 # job that holds the credential runs nothing but a download and the publish
 # action.
+#
+# Ref-guarded in two steps: the first build step refuses a release whose ref
+# is not an X.Y.Z version tag, and the step right after checkout refuses a
+# tagged commit that is not reachable from main — a release cut from any
+# other ref would otherwise build and upload an sdist that still carries the
+# internal planning directories, permanently.
 
 "on":
   release:
@@ -29,10 +35,36 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Refuse a release that is not a version tag
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          if [ "${REF_TYPE}" != "tag" ] || ! echo "${REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::refusing to build: this release's ref is \`${REF_TYPE}:${REF_NAME}\`, not an X.Y.Z version tag. A branch, a floating major/minor tag or a pre-release archive tag is not a release, and an upload cannot be withdrawn."
+            exit 1
+          fi
+          echo "Release ref \`${REF_NAME}\` is an X.Y.Z version tag — proceeding."
+
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
         with:
           fetch-depth: 0
           fetch-tags: true
+
+      - name: Refuse a release commit that is not on the release branch
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          git fetch --no-tags --quiet origin main
+          if ! git merge-base --is-ancestor "${HEAD_SHA}" FETCH_HEAD; then
+            echo "::error::refusing to build: the tagged commit \`${HEAD_SHA}\` is not reachable from \`origin/main\`, so it was not produced by the protected release flow."
+            exit 1
+          fi
+          echo "Tagged commit \`${HEAD_SHA}\` is reachable from \`origin/main\` — proceeding."
 
       - uses: ./.github/actions/setup-python-deps
 

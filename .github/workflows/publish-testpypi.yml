@@ -10,6 +10,10 @@ name: Publish to TestPyPI
 #
 # Dispatch-only on purpose: this is a rehearsal of the publishing pipeline, run
 # deliberately, never as an automatic consequence of a release.
+#
+# Dispatch-only AND ref-guarded: the first build step below refuses any
+# dispatch ref but the release branch, so a rehearsal can never build an
+# sdist from a ref that still carries the internal planning directories.
 
 "on":
   workflow_dispatch:
@@ -21,6 +25,19 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Refuse a dispatch from any ref but the release branch
+        shell: bash
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+        run: |
+          set -uo pipefail
+          RELEASE_REF='refs/heads/main'
+          if [ "${DISPATCH_REF}" != "${RELEASE_REF}" ]; then
+            echo "::error::refusing to build: this rehearsal was dispatched from \`${DISPATCH_REF}\`, not \`${RELEASE_REF}\`. Only the release branch's filtered tree may be uploaded — every other ref still carries the internal planning directories, and an upload cannot be withdrawn."
+            exit 1
+          fi
+          echo "Dispatched from \`${DISPATCH_REF}\`, the release branch — proceeding."
+
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
         with:
           fetch-depth: 0
