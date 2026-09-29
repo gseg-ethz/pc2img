@@ -306,7 +306,7 @@ def test_orthographic_project_raw_ix_equivalence(synthetic_pcd, plane):
 
 
 # --------------------------------------------------------------------------- #
-# WR-03: project_raw contract pinning -- kept-point (M, 2) shape, mask.sum(),  #
+# project_raw contract pinning -- kept-point (M, 2) shape, mask.sum(),        #
 # and the FoV/ROI-else-kept-extent normalization frame                        #
 # --------------------------------------------------------------------------- #
 def test_project_raw_returns_kept_points_and_fov_frame_spherical(synthetic_pcd):
