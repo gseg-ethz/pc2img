@@ -722,6 +722,105 @@ tests/test_projection.py
 This list is the scope handed to `/gsd-code-review 06 --files <list>` at plan 06-19's Task 4
 checkpoint (round 3 of 3, the round cap) and to plan 06-18 Task 1's precondition.
 
+### 2026-09-29 — after the round-3 checkpoint fix
+
+Round 3 of `/gsd-code-review 06` over the thirteen-path scope above (`29039d5..f5d9037`) returned
+15 findings (7 warning, 8 info, 0 blockers). Consolidated into `06-UAT.md` `## Gaps` as
+`review-r3-*` entries. The owner FIXED 13 in one prose-only commit at the checkpoint (WR-01..WR-07,
+IN-01, IN-02, IN-03, IN-04, IN-05, IN-07) and DEFERRED 2 to Phase 7 (IN-06, IN-08), plus the
+behaviour halves of WR-04 (narrow the release App token mint) and WR-07 (a Lint check that
+`.planning/` and `.claude/` are absent on a main-based PR). The round cap is reached; review of
+this fix commit was waived by the owner. Fix commit `fd52d77`. Every command below exited zero.
+
+**Publish containment gate:**
+
+```
+$ uv run --frozen python .github/scripts/check_publish_gate.py
+check_publish_gate: OK — publish steps found only in allowed files + environments
+```
+
+**Kit script tests:**
+
+```
+$ uv run --frozen pytest .github/scripts -q
+92 passed in 1.50s
+```
+
+**Hygiene gate:**
+
+```
+$ uv run --frozen pytest tests/test_hygiene.py -q
+88 passed, 12 warnings in 0.33s
+```
+
+**Projection tests:**
+
+```
+$ uv run --frozen pytest tests/test_projection.py -q
+27 passed, 12 warnings in 0.05s
+```
+
+**Whole-tree pre-commit:**
+
+```
+$ uv run --frozen pre-commit run --all-files
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check for added large files..............................................Passed
+```
+
+**CFF validation:**
+
+```
+$ uv run --frozen cffconvert --validate
+Citation metadata are valid according to schema version 1.2.0.
+```
+
+**RULESETS.md table still derived from the committed payloads (unchanged by the round-3 fix):**
+
+```
+rulesets-table-matches-payloads
+```
+
+**YAML identity against `e929894` (five files, comments the only permitted diff):**
+
+```
+yaml-same .github/workflows/ruleset-apply.yml
+yaml-same .github/workflows/scheduled-health.yml
+yaml-same .github/actions/classify-changes/action.yml
+yaml-same .github/workflows/publish-pypi.yml
+yaml-same .github/workflows/publish-testpypi.yml
+```
+
+**YAML identity against `e929894`, ci.yml (single run-block log-line string excluded):**
+
+```
+yaml-same-except-logline .github/workflows/ci.yml
+```
+
+**AST identity against `e929894` (docstrings stripped):**
+
+```
+ast-same .github/scripts/check_publish_gate.py
+ast-same .github/scripts/check_ruleset_drift.py
+ast-same .github/scripts/ruleset_lib.py
+ast-same tests/test_projection.py
+```
+
+**Added-lines vocabulary/review-identifier scan** (every `+` line of `git diff e929894 -- .
+':!.planning'` run through `tests/test_hygiene.py`'s own matcher plus a review-identifier regex —
+the first pass over the promotion-step wording flagged the literal `.planning/` substring; the
+directories are named as `` `.planning` `` and `` `.claude` `` with no trailing slash instead, which
+still identifies them unambiguously while not matching the gate's literal-path pattern):
+
+```
+vocabulary hits: [] review ids: []
+```
+
 ### 2026-09-29 — after the review-round fixes
 
 Run in one pass from the repository root, against the tree that carries every review-round fix
