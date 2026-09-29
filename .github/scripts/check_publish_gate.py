@@ -121,10 +121,9 @@ def collect_violations(paths: list[pathlib.Path]) -> list[str]:
     violations: list[str] = []
     for wf_path in paths:
         try:
-            # Explicit utf-8, NOT the locale encoding: two sibling parsers
-            # (this one and check_ci_config.load_workflows) that disagree
-            # about one file's bytes can reach two different verdicts on
-            # identical input.
+            # Explicit utf-8, NOT the locale encoding: a parser that
+            # disagreed with this one about one file's bytes could reach a
+            # different verdict on identical input.
             with wf_path.open(encoding="utf-8") as f:
                 wf = yaml.safe_load(f)
         except (OSError, ValueError, yaml.YAMLError) as error:

@@ -3,10 +3,10 @@
 """Shared primitives for the ruleset drift check, the CI self-test and the apply preflight.
 
 A pure library: no ``main``, no argv parsing, no side effects at import. Importers
-are ``check_ruleset_drift.py`` (the read path), ``check_ci_config.py`` (the CI
-self-test) and ``preflight_ruleset_apply.py`` (the write path), all of which live
-in this same directory, so a plain ``import ruleset_lib`` resolves through the
-script directory Python prepends to ``sys.path``.
+are ``check_ruleset_drift.py`` (the read path) and ``preflight_ruleset_apply.py``
+(the write path), both of which live in this same directory, so a plain
+``import ruleset_lib`` resolves through the script directory Python prepends to
+``sys.path``.
 
 The comparison contract is enumerated in full in :func:`normalize`. Every field
 the comparison drops, re-keys or sorts is named there **and** recorded in the
@@ -15,11 +15,12 @@ is the failure mode the design exists to prevent.
 
 Deliberately NOT included: a read-only argv guard rejecting write-capable ``gh``
 flags. Such a guard is correct in a purely read-only audit tool, but this library
-is shared by a read-only drift job and a write-capable apply job, and a library
-that forbids write verbs cannot serve the second. Read-only enforcement for the
-drift job lives at the job level instead, in the token mint scope, which is the
-only place it can actually bind. Do not add such a guard here: it would break the
-apply path while adding nothing the token scope does not already give.
+is shared by the read-only drift comparison in ``check_ruleset_drift.py`` and the
+write-capable apply preflight, and a library that forbids write verbs cannot
+serve the second. Read-only enforcement for the drift comparison lives at the
+job level instead, in the token mint scope, which is the only place it can
+actually bind. Do not add such a guard here: it would break the apply path
+while adding nothing the token scope does not already give.
 """
 
 import json

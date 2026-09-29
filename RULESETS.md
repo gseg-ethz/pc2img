@@ -23,7 +23,14 @@ Run the same checks locally: see CONTRIBUTING.md.
 - **Renaming a CI job blocks all merges.** The check names above are the job
   `name:` fields in `.github/workflows/ci.yml`; update `.github/rulesets/*.json`
   in the same commit.
-- **Changing a rule:** edit `.github/rulesets/main.json` or `develop.json`, then
-  run the `ruleset-apply` workflow from `main`. Never edit rulesets in the web UI.
+- **Changing a rule:** edit `.github/rulesets/main.json` or `develop.json` and
+  get the change onto `main` (the workflow reads payloads from `main` only),
+  then run the `ruleset-apply` workflow from `main`. It updates an existing
+  ruleset only; creating one is a single `gh api --method POST
+  repos/gseg-ethz/pc2img/rulesets --input <payload>`. Never edit rulesets in
+  the web UI.
 - **Inspect a live ruleset:** `gh api repos/gseg-ethz/pc2img/rulesets/<id>`
-  (the list endpoint omits the bypass list).
+  with a token that has repository administration access. Without one, the
+  bypass-actor list is missing from the response entirely; only an explicit
+  empty array (`[]`) confirms there really is no bypass. The list endpoint
+  never returns it at all.

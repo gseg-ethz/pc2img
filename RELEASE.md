@@ -11,8 +11,7 @@ Owner `gseg-ethz`, repository `pc2img`:
 | TestPyPI | `publish-testpypi.yml` | `testpypi`  |
 
 **Do not rename** the repository, either workflow file or either environment —
-each is part of the publisher claim on the index. The PyPI project name is
-permanent once published.
+each is part of the publisher claim on the index. The PyPI project name is permanent once published.
 
 ## Credentials
 
@@ -24,11 +23,13 @@ permanent once published.
 ## Versions
 
 On `0.x`: a breaking change bumps the minor version, a feature the patch.
-Force a minor bump with a `Release-As:` footer.
+Force a specific version with a `Release-As: 0.12.0` footer on the landing commit.
 
 ## Releasing
 
-1. Promote `develop-gsd` to `main` (squashed, internal directories stripped).
+1. Promote `develop-gsd` to `main`: open a pull request from a branch cut
+   from `main` carrying `develop-gsd`'s tree minus the `.planning` and
+   `.claude` directories (never from `develop-gsd` itself), and squash-merge it.
 2. Merge `main` back into `develop-gsd` with "Create a merge commit" — never
    squash or rebase. A nightly check opens an issue if this is missed.
 3. release-please opens a release pull request on `main`.
@@ -37,15 +38,15 @@ Force a minor bump with a `Release-As:` footer.
 
 ## Ref guards
 
-The publish workflows refuse the wrong ref: TestPyPI only from `main`, PyPI only
-from an `X.Y.Z` tag on `main`. These guards protect only a run started from a commit that carries them — older commits hold unguarded copies.
+The publish workflows refuse the wrong ref: TestPyPI only from `main`, PyPI
+only from a `vX.Y.Z` tag on `main` (no pre-release suffix). These guards
+protect only a run started from a commit that carries them — older commits hold unguarded copies.
 **Only ever create a release whose tag is on `main`.**
 No environment rule or package-content check backs this up.
 
 ## Dry run
 
-Actions → dispatch "Publish to TestPyPI" from `main`, then check
-<https://test.pypi.org/project/pc2img/>.
+Actions → dispatch "Publish to TestPyPI" from `main`, then check <https://test.pypi.org/project/pc2img/>.
 
 ## Rollback
 

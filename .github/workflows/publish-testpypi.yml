@@ -70,7 +70,7 @@ jobs:
       url: https://test.pypi.org/p/pc2img
     permissions:
       id-token: write      # OIDC token for the test index's trusted publisher
-      # attestations: write — recorded deviation from the template default
+      # attestations: write — kept enabled here, unlike the template default
       # (which disables attestations on the test index as inconsistent):
       # pc2img's TestPyPI dry run is meant to exercise the full OIDC +
       # PEP 740 attestation path end to end before the real PyPI publish,
@@ -87,7 +87,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
         with:
           repository-url: https://test.pypi.org/legacy/
-          # attestations enabled on purpose (recorded deviation): the
+          # attestations enabled on purpose, unlike the template default: the
           # template disables this on the test index by default as
           # "inconsistent", but the TestPyPI dry run's whole point here is
           # to prove the PEP 740 attestation path works before the real

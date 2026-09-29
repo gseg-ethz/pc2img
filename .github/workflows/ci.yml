@@ -18,8 +18,10 @@ name: CI
 #     on a check that will never arrive, with no override available under
 #     `bypass_actors: []`. Conditionality belongs on STEPS. Assertions A1 and A5
 #     in `.github/scripts/check_ci_config.py` fail the build if either returns,
-#     when the config self-inspection component is applied; otherwise keep this by hand: never put a job-level `if:` or a `paths:`
-#     filter on a required-context job when editing this file.
+#     when the config self-inspection component is applied; otherwise keep
+#     this by hand: never add a job-level `if:` to any job here, and never
+#     add a `paths:`, `paths-ignore:` or `branches:` key under
+#     `on.pull_request`.
 #   - NO required-context job may depend on another job. A `needs:` edge
 #     between two required contexts is a pure fail-fast convenience, never a data
 #     dependency, and dropping it removes the skip-propagation path structurally
@@ -39,7 +41,8 @@ name: CI
 #   - The lint job holds a READ content scope only. Assertion A7 fails the build
 #     the moment a write scope is added back, when the config self-inspection
 #     component is applied; otherwise keep this by hand: leave the lint job's
-#     `permissions:` at `contents: read` whenever you edit it.
+#     `permissions:` read-only (`contents: read`, `pull-requests: read`)
+#     whenever you edit it.
 #   - ALL THREE required-context jobs carry the release-artifact fast path. Each
 #     resolves the `classify-changes` composite immediately after its OWN
 #     checkout and gates EVERY subsequent step on the result, so the cost
@@ -257,8 +260,8 @@ jobs:
       - name: Run tests
         if: steps.classify.outputs.release-artifacts-only != 'true'
         # --cov-branch --cov-fail-under=55: coverage floor carried forward
-        # from the previous CI workflow as a recorded addition to the
-        # upstream template — the template's own Tests job has no coverage
+        # from the previous CI workflow, added on top of the upstream
+        # template — the template's own Tests job has no coverage
         # gate. Branch coverage matches pyproject.toml's [tool.coverage.run]
         # config.
         run: pytest -m "not benchmark" --cov=pc2img --cov-report=xml:coverage-unit.xml --cov-branch --cov-fail-under=55

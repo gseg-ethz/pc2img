@@ -9,15 +9,12 @@ Invocation, one or more positional arguments, each shaped
         "protect-main:/tmp/live-main.json:.github/rulesets/main.json" \\
         "protect-develop-gsd:/tmp/live-develop.json:.github/rulesets/develop.json"
 
-Called from two workflows in this kit. The post-apply read-back in
-``ruleset-apply.yml`` — this component's own workflow — runs it once per apply:
-an apply that returns 200 but does not verify clean is a FAILURE, and this is
-also what makes a second identical dispatch provably a no-op. The nightly job in
-the continuous-enforcement component's ``ruleset-drift.yml`` runs it on a
-schedule, watching for drift introduced between applies. Both callers write each
-live read to a file with ``includes_parents=false`` first — a parent
-organization ruleset is not drift in a committed file and would be reported as
-one.
+Called from ``ruleset-apply.yml``'s post-apply read-back — the only caller in
+this repository. It runs once per apply: an apply that returns 200 but does
+not verify clean is a FAILURE, and this is also what makes a second identical
+dispatch provably a no-op. It writes the live read to a file with
+``includes_parents=false`` first — a parent organization ruleset is not drift
+in a committed file and would be reported as one.
 
 Exits 0 = every pair compared clean; exits 1 = at least one surviving difference
 or at least one unreadable payload. Every failure is accumulated and annotated
