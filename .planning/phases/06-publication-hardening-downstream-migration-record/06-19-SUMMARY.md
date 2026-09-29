@@ -241,6 +241,13 @@ All 13 fixed findings are flipped to `resolved` in `06-UAT.md` with commit evide
 - No blockers for `06-09` onward: the promotion tree (built from `origin/develop-gsd` after 06-18's merge) will carry every round-2 and round-3 fix in this plan.
 - Two Phase-7 deferrals recorded (IN-06, IN-08 content; WR-04 and WR-07 behaviour halves) — already present in `06-UAT.md`'s `deferred_to` fields, no separate action needed here.
 
+## Self-Check: PASSED
+
+All key files (`RELEASE.md`, `RULESETS.md`, `CITATION.cff`, the seven touched `.github/` files,
+`.planning/CICD-ADOPTION-RECORD.md`, this SUMMARY) confirmed present on disk; all fourteen commits
+(`5691315`, `f14c97a`, `975a474`, `4503b44`, `3e01a1c`, `e2a3f5a`, `c3b44d9`, `f5d9037`, `45ebca7`,
+`fd52d77`, `8662010`, `79e27f2`, `3e701ea`, `3bd88a9`) confirmed present in `git log --oneline --all`.
+
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
 *Completed: 2026-09-29*
