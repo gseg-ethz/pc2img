@@ -32,7 +32,7 @@ Non-pytest gates used in this phase (see 06-RESEARCH.md § Validation Architectu
 - Token-residue: `! grep -rn '<[A-Z_][A-Z_]*>' .github/ release-please-config.json .release-please-manifest.json`
 - Planning-vocabulary gate: the sweep regex over all tracked paths minus `.planning/`, `.claude/` and the D-23 exemption
 - Build: `uv build` + `twine check dist/*`
-- Migration record: extract and run the `## Verifier (inline)` block of `MIGRATION-v0.11.md`
+- Migration record: extract and run the `## Verifier (inline)` block of `.planning/MIGRATION-v0.11.md`
 
 ---
 
