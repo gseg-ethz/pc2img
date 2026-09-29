@@ -1,508 +1,330 @@
 ---
 phase: 06-publication-hardening-downstream-migration-record
-reviewed: 2026-09-28T16:07:18Z
+reviewed: 2026-09-29T11:01:17Z
 depth: deep
-files_reviewed: 48
+files_reviewed: 21
 files_reviewed_list:
-  - .gitattributes
+  - .git_archival.txt
   - .github/actions/classify-changes/action.yml
-  - .github/actions/setup-python-deps/action.yml
-  - .github/rulesets/develop.json
-  - .github/rulesets/main.json
   - .github/scripts/check_publish_gate.py
   - .github/scripts/check_ruleset_drift.py
-  - .github/scripts/preflight_ruleset_apply.py
   - .github/scripts/ruleset_lib.py
-  - .github/scripts/test_check_publish_gate.py
-  - .github/scripts/test_check_ruleset_drift.py
-  - .github/scripts/test_classify_changes.py
-  - .github/scripts/test_preflight_ruleset_apply.py
-  - .github/scripts/test_ruleset_lib.py
+  - .github/scripts/test_publish_ref_guard.py
   - .github/workflows/ci.yml
   - .github/workflows/publish-pypi.yml
   - .github/workflows/publish-testpypi.yml
-  - .github/workflows/release-please.yml
   - .github/workflows/ruleset-apply.yml
   - .github/workflows/scheduled-health.yml
-  - .gitignore
   - .pre-commit-config.yaml
-  - .readthedocs.yaml
   - CITATION.cff
   - CONTRIBUTING.md
-  - MIGRATION-v0.11.md
   - README.rst
   - RELEASE.md
   - RULESETS.md
-  - docs/source/api.rst
-  - docs/source/conf.py
-  - docs/source/index.rst
-  - pyproject.toml
-  - release-please-config.json
-  - scripts/smoke_pipeline.py
-  - setup.py
-  - src/pc2img/features/derivative_features.py
-  - src/pc2img/image_cache/disk_backed_image_store.py
   - src/pc2img/strategies/projection.py
-  - src/pc2img/util.py
-  - tests/test_disk_backed_image_data.py
+  - tests/test_git_archival.py
   - tests/test_hygiene.py
-  - tests/test_image_store.py
-  - tests/test_point_cloud_image_generator.py
-  - tests/test_rrim_features.py
-  - tests/test_tiled_generator.py
-  - tests/test_util.py
-  - uv.lock
+  - tests/test_projection.py
 findings:
-  critical: 1
-  warning: 10
-  info: 13
-  total: 24
+  critical: 0
+  warning: 5
+  info: 6
+  total: 11
 status: issues_found
 ---
 
-# Phase 6: Code Review Report
+# Phase 6: Code Review Report (round 2: gap-closure fixes 06-14..06-17)
 
-**Reviewed:** 2026-09-28T16:07:18Z
+**Reviewed:** 2026-09-29T11:01:17Z
 **Depth:** deep
-**Files Reviewed:** 48
+**Files Reviewed:** 21
 **Status:** issues_found
 
 ## Summary
 
-Scope: the whole diff `e9eb3c4..HEAD` outside `.planning/`. That is the assembled `.github/`
-kit (workflows, composites, rulesets, gate scripts and their tests), the publication metadata
-and docs, the migration record, the docstring-only `src/` edits, and the test and lock changes.
+Scope: the 21 shipped files changed by the round-1 gap-closure plans (`2ec34fc..HEAD`),
+reviewed as whole files. The round-1 findings the owner deferred to Phase 7 (WR-01/02/06/07/09,
+IN-01/02/03/06/07/08/09/11/12) are not raised again here. Each fix-now closure was checked by
+running code.
 
-Every claimed defect below was reproduced by running code, not just by reading it. Things that
-were checked and hold up:
-- `pytest .github/scripts` passes (83 tests).
-- The main suite passes: 278 passed, 62.27% branch coverage against a floor of 55.
-- `sphinx-build -W` is clean.
-- `uv lock --check` is clean.
-- `ruff check` over the tracked `*.py` files is clean.
-- The README quickstart and `scripts/smoke_pipeline.py` both run.
-- `uv build` succeeds.
-- The four `src/` files are **AST-identical to the base modulo docstrings**, so the docstring
-  edits did not change runtime behaviour.
-- All pinned action SHAs resolve to the tags their comments name, and the last phase PR's CI run
-  green-lit all three required contexts.
+**Verified sound (reproduced, not read):**
+- **CR-01 is fixed end to end.** I cloned the repo, put `v0.11.0`, `v0.11` and `v0` on HEAD,
+  ran `git archive`, and ran `setuptools_scm` over the extracted tree. It gives `0.11.0`. One
+  commit later it gives `describe-name: v0.11.0-1-g…`, which resolves to `0.11.0.post1`. The
+  archival glob is byte-identical to `git_describe_command`'s glob. No `release-*` tags exist,
+  so dropping that match loses nothing.
+- **WR-03 is fixed.** `SphericalProjection` (with and without a FoV) and `OrthographicProjection`
+  (with and without an ROI) return what the new `project_raw` docstring says: `(M, 2)` coords,
+  a bool mask of length N, and a FoV/ROI frame otherwise the kept extent. `pcd.fov` is
+  `FoV.from_angles` over the data, so "kept-point extent" holds for spherical too. The module
+  AST, with docstrings stripped, is identical to the base.
+- **WR-04 is fixed.** The compiled pre-commit `exclude` regex makes identical decisions under
+  the `\.plan[n]ing` and literal spellings, across 10 probe paths including near-misses.
+- **The other changes are inert.** The comment-only edits to `ci.yml`, `ruleset-apply.yml`,
+  `scheduled-health.yml` and `classify-changes/action.yml` leave each YAML object identical to
+  the base, and the three kit `.py` files are AST-identical with docstrings stripped.
+- **Tooling is green, but that only shows the existing checks pass:**
+  - `actionlint` 1.7.12 with shellcheck is clean on all workflows.
+  - `check_publish_gate.py` passes.
+  - `cffconvert --validate` passes.
+  - `readme_renderer` renders `README.rst`.
+  - ruff check and format are clean.
+  - The suite gives 286 passed at 62% branch coverage, which matches `CONTRIBUTING.md`.
+- **WR-10's rationale is now correct.** The merge base is `f946268`, and `main` carries only
+  `69224a9` and `ade40f8`. No commit reachable from `origin/main` has ever carried the internal
+  directories, so the ancestry guard's premise holds today.
 
-Key concerns:
-
-1. **Release chain (blocker).** The release workflow still pushes the floating `vX` / `vX.Y` tags
-   onto the release commit. `.git_archival.txt` matches `v*`, so every GitHub source archive of
-   a release (Zenodo, tarball installs, conda-forge-style recipes) resolves to `v0` / `v0.11`.
-   setuptools_scm then refuses to build from it.
-2. **The fast-path whitespace fix is incomplete.** A path with an embedded newline still yields
-   `release-artifacts-only=true`.
-3. **The migration record's verifier checks less than it claims.** Tier 1 checks zero symbols,
-   and the on-disk-format probe cannot tell a pass from a fail.
-4. **A new public docstring documents the wrong contract** for the `ProjectionStrategy.project_raw`
-   extension point.
-5. **The orchestrator's hypothesis about the `.pre-commit-config.yaml` hygiene exemption is
-   confirmed.** A character class removes the only hit, so the file-wide exemption is unnecessary.
-6. **Several publish, gate and preflight guarantees are narrower than stated.** Publishing can
-   start from any branch or tag, the sdist then carries `.planning/` and `.claude/`, the publish
-   gate misses `uv publish` and composites, and the preflight accepts contexts that no pull
-   request produces.
-
-Live state observed read-only, for context:
-- `gh api repos/gseg-ethz/pc2img/rulesets` returns `[]`, so no rulesets exist yet. `RULESETS.md`
-  says they were created.
-- No GitHub environments exist.
-- The repository is public.
-- `origin/main` is not an ancestor of `origin/develop-gsd`.
+**Key concerns:**
+1. **The WR-05 ref guards only protect commits that contain them.** `origin/develop-gsd`, the
+   pushed phase branch and 18 historical commits still carry unguarded publish workflows. No
+   ref-independent control, such as environment deployment policies, was added. RELEASE.md and
+   the workflow headers overstate the guarantee.
+2. **Two parallel gap plans undid each other's work (IN-04).** Plan 06-15 condensed
+   `RULESETS.md` and removed the declined-components record. Seventeen minutes later, plan 06-16
+   added seven "see RULESETS.md" pointers to that record.
+3. **A gap-closure fix put a review-finding ID (`WR-03`) into a shipped test file.** The
+   hygiene gate, which was extended in the same round, cannot see the `CR-`/`WR-`/`IN-`
+   family at all.
+4. **One new gate-bypass finding in a file in scope.** The release-artifact fast path ignores
+   `previous_filename`, so a rename *into* an allowlisted name hides a deletion. This is the
+   same class as the deferred WR-01.
+5. **The RULESETS.md verification recipe can never succeed as written.** The list endpoint
+   never returns `bypass_actors`.
 
 ## Narrative Findings (AI reviewer)
 
-## Critical Issues
-
-### CR-01: Floating `vX`/`vX.Y` tags make every GitHub release source archive unbuildable
-
-**File:** `.github/workflows/release-please.yml:65-108` (interacts with `.git_archival.txt:3` and `.gitattributes:1`)
-**Issue:** On each release the "Tag major and minor versions" step creates annotated `v0` and
-`v0.11` tags on the **same commit** as `v0.11.0`. `.git_archival.txt` uses
-`describe-name:$Format:%(describe:tags=true,match=v*,match=release-*)$`, and `v*` matches the
-floating tags. Git then describes the release commit as `v0` (or `v0.11`), not `v0.11.0`.
-
-Reproduced two ways:
-- In a scratch repo with the three tags on one commit, `git log -1 --format='%(describe:tags=true,match=v*,...)'` printed `v0`.
-- `python -m setuptools_scm` over an archival file with this repo's `[tool.setuptools_scm]` config:
-  - `describe-name: v0` gives `ValueError: Can't parse version from tag 'v0'`.
-  - `describe-name: v0.11` gives the same error.
-  - Only `v0.11.0` gives `0.11.0`.
-
-So from the first release onward, the GitHub "Source code" tarball of every release fails to
-build. That covers anything that archives or builds from it: Zenodo (the archive `CITATION.cff`
-points to), `pip install https://github.com/.../archive/refs/tags/v0.11.0.tar.gz`, and distro or
-conda recipes. A pushed tag's archive cannot be corrected afterwards.
-
-This is already true of `v0.10.4`: `v0` and `v0.10` point at its commit. The phase rewrote this
-step on purpose and carries the behaviour into the first PyPI release. For a Python library the
-floating tags are a GitHub-Actions-repository convention with no consumer here, because
-`git_describe_command` already excludes them.
-**Fix:** Do either of the following. The first is preferred because it also removes the moving
-tag refs that `RULESETS.md` leaves unprotected.
-1. Delete the "Tag major and minor versions" step.
-2. Tighten the archival match to the same X.Y.Z glob `pyproject.toml` already uses. This was
-   verified to return `v0.11.0` in the scratch repo:
-```text
-# .git_archival.txt
-describe-name:$Format:%(describe:tags=true,match=v[0-9]*.[0-9]*.[0-9]*)$
-```
-
 ## Warnings
 
-### WR-01: Release-artifact fast path still green-lights a path containing a newline
+### WR-01: Publish ref guards live inside the workflow they guard, so every existing unguarded copy stays exploitable, and nothing ref-independent was added
+
+**File:** `.github/workflows/publish-pypi.yml:21-25, 37-66`, `.github/workflows/publish-testpypi.yml:14-16, 28-39`, `RELEASE.md:66-72`
+**Issue:** GitHub runs a `release` workflow from the file at the tagged commit (`GITHUB_SHA`),
+and a `workflow_dispatch` workflow from the file on the dispatched ref. Both new guards are
+steps inside those files, so they protect only commits that already contain them. Measured:
+- `git show origin/develop-gsd:.github/workflows/publish-testpypi.yml | grep -c "Refuse a dispatch"`
+  gives `0`, and the same is true of `publish-pypi.yml`.
+- The pushed `origin/gsd/phase-06-…` branch is also unguarded.
+- 18 commits between `e13ca59` (the workflows added) and `b6d9d9f` (the guards added) carry
+  `publish-pypi.yml` with no guard.
+
+Two consequences follow:
+- **PyPI.** A GitHub release whose tag points at any of those commits runs the old workflow,
+  builds an sdist containing `.planning/` and `.claude/` (confirmed in round 1), and uploads it
+  permanently. The trigger can be a hand-made release with the wrong target, or a mis-pointed
+  tag. The PyPI trusted publisher matches repository + workflow filename + environment, not a
+  ref.
+- **TestPyPI.** Once `main` carries the workflow (so dispatch is enabled), `gh workflow run
+  publish-testpypi.yml --ref <stale-branch>` runs that branch's unguarded copy.
+
+Tag protection is explicitly deferred (`RULESETS.md:147`), so nothing restricts who creates
+`v*` tags or where. Round 1's fix recommendation #2 (environment deployment policies) and #3
+(sdist content pruning) were neither implemented nor recorded as declined. The prose also
+claims more than the mechanism gives:
+- "a rehearsal can never build an sdist from a ref that still carries the internal planning
+  directories" (`publish-testpypi.yml:14-16`).
+- "Both fail before anything is built, since any other ref could still carry internal-only
+  content" (`RELEASE.md:71-72`).
+
+**Fix:** Add controls that do not depend on which copy of the file runs, and scope the prose to
+what the in-file guards actually cover:
+1. In repository settings, restrict the `testpypi` environment's deployment branches to
+   `main`, and restrict `pypi` to tags matching `v[0-9]*.[0-9]*.[0-9]*` **plus** a required
+   reviewer (self-review is permitted for environments, so a solo owner is fine). A tag-name
+   policy alone would not stop a correctly-named tag on a `develop-gsd` commit. Record both in
+   `RELEASE.md` under "Ref guards".
+2. Assert on the sdist's content, which is the property that actually matters, before upload
+   in both build jobs:
+```yaml
+      - name: Refuse an sdist carrying internal-only directories
+        run: |
+          if tar -tzf dist/*.tar.gz | grep -Eq '^[^/]+/\.(planning|claude)/'; then
+            echo "::error::sdist contains internal-only directories"; exit 1
+          fi
+```
+3. Reword `publish-testpypi.yml:14-16` and `RELEASE.md:71-72` to "refuses … on any commit
+   that carries this guard". Delete or rebase the stale remote phase branch after merge.
+
+### WR-02: Every "see RULESETS.md" pointer added for the declined components dangles; the condensation removed what they point to
+
+**File:** `.github/actions/classify-changes/action.yml:23-24`, `.github/scripts/check_publish_gate.py:128-129`, `.github/scripts/check_ruleset_drift.py:22-23`, `.github/scripts/ruleset_lib.py:11-12`, `.github/workflows/ci.yml:23-24, 190`, `.github/workflows/ruleset-apply.yml:22-23, 237-243`, `.github/workflows/scheduled-health.yml:17-18`, `RULESETS.md` (whole file)
+**Issue:** Commit `d9e86d3` (IN-04, 10:31) added "(not part of this assembly: the config
+self-inspection and continuous-enforcement components were declined; see RULESETS.md)" in
+seven files. Commit `d179850` (plan 06-15, 10:14) had already condensed `RULESETS.md` and moved
+the "Components: taken and declined" section and the "Apply-time checklist" into
+`.planning/CICD-ADOPTION-RECORD.md`, which is stripped from `main`.
+
+`grep -niE "declin|self-inspection|continuous|check_ci_config|integrity|assert_no_skip|ruleset-drift" RULESETS.md`
+returns nothing. On the public branch, every pointer therefore leads to a document that
+never mentions the components.
+
+The same applies to other references:
+- `ci.yml:22, 30, 43-44` still cite "an apply-time checklist item in the strategy document".
+- The Lint job's runtime log line (`ci.yml:190`) tells readers "the apply-time checklist in
+  the strategy document governs this repository". Neither document ships.
+- `ruleset-apply.yml:241-243` still describes "The nightly drift job", which does not exist.
+
+The IN-04 closure, "a one-line note … see RULESETS.md", is therefore not true on the tree that
+gets promoted.
+**Fix:** Add a short "Declined components" section to `RULESETS.md` (3–4 lines naming
+`check_ci_config.py` / `assert_no_skip.py` / `integrity.yml` / `ruleset-drift.yml` and the
+one-sentence cost of declining). Otherwise, point the notes at a shipped location. Reword
+`ci.yml:190` and the "strategy document" / "apply-time checklist" comments to reference a
+shipped document, or drop them. Delete the "nightly drift job" sentence in `ruleset-apply.yml`.
+
+### WR-03: A gap-closure fix shipped a review-finding ID, and the extended hygiene gate cannot see that ID family
+
+**File:** `tests/test_projection.py:309`, `tests/test_hygiene.py:167-180`
+**Issue:** Commit `158a569` (the WR-03 fix) added the section header `# WR-03: project_raw
+contract pinning …` to a shipped test file. The gate's `_CODE_PATTERN` covers
+`BUG|DSN|QUAL|TEST|DEP|CICD|BC|PERF|BRANCH-N`, `M-/D-NN`, `T-NN-NN`, `SCn` and review-ledger ids.
+It has no alternative for code-review finding IDs.
+
+Reproduced with the gate's own matcher:
+- `_matches('# WR-03: project_raw contract pinning')` gives `[]`.
+- `_matches('CR-01')` gives `[]`.
+- `_matches('IN-13')` gives `[]`.
+
+This is exactly the vocabulary that review → gap-closure rounds generate. Round 2 of this
+same workflow extended the gate (IN-13) and still missed it. The gate is green on a tree that
+carries the leak.
+**Fix:** Delete the ID from `tests/test_projection.py:309`, for example "project_raw contract
+pinning -- kept-point (M, 2) shape …". Add a review-finding family to `_CODE_PATTERN`, spelled
+so the gate's own source does not self-match. Extend the positive self-check with
+`"WR" + "-03"`, `"CR" + "-01"` and `"IN" + "-13"`:
+```python
+r"\b(?:CR|WR|IN|BL)-[0-9]{2}\b",  # code-review finding ids
+```
+
+### WR-04: Release-artifact fast path ignores `previous_filename`, so a rename into an allowlisted name hides the deletion of its source
 
 **File:** `.github/actions/classify-changes/action.yml:123-125, 195-211`
-**Issue:** `gh api ... --jq '.[].filename'` prints string results raw (confirmed: `gh api
-repos/actions/checkout --jq .name` prints `checkout` unquoted). A single filename containing
-`\n` is therefore split into several lines before the per-line whitespace rejection ever sees
-it.
+**Issue:** The pull-request files API reports a rename as one entry whose `filename` is the
+**new** path, with the old path only in `previous_filename`. I confirmed this against a live
+PR: `pypa/pip#14322` returns `{"filename":"SECURITY.md …","previous_filename":"SECURITY.md","status":"renamed"}`.
+The step extracts only `.[].filename`.
 
-Reproduced by running the shipped step body under `bash --noprofile --norc -eo pipefail`, with
-a `gh` stub that emits `jq -r '.[].filename'` over a JSON fixture:
-- `"CHANGELOG.md\n.release-please-manifest.json"` gives `release-artifacts-only=true`, logged as
-  "all 2 changed path(s)".
-- `"CHANGELOG.md\nCHANGELOG.md"` gives `true`.
-- `"CHANGELOG.md .release-please-manifest.json"` gives `false` (the space case the comment
-  documents).
+A PR whose only entry is a rename of, say, `src/pc2img/core.py` → `CHANGELOG.md` therefore
+yields `release-artifacts-only=true`. That greens all three required contexts having executed
+nothing, while deleting source code. `required_approving_review_count` is 0.
 
-Git permits LF in path names. This is the same bypass class the comment calls "A REAL
-REQUIRED-GATE BYPASS", and it contradicts the test name
-`test_no_whitespace_bearing_path_can_satisfy_the_allowlist`. It also inflates `COUNT`. With
-`required_approving_review_count: 0`, a pull request consisting solely of such a file greens
-all three required contexts on `main` having executed nothing.
-**Fix:** Let jq produce an unambiguous, one-record-per-file encoding, and reject control
-characters before splitting. For example:
+The rename target must not exist at the base, so the path takes two PRs. The first deletes
+`CHANGELOG.md`, and that PR itself fast-paths, because a removal is listed under `filename`
+too. This is the same required-gate-bypass class the in-file comment calls "A REAL
+REQUIRED-GATE BYPASS". It is not introduced by this round and was not raised in round 1.
+**Fix:** Emit both names per entry, and treat any rename, copy or removal as not
+release-artifact-only:
 ```bash
-if ! FILES=$(gh api --paginate "repos/${REPO}/pulls/${PRNUM}/files" \
-      --jq '.[].filename | if test("[[:cntrl:][:space:]]") then "\u0000BAD" else . end' 2>"$STDERR_FILE"); then
+--jq '.[] | if (.status == "renamed" or .status == "copied" or .status == "removed")
+             then "\u0000NONARTIFACT" else .filename end'
 ```
-Then treat any line equal to the sentinel as `emit false`. Alternatively emit `@json` per file
-and compare against JSON-quoted allowlist entries. Add a newline-bearing path to
-`test_no_whitespace_bearing_path_can_satisfy_the_allowlist`, using a stub that emits via
-`jq -r`, so the test exercises raw-output splitting.
+Or at minimum use `.[] | .filename, (.previous_filename // empty)`. Add a renamed-entry case to
+`test_classify_changes.py`. This fits naturally with the deferred WR-01 (newline) fix in
+Phase 7.
 
-### WR-02: The migration record's inline verifier verifies far less than the record claims
+### WR-05: RULESETS.md verification recipe expects a field the list endpoint never returns
 
-**File:** `MIGRATION-v0.11.md:35-41, 119-124, 412-457, 494-530`
-**Issue:** The prose says "Tier 1 confirms the public-surface `__all__` lists" and "Tier 2
-runtime-checks every `signature-shape` claim ... and every `error-behavior`/`on-disk-format`
-claim that is cheap to instantiate." Measured against that claim:
+**File:** `RULESETS.md:112-120`
+**Issue:** The recipe says to run `gh api repos/gseg-ethz/pc2img/rulesets` and expect both
+objects "with an empty `"bypass_actors"` array present (not absent — an absent key tells you
+nothing …)". The list endpoint returns summary objects only:
+`id, name, target, source_type, source, enforcement, node_id, _links, created_at, updated_at`.
 
-1. **Tier 1 is vacuous.** Every `affected_symbols` entry is dotted (`pc2img.x.y`), and `_tier1`
-   skips anything containing `.`. After extracting and importing the verifier, the set of
-   symbols Tier 1 actually checks is `[]`. The script still prints `[ok] verified 25 entries`.
-2. **The BC-P2I-010 probe cannot fail.** It plants `ghost.pkl` and asserts
-   `"ghost" not in store`. But `DiskBackedImageStore.__contains__` never consults disk: a fresh
-   store over a directory holding a **valid** entry for `ghost` also reports
-   `"ghost" in store == False`, and so does a real planted pickle. The check would pass against
-   the old pickle-loading codec too. The real guarantee lives in
-   `tests/test_image_store.py::test_legacy_pkl_degrades_to_cache_miss`.
-3. **These cheap error-behavior claims are not checked at all:**
-   - BC-P2I-007 (`NotImplementedError` on a wrapping FoV)
-   - BC-P2I-013 (`ValueError("dependency cycle")`)
-   - BC-P2I-014 (request-time `ValueError`)
-4. **Two checks are weaker than their comments.** The BC-P2I-006 check only asserts
-   `callable(convert_to_image)`, although its comment claims it verifies laziness about
-   matplotlib. BC-P2I-009 checks only the `compute_dtype` parameter, not the documented "input
-   no longer mutated in place".
-5. **The provenance claim does not hold.** The prose says the unverified fixes are "referenced by
-   origin commit sha", but entries 007–025 cite "bug-fix pass" / "gap-closure pass", not SHAs.
-**Fix:** Either narrow the prose to what is actually checked, or make the checks real:
-- Tier 1: resolve dotted symbols by importing the module path and `getattr`-walking, or check
-  `sym.split(".")[-1]` against the barrels' `__all__` for barrel-exported names.
-- BC-P2I-010: call the store's actual legacy-load path (the one the unit test uses) and assert
-  `KeyError` with no unpickling.
-- Add probes for 007, 013 and 014, plus an in-place-mutation probe for 009.
-- Replace "bug-fix pass" / "gap-closure pass" with origin SHAs, or drop the SHA claim.
+I confirmed this live on `python/cpython`, `pypa/pip`, `astral-sh/uv`, `cli/cli` and
+`actions/checkout`: none carries `bypass_actors`. So, by the document's own rule, the check it
+prescribes can never succeed. A maintainer following it either concludes the protection is
+broken or learns to ignore the check.
 
-### WR-03: New `project_raw` docstring documents a contract no implementation follows
-
-**File:** `src/pc2img/strategies/projection.py:81-95`
-**Issue:** The rewritten ABC docstring (new in this phase, on a public extension point) says:
-- `coords_raw` has shape `(N, 2)`
-- `mins` / `maxs` are the "per-dimension minimum/maximum of `coords_raw` over the kept points"
-
-Reproduced with `SphericalProjection(field_of_view=FoV(left=-0.1, right=0.2, top=1.4,
-bottom=1.8))` on a 1000-point cloud:
-- `coords_raw.shape == (792, 2)`, i.e. already masked (M rows, not N).
-- `mins == [-0.1, 1.4]`, the FoV bounds, while the kept-data minimum is
-  `[-0.0997, 1.4012]`.
-- `OrthographicProjection` likewise returns the ROI box when one is set.
-
-`core.py:103-111` indexes `bf_1D[mask]` against `pts2d`. A third-party strategy that follows
-the documented `(N, 2)` contract would therefore produce a value/coordinate length mismatch.
+`ruleset-apply.yml:241-243` notes that even a per-id read needs an admin-capable token to see
+`bypass_actors`. This text was carried through the 06-15 rewrite.
 **Fix:**
-```python
-coords_raw : NDArray
-    Raw model-space coordinates of the KEPT points only, shape ``(M, 2)`` with
-    ``M == mask.sum()`` (e.g. angles or xy).
-mask : NDArray
-    Boolean array of length ``N`` (the full cloud) marking the kept points.
-mins, maxs : NDArray
-    Per-dimension normalization frame used by :meth:`project`: the configured
-    FoV / ROI bounds when the strategy has one, otherwise the kept-point extent.
+```bash
+for id in $(gh api repos/gseg-ethz/pc2img/rulesets --jq '.[].id'); do
+  gh api "repos/gseg-ethz/pc2img/rulesets/${id}?includes_parents=false" \
+    --jq '{name, enforcement, bypass_actors}'
+done
 ```
-
-### WR-04: File-wide hygiene exemption for `.pre-commit-config.yaml` is unnecessary and justified by a false statement
-
-**File:** `tests/test_hygiene.py:155-160` (and `.pre-commit-config.yaml:6`; module docstring line 25)
-**Issue:** The exemption reason says a static YAML regex cannot avoid literally naming the
-planning directory. It can.
-
-Checked by running the gate's own `_matches()` and the pre-commit `exclude` regex:
-- The as-is file produces exactly one hit, `6: '.planning/'`.
-- Replacing `\.planning/.*` with `\.plan[n]ing/.*` produces **zero** hits.
-- The compiled `exclude` regex gives identical results before and after the change for
-  `.planning/phases/x.md`, `.planning/config.json`, `.claude/CLAUDE.md`, `CHANGELOG.md`,
-  `docs/ip/rrim-eth-signoff.md` and `src/pc2img/core.py`.
-
-As shipped, any future planning reference added to this file (for example a `# see D-11`
-comment) goes out unscanned. The module docstring also says "One exemption is held in
-`_EXEMPTIONS`", but the dict holds two.
-**Fix:** In `.pre-commit-config.yaml` write `|\.plan[n]ing/.*` (with a comment explaining the
-character class). Delete the `.pre-commit-config.yaml` key from `_EXEMPTIONS` and correct the
-docstring count.
-
-### WR-05: Both publish paths can be driven from any ref, and the sdist then ships `.planning/` and `.claude/`
-
-**File:** `.github/workflows/publish-testpypi.yml:14-15`, `.github/workflows/publish-pypi.yml:21-23`, `RELEASE.md:101-111`
-**Issue:** `publish-testpypi.yml` is `workflow_dispatch` with no ref guard, unlike
-`ruleset-apply.yml`, which refuses anything but `refs/heads/main`. `publish-pypi.yml` fires on
-any published release, whatever commit the tag points at. No GitHub environments exist yet
-(`gh api .../environments` returns an empty list), so nothing restricts `pypi` / `testpypi`
-deployments to `main` or to `v*` tags. `RELEASE.md` only says to dispatch "from the release
-branch".
-
-setuptools_scm's file finder puts every tracked file into the sdist. `uv build` on
-`develop-gsd` produced a tarball containing `.planning/` (PROJECT, REQUIREMENTS,
-REVIEW-LEDGER, every phase directory) and `.claude/CLAUDE.md`. A mis-dispatch, or a release cut
-from a non-main tag, uploads that to an index where it can never be deleted. This defeats the
-filtered-projection design.
-**Fix:**
-- Add the same first-step guard `ruleset-apply.yml` uses. For TestPyPI, require
-  `github.ref == 'refs/heads/main'`. For PyPI, require
-  `github.ref_type == 'tag' && startsWith(github.ref_name, 'v')`, plus
-  `git merge-base --is-ancestor "$GITHUB_SHA" origin/main`.
-- Configure deployment branch/tag policies on the `pypi` (`v*` tags) and `testpypi` (`main`)
-  environments, and record that in `RELEASE.md`.
-- As defense in depth, add a `MANIFEST.in` with `prune .planning` and `prune .claude`.
-
-### WR-06: `check_publish_gate.py` misses `uv publish` and publish steps inside composite actions
-
-**File:** `.github/scripts/check_publish_gate.py:42-45, 149-152`
-**Issue:** The gate only scans `.github/workflows/*.y*ml`, and it only matches
-`pypa/gh-action-pypi-publish` and `twine\s+upload`. Reproduced by copying the real workflows
-into a scratch tree and adding a `rogue.yml` job with `permissions: {id-token: write}`, a step
-`run: uv publish --trusted-publishing always`, and a step
-`uses: ./.github/actions/pub` whose composite contains `pypa/gh-action-pypi-publish@...`.
-`main()` printed "OK — publish steps found only in allowed files + environments" and returned 0.
-
-This assembly is explicitly uv-adapted, so `uv publish` is the idiomatic upload command. The
-module's docstring promises containment. The PyPI trusted-publisher binding (workflow filename
-plus environment) is the real backstop, but the required `Lint` context reports a containment
-guarantee it does not provide.
-**Fix:** Add `r"\buv\s+publish\b"`, `r"\bpoetry\s+publish\b"`, `r"\bflit\s+publish\b"` and
-`r"\bhatch\s+publish\b"` to `PUBLISH_STEP_PATTERNS`. Also scan `.github/actions/**/action.y*ml`
-`runs.steps`, treating any publish step there as a violation. Add tests for both cases.
-
-### WR-07: Ruleset-apply preflight accepts required contexts that no pull request can ever produce
-
-**File:** `.github/scripts/preflight_ruleset_apply.py:145-208, 211-242`
-**Issue:** `matchable_job_names` unions job names from **every** workflow, whatever its
-triggers. Reproduced: a `main.json` payload with `Branch ancestry assertion` (schedule/dispatch
-only) and `Publish to PyPI` (release only) added as required contexts passed the preflight:
-"OK — 5 required context(s) all matched", with a send payload written. Applying it leaves
-`main` requiring checks that never report on a pull request. The preflight's own docstring says
-it is "what stands between a dispatch and that state". The fix PR to `main.json` would then be
-unmergeable too, leaving only a hand edit of the ruleset in the UI, which is exactly the drift
-the kit exists to prevent.
-**Fix:** Only count jobs from workflows whose trigger block (via `ruleset_lib.trigger_block`)
-includes `pull_request`, with no `branches:` / `paths:` filter that could exclude the target
-branch. Report every other name as "produced, but never on a pull request". Add a test using
-`scheduled-health.yml`'s job name.
-
-### WR-08: `CITATION.cff` publishes a placeholder DOI
-
-**File:** `CITATION.cff:24`
-**Issue:** `doi: 10.5281/zenodo.XXXXXXX` is syntactically valid, so CFF validation and GitHub's
-"Cite this repository" accept and render it. On a public `main` this hands readers a citation
-with a non-existent DOI. The accompanying message also says "company research data archive",
-although the prefix is Zenodo's and ETH is not a company.
-**Fix:** Remove `doi:` from `preferred-citation` until the concept DOI exists. Add it, and a
-`version` / `date-released`, when the release is archived. Reword the message to name the
-actual archive.
-
-### WR-09: Unpinned build backend plus deprecated license metadata puts the publish build on a clock
-
-**File:** `pyproject.toml:1-3, 15, 27`
-**Issue:** `requires = ["setuptools", "setuptools_scm"]` is fully unpinned, and `uv build` in
-both publish workflows resolves it fresh with no build constraints. The local build emits two
-`SetuptoolsDeprecationWarning`s:
-- `project.license` as a TOML table: "By 2027-Feb-18 ... your builds will no longer be supported".
-- The license classifier: "License classifiers are deprecated".
-
-The PyPI build is therefore not reproducible from the lock, and it will start failing on a
-setuptools release after that deadline, at release time. `write_to` is likewise deprecated in
-current setuptools_scm.
-**Fix:**
-```toml
-[build-system]
-requires = ["setuptools>=77,<81", "setuptools_scm>=8,<10"]
-[project]
-license = "BSD-3-Clause"
-license-files = ["LICENSE", "NOTICE"]
-# drop "License :: OSI Approved :: BSD License" from classifiers
-[tool.setuptools_scm]
-version_file = "src/pc2img/_version.py"
-```
-Keep `NOTICE` in `license-files` so the RRIM notice stays in the wheel's `dist-info/licenses/`,
-where it is today.
-
-### WR-10: The ancestry alarm will fire after every promotion, but the documented procedure only back-merges after releases
-
-**File:** `RULESETS.md:34-41`, `.github/workflows/scheduled-health.yml:76-114`
-**Issue:** `scheduled-health.yml` asserts that `main` is an ancestor of `develop-gsd`. Every
-filtered promotion is a squash, and it creates a commit on `main` that is not in `develop-gsd`.
-The assertion therefore fails, and opens or comments on an issue nightly, from the first
-promotion until a back-merge. Today `origin/main` is already not an ancestor
-(`merge-base --is-ancestor` fails).
-
-`RULESETS.md` prescribes a one-time graft plus "one back-merge ... follows every release". But
-`RELEASE.md` keeps the release PR open "until the actual publish is wanted", so the promotion
-and the release are decoupled. The same paragraph's rationale is also false: it says the
-branches "do not currently share a common ancestor", yet `git merge-base origin/main
-origin/develop-gsd` returns `f946268`, and `v0.10.0`–`v0.10.4` are reachable from both.
-**Fix:** In `RULESETS.md`, require a true-merge back-merge after **every promotion and every
-release-PR merge**. Correct the rationale to "main carries commits (`69224a9`, `ade40f8`) that
-develop-gsd lacks". Optionally schedule the first promotion and the graft back-to-back, before
-the first nightly run on `main`.
+State that this requires a token with repository administration access. Quote the `?` URL
+(the owner's shell is zsh, where an unquoted `?` is a glob and the drift command at
+`RULESETS.md:125-127` fails with "no matches found").
 
 ## Info
 
-### IN-01: Two actions are pinned to annotated tag-object SHAs, not commit SHAs
+### IN-01: The planning-vocabulary gate still passes two shipped hits and any wrapped phrase
 
-**File:** `.github/workflows/scheduled-health.yml:118`, `.github/workflows/ci.yml:272`
-**Issue:** `git ls-remote` shows the pins resolve like this:
-- `actions/github-script@d746ffe…` is the `v9.0.0` **tag object**; its commit is `3a2844b…`.
-- `codecov/codecov-action@8cad3ba…` is the `v6.0.2` tag object; its commit is `fb8b358…`.
+**File:** `tests/test_hygiene.py:188-195, 226-233` (hits at `pyproject.toml:196`, `tests/test_image_store.py:272`)
+**Issue:** The IN-13 extension matches exactly the four phrases round 1 listed, on one line,
+with a single space. The following still pass, reproduced with `_matches`:
+- `# CI command line only (Plan 03)` in `pyproject.toml:196`.
+- `b"pc2img round-3 containment sentinel …"` in `tests/test_image_store.py:272`.
+- `"this\nphase"` (a line-wrapped comment), `"this  phase"`, "review round 2" and
+  "milestone v1.0".
+**Fix:** Reword the two shipped hits. Optionally, add `\bplan\s+[0-9]{1,2}\b` and
+`\b(?:review[- ])?round[- ][0-9]\b`. Run the prose alternatives over the whole text with `\s+`
+as well as per line (character classes keep the source from self-matching).
 
-The runner resolves both (seen in the phase PR's job log), and the checklist's 40-hex grep
-passes. But these are the only two pins not on the dereferenced commit, which is the form
-pinning tools and auditors expect.
-**Fix:** Pin to `3a2844b7e9c422d3c10d287c895573f7108da1b3` and
-`fb8b3582c8e4def4969c97caa2f19720cb33a72f`.
+### IN-02: The base `project()` docstring contradicts the corrected `project_raw` contract
 
-### IN-02: "Upload type-check report" can never upload anything
+**File:** `src/pc2img/strategies/projection.py:106-114`
+**Issue:** It still says "Normalize raw coords into [0,1]×[0,1] based on data extents". The
+`project_raw` docstring just above now correctly says the frame is the FoV/ROI bounds when one
+is configured.
+**Fix:** "…relative to the normalization frame (`mins`, `maxs`) returned by
+:meth:`project_raw`".
 
-**File:** `.github/workflows/ci.yml:249-255`
-**Issue:** `pyright-action` writes no `.pyright-report.json`. The phase PR run logged "No files
-were found with the provided path".
-**Fix:** Delete the step, or run pyright with `--outputjson > .pyright-report.json`.
+### IN-03: The ref-guard tests do not pin "before anything is built", and the git fixtures inherit ambient `GIT_*` state
 
-### IN-03: `attestations: write` is an unneeded grant, and its comment is wrong
-
-**File:** `.github/workflows/publish-pypi.yml:62`, `.github/workflows/publish-testpypi.yml:59`
-**Issue:** PEP 740 attestations from `gh-action-pypi-publish` need only `id-token: write`.
-`attestations: write` is for GitHub artifact attestations, which nothing here produces.
-**Fix:** Drop the grant and the "required to attach" comment in both files, and update the
-`RULESETS.md` deviation bullet.
-
-### IN-04: Comments and docstrings reference components this assembly declined
-
-**File:** `.github/workflows/ci.yml:19-29, 39-42, 55-67`, `.github/actions/classify-changes/action.yml:64-74, 176-186`, `.github/scripts/check_ruleset_drift.py:12-20`, `.github/scripts/ruleset_lib.py:5-9`
-**Issue:** These cite `check_ci_config.py` assertions A1–A7, `integrity.yml`, `assert_no_skip.py`
-and "the nightly job in ... `ruleset-drift.yml`". `RULESETS.md` records all of these as
-declined, and none exist. Readers of the public tree are pointed at enforcement that is not
-there.
-**Fix:** Prune the conditional passages, or add one line per file: "declined in this assembly;
-see RULESETS.md".
-
-### IN-05: `RULESETS.md` states the rulesets exist, but the live list is empty
-
-**File:** `RULESETS.md:176-181, 368-376`
-**Issue:** It says "the first creation of both rulesets was done once by posting the committed
-payload directly". `gh api repos/gseg-ethz/pc2img/rulesets` currently returns `[]`, and the
-creation is still planned for later plans. That is false at promotion time.
-**Fix:** Word it as future or conditional until the creation has run.
-
-### IN-06: `ci.yml` header contradicts its own trigger block
-
-**File:** `.github/workflows/ci.yml:34-38, 81-82`
-**Issue:** It says "`push:` deliberately does NOT list the protected branch", but it lists
-`develop-gsd`, which `develop.json` protects. The template means the release branch.
-**Fix:** Say "the release branch (`main`)".
-
-### IN-07: Two different ruff versions gate formatting of the same tree
-
-**File:** `.pre-commit-config.yaml:17`, `tests/test_hygiene.py:109-130`, `uv.lock` (ruff 0.15.21)
-**Issue:** The Lint context formats with `ruff-pre-commit v0.15.12`. The Tests context
-(`test_ruff_check_src_is_clean`) runs the locked ruff 0.15.21. A formatter-output change between
-the two versions makes the two required contexts disagree. The pre-commit `rev`s are also
-mutable tags.
-**Fix:** Align the `rev` with the lock (or use a `language: system` local hook running the
-locked ruff), and pin the `rev`s by SHA.
-
-### IN-08: Twenty non-executable files are committed with mode 100755
-
-**File:** `.github/**` (all 19 files), `release-please-config.json` (its mode changed from 100644 in this diff)
-**Issue:** YAML, JSON and library modules carry the executable bit on a public branch.
-**Fix:** `git update-index --chmod=-x` on everything except scripts intended to run directly.
-Consider enabling `check-executables-have-shebangs`.
-
-### IN-09: Migration-record summary arithmetic is wrong
-
-**File:** `MIGRATION-v0.11.md:20-27`
-**Issue:** It says "twenty-five changes: sixteen should-review ... one must-edit ... five
-informational ... four additive". That sums to 26. The table has 15 should-review entries
-(001, 002, 006–009, 011, 013–020).
-**Fix:** Change "sixteen" to "fifteen".
-
-### IN-10: Stale or inconsistent public docs
-
-**File:** `CONTRIBUTING.md:74-75`, `README.rst:8`, `docs/source/index.rst:8`
+**File:** `.github/scripts/test_publish_ref_guard.py:117-137, 184-185, 188-224`; `tests/test_git_archival.py:49-57, 68-75`
 **Issue:**
-- `CONTRIBUTING.md` gives the baseline as "252 passed"; the suite is 278.
-- `README.rst` lists "spherical or orthographic", while `index.rst` and the registry include
-  `perspective`.
-**Fix:** Update the figures and add `perspective` to the README.
+- `_guard_script` finds the ancestry step by name anywhere in the job. Moving it after
+  `uv build` or the artifact upload keeps every test green, which contradicts
+  `RELEASE.md:71` ("Both fail before anything is built").
+- `_git` and `_run_git` (for `init`, `add` and `commit`) inherit the full environment. Run from
+  a git hook (`GIT_DIR` / `GIT_INDEX_FILE` set), they would act on the real repository's index.
+  A global `tag.gpgSign` / `commit.gpgSign` also makes the fixtures fail.
+**Fix:** Assert that the ancestry step's index is less than the index of the first step
+containing `uv build`. Pass
+`env={**os.environ_minus_GIT_vars, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}`
+to every fixture git call.
 
-### IN-11: The RTD build silently tolerates a tagless checkout
+### IN-04: RELEASE.md says a PyPI release cannot be deleted
 
-**File:** `.readthedocs.yaml:15-19`
-**Issue:** `git fetch --unshallow --tags || true` swallows every failure. On a non-shallow clone,
-`--unshallow` errors out, so the tags are never fetched. `fail_on_warning` does not see the
-`0.0.` fallback that CI's docs job explicitly asserts against.
-**Fix:** Use `git fetch --tags --force && (git rev-parse --is-shallow-repository | grep -q false || git fetch --unshallow)`, and add the same `startswith("0.0.")` assertion as a `pre_build` job.
+**File:** `RELEASE.md:83-87`
+**Issue:** "Neither index allows deleting or replacing an already-uploaded version … deleting
+outright is not possible." PyPI project owners *can* delete a release or file. What is
+impossible is re-uploading the same filename or version. A maintainer who believes deletion is
+impossible also misses that it is irreversible in the other direction, since the version
+number is burned.
+**Fix:** "A published file can be deleted, but its filename and version can never be reused;
+prefer yanking, which is reversible."
 
-### IN-12: The protection-rewriting jobs rely on the runner image's unpinned PyYAML
+### IN-05: The reworded ruleset-token comment now makes a false global claim
 
-**File:** `.github/workflows/ruleset-apply.yml:226, 342`, `.github/scripts/preflight_ruleset_apply.py:49`
-**Issue:** `python3` is the image's system interpreter, and `import yaml` depends on
-`ubuntu-latest` happening to ship `python3-yaml`. An image change would break ruleset applies,
-with a traceback instead of a named error.
-**Fix:** Add `./.github/actions/setup-python-deps` (or `uv run --frozen`) before the preflight,
-or guard the import with an explicit `::error::`.
+**File:** `.github/workflows/ruleset-apply.yml:237-238`
+**Issue:** "THE one place in these workflows where a write scope is the correct answer." The
+same workflow set grants these write scopes deliberately and correctly:
+- `id-token: write` (`publish-pypi.yml:93`, `publish-testpypi.yml:70`).
+- `issues: write` (`scheduled-health.yml:54`).
 
-### IN-13: Planning vocabulary survives in shipped prose that the gate's regexes cannot see
+The IN-13 rewording replaced "in this phase" with a broader, untrue scope.
+**Fix:** "The one place in this workflow…", or "the only Administration-write grant in this
+repository".
 
-**File:** `MIGRATION-v0.11.md:9, 20, 62-80, 93`, `.github/workflows/ruleset-apply.yml:235`, `tests/test_hygiene.py:17, 97`
-**Issue:** Phrases that pass the gate:
-- `milestone: v1.0` for a 0.11 release.
-- "This milestone's first six phases".
-- "publication pass, this phase — ... not yet executed as of this draft".
-- "gap-closure pass".
-- "THE one place in this phase".
+### IN-06: CITATION.cff carries no version and makes a claim that is false between promotion and release
 
-`docs/ip/rrim-eth-signoff.md` is exempt by design.
-**Fix:** Reword these as release-facing prose. Optionally extend `_PHASE_PLAN_PATTERN` with
-`\bthis phase\b` and `\bgap[- ]closure\b`.
+**File:** `CITATION.cff:15-19`
+**Issue:**
+- The message says "Please cite the version you used", but the file has no `version` /
+  `date-released`, so GitHub's "Cite this repository" renders an unversioned citation.
+- "The main branch reflects the latest released version" is false by design between a
+  promotion and the release-PR merge, because `RELEASE.md:62-63` keeps the release PR open
+  "until the publish is wanted".
+- "Releases are published on PyPI" is untrue until 0.11.0 is uploaded.
+**Fix:** Add `version` / `date-released`, which release-please can maintain via
+`extra-files`. Reword the message to "Tagged releases are published on PyPI…" without the
+main-branch claim.
 
 ---
 
-_Reviewed: 2026-09-28T16:07:18Z_
+_Reviewed: 2026-09-29T11:01:17Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_
