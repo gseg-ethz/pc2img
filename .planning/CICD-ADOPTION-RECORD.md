@@ -601,6 +601,127 @@ Recorded here, not acted on — editing a sibling repository needs explicit owne
 Plan 06-17 records the re-run of the full pre-promotion gate after this review round's fixes
 (plans 06-14, 06-15, 06-16) land, ahead of the first promotion to `main`.
 
+### 2026-09-29 — after the round-2 doc pass
+
+Run in one pass from the repository root, against the tree that carries plan 06-19's round-2
+fix-now closures (RELEASE.md and RULESETS.md rewritten to the owner's target texts, the seven
+pointer comments deleted, ci.yml's header/log-line made self-contained, the ruleset-apply.yml
+token-mint comment scoped, the citation message and one test header corrected). HEAD `e2a3f5a`.
+Every command below exited zero.
+
+**Publish containment gate:**
+
+```
+$ uv run --frozen python .github/scripts/check_publish_gate.py
+check_publish_gate: OK — publish steps found only in allowed files + environments
+```
+
+**Kit script tests:**
+
+```
+$ uv run --frozen pytest .github/scripts -q
+92 passed in 1.28s
+```
+
+**Hygiene gate:**
+
+```
+$ uv run --frozen pytest tests/test_hygiene.py -q
+88 passed, 12 warnings in 0.19s
+```
+
+**Projection tests:**
+
+```
+$ uv run --frozen pytest tests/test_projection.py -q
+27 passed, 12 warnings in 0.06s
+```
+
+**Whole-tree pre-commit:**
+
+```
+$ uv run --frozen pre-commit run --all-files
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check for added large files..............................................Passed
+```
+
+**CFF validation:**
+
+```
+$ uv run --frozen cffconvert --validate
+Citation metadata are valid according to schema version 1.2.0.
+```
+
+**RULESETS.md table derived from the committed payloads (Task 2):**
+
+```
+$ uv run --frozen python - <<'PY'
+... (table-cell derivation against .github/rulesets/main.json and develop.json, and the
+     check names against .github/workflows/ci.yml's job name: fields)
+PY
+rulesets-table-matches-payloads
+```
+
+**YAML identity against `e929894` (five files, comments the only permitted diff):**
+
+```
+yaml-same .github/workflows/publish-pypi.yml
+yaml-same .github/workflows/publish-testpypi.yml
+yaml-same .github/workflows/ruleset-apply.yml
+yaml-same .github/workflows/scheduled-health.yml
+yaml-same .github/actions/classify-changes/action.yml
+```
+
+**YAML identity against `e929894`, ci.yml (single run-block log-line string excluded):**
+
+```
+yaml-same-except-logline .github/workflows/ci.yml
+```
+
+**AST identity against `e929894` (docstrings stripped):**
+
+```
+ast-same .github/scripts/check_publish_gate.py
+ast-same .github/scripts/check_ruleset_drift.py
+ast-same .github/scripts/ruleset_lib.py
+ast-same tests/test_projection.py
+```
+
+**Added-lines vocabulary/review-identifier scan** (every `+` line of `git diff e929894 -- .
+':!.planning'` run through `tests/test_hygiene.py`'s own matcher plus a review-identifier regex):
+
+```
+vocabulary hits: [] review ids: []
+```
+
+**Files changed by the round-2 doc pass (the round-3 review scope):**
+
+`git diff --name-only e929894..HEAD -- . ':!.planning'` — thirteen paths:
+
+```
+.github/actions/classify-changes/action.yml
+.github/scripts/check_publish_gate.py
+.github/scripts/check_ruleset_drift.py
+.github/scripts/ruleset_lib.py
+.github/workflows/ci.yml
+.github/workflows/publish-pypi.yml
+.github/workflows/publish-testpypi.yml
+.github/workflows/ruleset-apply.yml
+.github/workflows/scheduled-health.yml
+CITATION.cff
+RELEASE.md
+RULESETS.md
+tests/test_projection.py
+```
+
+This list is the scope handed to `/gsd-code-review 06 --files <list>` at plan 06-19's Task 4
+checkpoint (round 3 of 3, the round cap) and to plan 06-18 Task 1's precondition.
+
 ### 2026-09-29 — after the review-round fixes
 
 Run in one pass from the repository root, against the tree that carries every review-round fix
