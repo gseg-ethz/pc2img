@@ -159,18 +159,14 @@ def _build_ancestry_fixture(tmp_path: pathlib.Path) -> tuple[pathlib.Path, str, 
 
 def test_testpypi_guard_accepts_a_dispatch_from_the_release_branch() -> None:
     """Dispatching the rehearsal from the release branch proceeds."""
-    script = _first_step_script(
-        "publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch"
-    )
+    script = _first_step_script("publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch")
     result = _run(script, {"DISPATCH_REF": "refs/heads/main"})
     assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_testpypi_guard_refuses_a_dispatch_from_a_different_branch() -> None:
     """Dispatching from any other branch is refused with an annotation."""
-    script = _first_step_script(
-        "publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch"
-    )
+    script = _first_step_script("publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch")
     result = _run(script, {"DISPATCH_REF": "refs/heads/develop-gsd"})
     assert result.returncode != 0
     assert "::error::" in result.stdout
@@ -178,9 +174,7 @@ def test_testpypi_guard_refuses_a_dispatch_from_a_different_branch() -> None:
 
 def test_testpypi_guard_refuses_a_dispatch_from_a_tag() -> None:
     """A tag ref is not the release branch, so it is refused too."""
-    script = _first_step_script(
-        "publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch"
-    )
+    script = _first_step_script("publish-testpypi.yml", "Refuse a dispatch from any ref but the release branch")
     result = _run(script, {"DISPATCH_REF": "refs/tags/v0.11.0"})
     assert result.returncode != 0
 
@@ -223,9 +217,7 @@ def test_pypi_tag_guard_refuses_a_pre_release_archive_tag() -> None:
 def test_pypi_ancestry_guard_accepts_the_tip_of_main(tmp_path: pathlib.Path) -> None:
     """The tip of the release branch is reachable from itself."""
     clone, main_sha, _feature_sha = _build_ancestry_fixture(tmp_path)
-    script = _guard_script(
-        "publish-pypi.yml", "Refuse a release commit that is not on the release branch"
-    )
+    script = _guard_script("publish-pypi.yml", "Refuse a release commit that is not on the release branch")
     result = _run(script, {"HEAD_SHA": main_sha}, cwd=clone)
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -233,9 +225,7 @@ def test_pypi_ancestry_guard_accepts_the_tip_of_main(tmp_path: pathlib.Path) -> 
 def test_pypi_ancestry_guard_refuses_a_commit_only_on_a_side_branch(tmp_path: pathlib.Path) -> None:
     """A commit that only exists on a side branch is not reachable from main."""
     clone, _main_sha, feature_sha = _build_ancestry_fixture(tmp_path)
-    script = _guard_script(
-        "publish-pypi.yml", "Refuse a release commit that is not on the release branch"
-    )
+    script = _guard_script("publish-pypi.yml", "Refuse a release commit that is not on the release branch")
     result = _run(script, {"HEAD_SHA": feature_sha}, cwd=clone)
     assert result.returncode != 0
     assert "::error::" in result.stdout

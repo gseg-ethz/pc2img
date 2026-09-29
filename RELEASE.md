@@ -2,17 +2,14 @@
 
 **Repository:** gseg-ethz/pc2img
 **Publish workflow:** `.github/workflows/publish-pypi.yml`
-**First PyPI release planned:** `0.11.0`, on the `0.x` line. The project name is currently unclaimed
-on both the production index and the test index.
-
----
+**First PyPI release planned:** `0.11.0`, on the `0.x` line. The project name is currently
+unclaimed on both the production index and the test index.
 
 ## Trusted Publisher Binding
 
-This package publishes to PyPI (and, for a rehearsal, to the test index) via OIDC trusted
-publishing — no long-lived API token is stored in either workflow's secrets. The GitHub Actions
-runner receives a short-lived OIDC token from GitHub's own token endpoint, and the index validates
-that token against the registered trusted publisher record before accepting an upload.
+This package publishes to PyPI (and, for a rehearsal, the test index) via OIDC trusted
+publishing — no long-lived API token in either workflow's secrets; the index validates a
+short-lived runner-minted token against the registered trusted publisher record.
 
 ### Production claim
 
@@ -33,101 +30,62 @@ that token against the registered trusted publisher record before accepting an u
 | Environment name | testpypi |
 | Upload endpoint | https://test.pypi.org/legacy/ |
 
-Every field in both tables is an exact-match claim — the index rejects an upload if any field
-differs by even a single character, case included. The two claims are entirely separate records on
-two separate indexes; the workflow filename and environment name are what keep them from ever being
-satisfied by each other's runs.
-
----
+Every field is an exact-match claim, case included; the workflow filename and environment name
+keep the two claims from ever being satisfied by each other's runs.
 
 ## What NOT to Rename
 
-Renaming any of the following breaks its trusted-publisher claim and requires deleting and
-re-creating the publisher record on the affected index:
-
-- **Repository name** (`pc2img` on GitHub).
-- **Either workflow filename** (`publish-pypi.yml`, `publish-testpypi.yml`).
-- **Either GitHub Environment name** (`pypi`, `testpypi`).
-
-The PyPI *project* name (`pc2img`) is also immutable once the first version is published to it.
-
----
+Renaming any of these breaks its trusted-publisher claim and requires deleting and re-creating
+the publisher record on the affected index: the **repository name** (`pc2img`), **either
+workflow filename** (`publish-pypi.yml`, `publish-testpypi.yml`), or **either Environment name**
+(`pypi`, `testpypi`). The PyPI *project* name (`pc2img`) is also immutable once published.
 
 ## Credentials
 
-Two entirely separate GitHub Apps hold the write-capable credentials this repository's automation
-needs, and they are never the same pair:
+Two separate GitHub Apps hold the write-capable credentials this repository's automation needs,
+limiting the blast radius of either credential being compromised:
 
-- **Release automation** (opening the release pull request, tagging, pushing the changelog and
-  version bump) authenticates as the `gseg-release-please` App, using the secrets
-  `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY`.
-- **Branch protection** (applying the committed ruleset payloads) authenticates as the
-  `gseg-ruleset-admin` App, using the secrets `RULESET_APP_ID` and `RULESET_APP_PRIVATE_KEY`.
-
-Keeping them separate limits the blast radius of either credential being compromised: a leaked
-release-automation token can open pull requests and push tags, but it cannot rewrite branch
-protection, and the reverse holds for the ruleset-admin token.
-
-**Why a bot-opened pull request needs an App token at all:** an event triggered by the default,
-repository-scoped workflow token creates no further workflow runs. A release pull request opened
-with that default token would never receive any of its required checks and would sit unmergeable
-forever under an empty bypass list. An App-minted installation token does not have this
-restriction, which is the entire reason the release automation authenticates as an App rather than
-relying on the ambient token every workflow already has.
-
----
+- **Release automation** authenticates as `gseg-release-please`, using `RELEASE_APP_ID` /
+  `RELEASE_APP_PRIVATE_KEY`.
+- **Branch protection** authenticates as `gseg-ruleset-admin`, using `RULESET_APP_ID` /
+  `RULESET_APP_PRIVATE_KEY`.
 
 ## Version policy
 
-This repository stays on the `0.x` line for its first PyPI release and for the foreseeable
-releases after it. The release-please configuration carries `bump-minor-pre-major: true` together
-with `bump-patch-for-minor-pre-major: true`, which together mean: while the version is below
-`1.0.0`, a commit marked as a breaking change bumps the **minor** version, and an ordinary feature
-commit bumps only the **patch** version. A feature-only release that should bump the minor version
-instead needs an explicit `Release-As:` footer in the commit that triggers it — without one, a
-plain feature commit on the `0.x` line never reaches the next minor number on its own.
+This repository stays on the `0.x` line for its first release: while the version is below
+`1.0.0`, a breaking-change commit bumps the **minor** version, an ordinary feature commit bumps
+only the **patch** version, and a feature-only release that should bump minor needs an explicit
+`Release-As:` footer.
 
 **The first promotion to the release branch** carries a `feat!:` subject, a `BREAKING CHANGE:`
-footer pointing readers at `MIGRATION-v0.11.md`, and a `Release-As: 0.11.0` footer as a backstop —
-the breaking-change bump alone would already land on a `0.x` minor bump, and the explicit
-`Release-As` pins the exact number rather than leaving it to be derived.
+footer holding a short, self-contained summary of the breaking changes (which release-please
+copies into `CHANGELOG.md`), and a `Release-As: 0.11.0` backstop footer.
 
-The release pull request release-please opens against the promoted tree stays open until the
-actual publish is wanted. **Merging that pull request is the real PyPI publish** — nothing else in
-this flow uploads to the production index automatically.
+The release pull request stays open until the publish is wanted. **Merging it is the real PyPI
+publish** — nothing else in this flow uploads to the production index automatically.
 
----
+## Ref guards
 
-## Dry run (test index)
+- The TestPyPI rehearsal refuses any dispatch whose ref is not `main`.
+- The PyPI publish refuses any release whose ref is not an `X.Y.Z` version tag reachable from
+  `main`.
 
-The test-index dry run is dispatched by hand, deliberately never as an automatic consequence of
-anything:
+Both fail before anything is built, since any other ref could still carry internal-only content.
 
-1. From the repository's Actions tab, dispatch `Publish to TestPyPI` (`publish-testpypi.yml`) from
-   the release branch.
-2. Once the run completes, visit `https://test.pypi.org/project/pc2img/` and confirm the version
-   just built is listed.
-3. Confirm the attestation was produced by checking the integrity endpoint for that exact file (see
-   "Verifying a release" below — the same URL shape works against the test index host).
+## Dry run
 
----
+Dispatched by hand, never automatically: from the Actions tab, dispatch `Publish to TestPyPI`
+(`publish-testpypi.yml`) from the release branch; once it completes, visit
+`https://test.pypi.org/project/pc2img/` and confirm the version is listed; then confirm the
+attestation via the integrity endpoint (see "Verifying a release" below — the same URL shape
+works against the test index host).
 
 ## Rollback
 
-Neither index allows deleting or replacing an already-uploaded version — once a version number is
-uploaded, that number is permanently unavailable for the project again on that index.
-
-To deprecate a broken release on the production index:
-
-1. Navigate to the project's release management page on PyPI.
-2. Select the broken version.
-3. Click **Yank release**.
-
-A yanked version is hidden from ordinary install resolution (a plain `pip install pc2img` skips
-yanked versions) but stays downloadable by anyone who pins the exact version number. Yanking is
-reversible; deleting a version outright is not possible.
-
----
+Neither index allows deleting or replacing an already-uploaded version. To deprecate a broken
+release: on the project's release management page on PyPI, select the version and click **Yank
+release**. A yanked version is hidden from ordinary install resolution but stays downloadable by
+anyone who pins the exact version. Yanking is reversible; deleting outright is not possible.
 
 ## Verifying a release
 
