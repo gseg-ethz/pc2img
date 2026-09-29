@@ -20,9 +20,11 @@ name: Publish to PyPI
 #
 # Ref-guarded in two steps: the first build step refuses a release whose ref
 # is not an X.Y.Z version tag, and the step right after checkout refuses a
-# tagged commit that is not reachable from main — a release cut from any
-# other ref would otherwise build and upload an sdist that still carries the
-# internal planning directories, permanently.
+# tagged commit that is not reachable from main. Both steps live in this
+# file, so they protect only a release cut from a commit that carries them —
+# a tag on an older commit runs that commit's own unguarded copy of this
+# workflow. The rule that closes that gap is written down in RELEASE.md:
+# only ever create a release whose tag is on main.
 
 "on":
   release:

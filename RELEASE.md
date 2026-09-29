@@ -1,100 +1,59 @@
-# Release Process — pc2img
+# Release process — pc2img
 
-**Repository:** gseg-ethz/pc2img
-**Publish workflow:** `.github/workflows/publish-pypi.yml`
-**First PyPI release planned:** `0.11.0`, on the `0.x` line. The project name is currently
-unclaimed on both the production index and the test index.
+## Trusted publishing
 
-## Trusted Publisher Binding
+Both publish workflows use OIDC trusted publishing; no API token is stored.
+Owner `gseg-ethz`, repository `pc2img`:
 
-This package publishes to PyPI (and, for a rehearsal, the test index) via OIDC trusted
-publishing — no long-lived API token in either workflow's secrets; the index validates a
-short-lived runner-minted token against the registered trusted publisher record.
+| Index    | Workflow file          | Environment |
+|----------|------------------------|-------------|
+| PyPI     | `publish-pypi.yml`     | `pypi`      |
+| TestPyPI | `publish-testpypi.yml` | `testpypi`  |
 
-### Production claim
-
-| Field | Value |
-|---|---|
-| Owner (GitHub) | gseg-ethz |
-| Repository | pc2img |
-| Workflow filename | publish-pypi.yml |
-| Environment name | pypi |
-
-### Dry-run claim (test index)
-
-| Field | Value |
-|---|---|
-| Owner (GitHub) | gseg-ethz |
-| Repository | pc2img |
-| Workflow filename | publish-testpypi.yml |
-| Environment name | testpypi |
-| Upload endpoint | https://test.pypi.org/legacy/ |
-
-Every field is an exact-match claim, case included; the workflow filename and environment name
-keep the two claims from ever being satisfied by each other's runs.
-
-## What NOT to Rename
-
-Renaming any of these breaks its trusted-publisher claim and requires deleting and re-creating
-the publisher record on the affected index: the **repository name** (`pc2img`), **either
-workflow filename** (`publish-pypi.yml`, `publish-testpypi.yml`), or **either Environment name**
-(`pypi`, `testpypi`). The PyPI *project* name (`pc2img`) is also immutable once published.
+**Do not rename** the repository, either workflow file or either environment —
+each is part of the publisher claim on the index. The PyPI project name is
+permanent once published.
 
 ## Credentials
 
-Two separate GitHub Apps hold the write-capable credentials this repository's automation needs,
-limiting the blast radius of either credential being compromised:
+- Release automation: GitHub App `gseg-release-please`
+  (`RELEASE_APP_ID`, `RELEASE_APP_PRIVATE_KEY`).
+- Ruleset changes: GitHub App `gseg-ruleset-admin`
+  (`RULESET_APP_ID`, `RULESET_APP_PRIVATE_KEY`).
 
-- **Release automation** authenticates as `gseg-release-please`, using `RELEASE_APP_ID` /
-  `RELEASE_APP_PRIVATE_KEY`.
-- **Branch protection** authenticates as `gseg-ruleset-admin`, using `RULESET_APP_ID` /
-  `RULESET_APP_PRIVATE_KEY`.
+## Versions
 
-## Version policy
+On `0.x`: a breaking change bumps the minor version, a feature the patch.
+Force a minor bump with a `Release-As:` footer.
 
-This repository stays on the `0.x` line for its first release: while the version is below
-`1.0.0`, a breaking-change commit bumps the **minor** version, an ordinary feature commit bumps
-only the **patch** version, and a feature-only release that should bump minor needs an explicit
-`Release-As:` footer.
+## Releasing
 
-**The first promotion to the release branch** carries a `feat!:` subject, a `BREAKING CHANGE:`
-footer holding a short, self-contained summary of the breaking changes (which release-please
-copies into `CHANGELOG.md`), and a `Release-As: 0.11.0` backstop footer.
-
-The release pull request stays open until the publish is wanted. **Merging it is the real PyPI
-publish** — nothing else in this flow uploads to the production index automatically.
+1. Promote `develop-gsd` to `main` (squashed, internal directories stripped).
+2. Merge `main` back into `develop-gsd` with "Create a merge commit" — never
+   squash or rebase. A nightly check opens an issue if this is missed.
+3. release-please opens a release pull request on `main`.
+   **Merging it publishes to PyPI.**
+4. Back-merge again (step 2) after the release pull request merges.
 
 ## Ref guards
 
-- The TestPyPI rehearsal refuses any dispatch whose ref is not `main`.
-- The PyPI publish refuses any release whose ref is not an `X.Y.Z` version tag reachable from
-  `main`.
-
-Both fail before anything is built, since any other ref could still carry internal-only content.
+The publish workflows refuse the wrong ref: TestPyPI only from `main`, PyPI only
+from an `X.Y.Z` tag on `main`. These guards protect only a run started from a commit that carries them — older commits hold unguarded copies.
+**Only ever create a release whose tag is on `main`.**
+No environment rule or package-content check backs this up.
 
 ## Dry run
 
-Dispatched by hand, never automatically: from the Actions tab, dispatch `Publish to TestPyPI`
-(`publish-testpypi.yml`) from the release branch; once it completes, visit
-`https://test.pypi.org/project/pc2img/` and confirm the version is listed; then confirm the
-attestation via the integrity endpoint (see "Verifying a release" below — the same URL shape
-works against the test index host).
+Actions → dispatch "Publish to TestPyPI" from `main`, then check
+<https://test.pypi.org/project/pc2img/>.
 
 ## Rollback
 
-Neither index allows deleting or replacing an already-uploaded version. To deprecate a broken
-release: on the project's release management page on PyPI, select the version and click **Yank
-release**. A yanked version is hidden from ordinary install resolution but stays downloadable by
-anyone who pins the exact version. Yanking is reversible; deleting outright is not possible.
+An uploaded file cannot be replaced, and its filename and version can never be
+reused — not even after deletion. Prefer **Yank release** on the PyPI project
+page: hidden from normal installs, still installable by exact pin, reversible.
 
 ## Verifying a release
 
-Every wheel and sdist this workflow publishes carries a build-provenance attestation, produced
-automatically by the publish action during the job. Confirm one exists for a given file at:
-
-```
-https://pypi.org/integrity/pc2img/<version>/<filename>/provenance
-```
-
-substituting the released version and the exact artifact filename (wheel or sdist) you want to
-verify.
+Every wheel and sdist carries a provenance attestation:
+`https://pypi.org/integrity/pc2img/<version>/<filename>/provenance`

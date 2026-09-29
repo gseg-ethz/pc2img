@@ -12,8 +12,10 @@ name: Publish to TestPyPI
 # deliberately, never as an automatic consequence of a release.
 #
 # Dispatch-only AND ref-guarded: the first build step below refuses any
-# dispatch ref but the release branch, so a rehearsal can never build an
-# sdist from a ref that still carries the internal planning directories.
+# dispatch ref but the release branch. That guard lives in this file, so it
+# protects only a dispatch run from a branch whose copy carries it — an
+# older branch runs its own unguarded copy. Dispatch this workflow only from
+# main; see RELEASE.md "Ref guards".
 
 "on":
   workflow_dispatch:
