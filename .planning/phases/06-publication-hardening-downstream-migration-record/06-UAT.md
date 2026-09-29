@@ -541,8 +541,9 @@ blocked: 0
      `## Gaps — Round N` would make every entry below invisible. -->
 
 - truth: "WR-01: Deleting the declined-component pointers left false present-tense claims about nightly drift detection and a CI self-check"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77 'docs(release): correct the round of claims the doc pass overstated': ruleset-apply.yml, scheduled-health.yml, check_ruleset_drift.py, ruleset_lib.py and check_publish_gate.py no longer claim a nightly ruleset-drift.yml workflow or a check_ci_config.py self-test exist; proven by yaml-same for ruleset-apply.yml and scheduled-health.yml, and ast-same (docstrings stripped) for check_ruleset_drift.py, ruleset_lib.py and check_publish_gate.py, all against e929894; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-9f579aafa132
   root_cause: "ruleset-apply.yml:13-15, scheduled-health.yml:6-7,36-39, check_ruleset_drift.py:11-19, ruleset_lib.py:5-8,16-20 and check_publish_gate.py:124-127 state unconditionally that a nightly ruleset-drift.yml and check_ci_config.py exist; neither ships, so a maintainer believes a web-UI ruleset edit is detected overnight when nothing detects it"
@@ -562,8 +563,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-02: ci.yml keep-by-hand rule points at the wrong YAML location and omits paths-ignore/branches"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77: the keep-by-hand clause now reads 'never add a job-level `if:` to any job here, and never add a `paths:`, `paths-ignore:` or `branches:` key under `on.pull_request`'; proven by yaml-same-except-logline for ci.yml against e929894 (only the Lint self-check log-line string differs); fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-309ffc956126
   root_cause: "ci.yml:20-21 says never put a paths: filter on a required-context job; path filters live under on.pull_request, and paths-ignore:/branches: have the same stranding effect, so a maintainer checking the job never looks at on: where the defect would be; this sentence is the only guard since check_ci_config.py is absent"
@@ -575,8 +577,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-03: RULESETS.md inspection note omits the admin-token requirement that a ruleset-apply.yml comment says it states"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77: RULESETS.md's 'Inspect a live ruleset' bullet now says a token with repository administration access is required, that without one the bypass-actor list is missing from the response entirely, and that only an explicit empty array confirms no bypass; ruleset-apply.yml's cross-reference to this note is now accurate; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-10cbe7e3b994
   root_cause: "RULESETS.md:27-28 says read a ruleset by id but not that an administration-capable token is needed; without one the response omits bypass_actors and the reader takes the absence as no bypass; ruleset-apply.yml:243-245 claims RULESETS.md states the token requirement"
@@ -590,8 +593,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-04: ruleset-token comment's write-scope list is incomplete (attestations, release App token)"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77 (prose only; the behaviour half is DEFERRED to Phase 7, see reason): ruleset-apply.yml's token-mint comment now lists `attestations` on the publish jobs and the release App's token (minted with no `permission-*` inputs) alongside `id-token` and `issues` as the other write grants; proven by yaml-same for ruleset-apply.yml against e929894 (the `permission-administration: write` grant line itself is unchanged); fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner. Behaviour half (narrow the release App token mint so the only-Administration-write claim is enforced) DEFERRED to Phase 7."
   test: review-r3-ddde4a06e5e0
   root_cause: "ruleset-apply.yml:235-242 lists only id-token and issues as other write scopes; attestations: write on both publish jobs is omitted, and the release App token in release-please.yml:45-49 is minted without permission-* inputs, so the 'only Administration-write grant' claim cannot be verified from the repo"
@@ -603,8 +607,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-05: RULESETS.md change-a-rule recipe silently re-applies main's old payload and has no create path"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77: RULESETS.md's 'Changing a rule' bullet now says the edit must reach `main` first (the workflow reads payloads from `main` only), that the workflow updates an existing ruleset only, and gives the `gh api --method POST` command for creating one; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-87fdf631a3ae
   root_cause: "RULESETS.md:24-25 says edit the payload then run ruleset-apply from main; PRs land on develop-gsd, the workflow reads payloads from main only, so dispatch after the edit merges re-applies the old payload and verifies clean; the workflow cannot create a ruleset (exits at lines 187-190) and the create-path note was deleted while live rulesets are []"
@@ -616,8 +621,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-06: CITATION.cff tells users to cite installed version metadata, which for non-release installs is a never-released, non-unique version"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77: CITATION.cff's message now tells a git-install user to cite the commit hash instead of the installed package's version metadata, which it now states does not identify unreleased code; proven by `cffconvert --validate` passing; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-58aee162fdd6
   root_cause: "CITATION.cff:16-17 says cite the installed package's version metadata; with version_scheme post-release and no-local-version, a git install reports <tag>.postN with no hash (reproduced: dev venv reports 0.10.4.post407), which exists on no index and does not identify code"
@@ -629,8 +635,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-07: RELEASE.md promotion step names neither the stripped directories nor a mechanism, and nothing checks it"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix fd52d77 (prose only; the behaviour half is DEFERRED to Phase 7, see reason): RELEASE.md's Releasing step 1 now names the `.planning` and `.claude` directories explicitly and states the mechanism (a pull request from a branch cut from `main`, never from `develop-gsd` itself, squash-merged); the added-lines hygiene/vocabulary scan against e929894 returns no hit for the new wording; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner. Highest-risk round-3 finding: a literal reading ships .planning/ and .claude/ to PyPI irreversibly. Behaviour half (Lint check that .planning/ and .claude/ are absent on PRs based on main) DEFERRED to Phase 7."
   test: review-r3-975048ad0049
   root_cause: "RELEASE.md:30 says promote develop-gsd to main (squashed, internal directories stripped); read literally a squash-merged develop-gsd->main PR lands .planning/ and .claude/ on main, setuptools-scm puts them in the sdist, and the next release uploads them permanently; no check fires (hygiene gate exempts those dirs, RELEASE.md:43 admits no package-content check)"
@@ -642,8 +649,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "IN-01: RELEASE.md says X.Y.Z tag but the guard requires a v prefix and no pre-release suffix"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: RELEASE.md's Ref guards section now says 'PyPI only from a `vX.Y.Z` tag on `main` (no pre-release suffix)', matching publish-pypi.yml's `^v[0-9]+\\.[0-9]+\\.[0-9]+$` guard; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-1ace814feece
   root_cause: "RELEASE.md:39-40 says PyPI only from an X.Y.Z tag; publish-pypi.yml:47 requires ^v[0-9]+.[0-9]+.[0-9]+$, so a hand-made 0.11.1 or v0.12.0rc1 tag is refused at publish time"
@@ -655,8 +663,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-02: Release-As: takes an explicit version and must be on the commit that lands on main"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: RELEASE.md's Versions section now says 'Force a specific version with a `Release-As: 0.12.0` footer on the landing commit'; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-713b1d7f6847
   root_cause: "RELEASE.md:26-27 says force a minor bump with a Release-As: footer; release-please reads Release-As: <version> as an exact version and only sees commits on main (the squashed promotion commit)"
@@ -668,8 +677,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-03: lint-permissions keep-by-hand rule contradicts the block and disables the fast path if followed"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: ci.yml's keep-by-hand clause now says leave the lint job's `permissions:` read-only (`contents: read`, `pull-requests: read`), matching the job's actual block; proven by yaml-same-except-logline for ci.yml against e929894 (only the Lint self-check log-line string differs); fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-bd8b4cae1b22
   root_cause: "ci.yml:41-42 says leave lint permissions at contents: read; the block also holds pull-requests: read (lines 99-100) which classify-changes requires, so following the sentence makes the classifier fail safe and the fast path goes inert"
@@ -681,8 +691,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-04: 'recorded deviation' comments point at a RULESETS.md section this diff deleted"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: publish-testpypi.yml's two attestation comments and ci.yml's coverage-floor comment no longer say 'recorded deviation'/'recorded addition'; proven by yaml-same for publish-testpypi.yml and yaml-same-except-logline for ci.yml against e929894; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-118821980292
   root_cause: "publish-testpypi.yml:73,90 and ci.yml:259-262 call the TestPyPI attestation grant and the coverage floor a recorded deviation/addition; the record was RULESETS.md's Recorded deviations section, removed in this pass"
@@ -696,8 +707,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-05: CITATION.cff says releases are published on PyPI; none are yet"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: CITATION.cff's message now says 'Releases are tagged on GitHub; from 0.11.0 on, they are also published on PyPI'; proven by `cffconvert --validate` passing; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-fe2548de9d69
   root_cause: "CITATION.cff:16 says releases are tagged on GitHub and published on PyPI; pypi.org/pypi/pc2img/json returns 404 and v0.10.0..v0.10.4 exist only as GitHub tags; raised in round 2 and not addressed by the rewrite"
@@ -723,8 +735,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-07: three edited lines exceed the 120-column limit"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix fd52d77: ci.yml's keep-by-hand clause, RELEASE.md's Ref-guards/Releasing paragraphs and CITATION.cff's message were rewrapped as part of the WR-02, WR-01(r2)/WR-07 and WR-06/IN-05 fixes; checked with `awk '{print length}'` over each file, the longest line is now 105 (RELEASE.md), well under the 120-column limit; fix review waived by the owner at the round cap."
   reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
   test: review-r3-e8240be04c46
   root_cause: "ci.yml:21 (130 cols), RELEASE.md:41 (141) and CITATION.cff:16 (122) exceed the project's 120-column limit and the ~80-column wrap around them; nothing checks YAML/Markdown width"
