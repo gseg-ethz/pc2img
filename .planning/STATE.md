@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 06
-current_phase_name: publication-hardening-downstream-migration-record
+current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-16-PLAN.md
-last_updated: "2026-09-29T13:11:08.004Z"
+stopped_at: Completed 06-19-PLAN.md
+last_updated: "2026-09-29T17:10:53.179Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 06 execution started
-state_head: e9298943cb04b334938da6d71da52b5b896a9811
+state_head: 3e701eaadd634a1583b4d060c0b7195fa89ae0fc
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 58
-  completed_plans: 50
+  completed_plans: 52
 milestone_name: milestone
 ---
 
@@ -28,8 +28,8 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 06 (publication-hardening-downstream-migration-record) — READY TO EXECUTE
-Plan: 4 of 18
+Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
+Plan: 2 of 19
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 06 execution started
 
@@ -113,6 +113,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P14 | 45min | 3 tasks | 6 files |
 | Phase 06 P15 | 55min | 3 tasks | 7 files |
 | Phase 06 P16 | 15min | 3 tasks | 11 files |
+| Phase 06 P19 | 35min | 4 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -207,6 +208,8 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06 P15]: WR-10 fixed (correct f946268/69224a9/ade40f8 rationale; back-merge after every promotion AND release-PR merge) and IN-05 fixed (procedural ruleset-creation wording) in condensed RULESETS.md; IN-10 README/index half fixed (perspective projection named)
 - [Phase 06]: 06-16: Closed WR-03/WR-04/IN-13/IN-04 gap-round-1 findings; corrected project_raw docstring to (M,2)/mask.sum() contract with 3 pinning tests, removed the false-justified .pre-commit-config.yaml hygiene exemption via character-class regex spelling, extended the vocabulary gate's prose patterns (this-phase/this-milestone/gap-closure), and marked all 7 .github/ references to declined kit components -- all AST/YAML-identity proven against 6c10ee0
 - [Phase 06]: 06-16 deviation: relocated the classify-changes/action.yml declined-component note out of the file's single run: script block (where the plan's cited line numbers sat) to genuine top-level YAML comment territory, to preserve yaml.safe_load identity against 6c10ee0; logged and immediately resolved in .planning/WINDOWS.md entry 1
+- [Phase 06]: Round-3 checkpoint: 13 of 15 review findings fixed in one prose-only commit (fd52d77); 2 deferred to Phase 7; review of the fix waived by the owner at the round cap
+- [Phase 06]: Directory names in RELEASE.md/RULESETS.md written without a trailing slash (.planning, .claude) to avoid tripping the hygiene gate's own .planning/-literal pattern while still naming them unambiguously
 
 ### Pending Todos
 
@@ -246,6 +249,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-29T08:35:52.330Z
-Stopped at: Completed 06-16-PLAN.md
+Last session: 2026-09-29T17:10:52.938Z
+Stopped at: Completed 06-19-PLAN.md
 Resume file: None

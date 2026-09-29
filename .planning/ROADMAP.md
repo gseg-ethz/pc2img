@@ -226,7 +226,7 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `.planning/MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`; internal per D-33, stripped from `main`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 12/19 plans executed (06-14..06-19 — review-round gap closure, planned 2026-09-29; 06-19 added for the round-2 doc pass and 06-18 re-waved behind it; 06-09..06-13 re-waved behind them)
+**Plans**: 13/19 plans executed (06-14..06-19 — review-round gap closure, planned 2026-09-29; 06-19 added for the round-2 doc pass and 06-18 re-waved behind it; 06-09..06-13 re-waved behind them)
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -254,7 +254,7 @@ Plans:
 - [x] 06-15-PLAN.md — D-33 migration record -> .planning/MIGRATION-v0.11.md; D-34 full adoption record -> .planning/CICD-ADOPTION-RECORD.md and RULESETS.md/RELEASE.md condensed (WR-10 back-merge after every promotion, IN-05 procedural wording); README projections (IN-10) [CICD-02, BC-01]
 - [x] 06-16-PLAN.md — WR-03 project_raw docstring + contract tests; WR-04 pre-commit exemption removed; IN-13 vocabulary gate extended to prose phrases; IN-04 declined-component notes [CICD-02]
 - [x] 06-17-PLAN.md — Full gate re-run recorded; CONTRIBUTING baseline (IN-10); blocking checkpoint: /gsd-code-review 06 + /code-review high over the fix diff, findings landed (round 2: 7 fix-now, 4 deferred; /code-review high waived) [CICD-02, BC-01]
-- [ ] 06-19-PLAN.md — Round-2 doc/comment-only pass: RELEASE.md and RULESETS.md rewritten for outside readers (owner target texts; back-merge rule moves to RELEASE.md; WR-01 ref-guard claims narrowed, WR-05 per-id inspection line, IN-04 rollback), WR-02 declined-component pointers deleted from 7 .github files + ci.yml header/log line made self-contained, WR-03 review id dropped from the test header, IN-05/IN-06 wording; YAML/AST identity proven; blocking checkpoint: /gsd-code-review 06 over the 13-file diff (round 3 of 3) [CICD-02, BC-01]
+- [x] 06-19-PLAN.md — Round-2 doc/comment-only pass: RELEASE.md and RULESETS.md rewritten for outside readers (owner target texts; back-merge rule moves to RELEASE.md; WR-01 ref-guard claims narrowed, WR-05 per-id inspection line, IN-04 rollback), WR-02 declined-component pointers deleted from 7 .github files + ci.yml header/log line made self-contained, WR-03 review id dropped from the test header, IN-05/IN-06 wording; YAML/AST identity proven; blocking checkpoint: /gsd-code-review 06 over the 13-file diff (round 3 of 3) [CICD-02, BC-01]
 - [ ] 06-18-PLAN.md — Ten round-1 + seven round-2 gaps resolved with evidence; phase PR into develop-gsd merged (merge commit) [CICD-02, BC-01]
 
 **Waves 10–14** *(remote sequence, one plan per wave, owner checkpoints at point of need — after the gap plans)*
@@ -292,5 +292,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 11/18 | In Progress|  |
+| 6. Publication Hardening & Downstream Migration Record | 13/19 | In Progress|  |
 | 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |
