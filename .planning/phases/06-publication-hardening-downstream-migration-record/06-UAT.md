@@ -3,7 +3,7 @@ status: diagnosed
 phase: 06-publication-hardening-downstream-migration-record
 source: [06-REVIEW.md]
 started: 2026-09-29T06:58:29Z
-updated: 2026-09-29T12:08:42Z
+updated: 2026-09-29T16:42:42Z
 gaps_source: "/gsd-code-review 06 (deep, gsd-code-reviewer/opus) over e9eb3c4..HEAD, 48 files, run mid-phase as plan 06-09 Task 2's precondition, before the first promotion to main. CR-01 independently reproduced by the orchestrator (floating v0 tag -> setuptools_scm \"Can't parse version from tag 'v0'\" on a git-archive build). Owner dispositions 2026-09-28."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -531,6 +531,226 @@ blocked: 0
       issue: "IN-03: Ref-guard tests do not pin 'before anything is built'; git fixtures inherit ambient GIT_* state"
     - path: "tests/test_git_archival.py"
       issue: "IN-03: Ref-guard tests do not pin 'before anything is built'; git fixtures inherit ambient GIT_* state"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+<!-- ROUND 3 — imported 2026-09-29T16:42:42Z by /gsd-consolidate-findings from gsd-code-review-deep (conversation), range 29039d5..f5d9037.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "WR-01: Deleting the declined-component pointers left false present-tense claims about nightly drift detection and a CI self-check"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-9f579aafa132
+  root_cause: "ruleset-apply.yml:13-15, scheduled-health.yml:6-7,36-39, check_ruleset_drift.py:11-19, ruleset_lib.py:5-8,16-20 and check_publish_gate.py:124-127 state unconditionally that a nightly ruleset-drift.yml and check_ci_config.py exist; neither ships, so a maintainer believes a web-UI ruleset edit is detected overnight when nothing detects it"
+  artifacts:
+    - path: ".github/workflows/ruleset-apply.yml"
+      issue: "WR-01: lines 13-15 claim a drift workflow detects changes"
+    - path: ".github/workflows/scheduled-health.yml"
+      issue: "WR-01: lines 6-7, 36-39 drift-workflow sentence"
+    - path: ".github/scripts/check_ruleset_drift.py"
+      issue: "WR-01: docstring lines 11-19 name a nightly ruleset-drift.yml caller"
+    - path: ".github/scripts/ruleset_lib.py"
+      issue: "WR-01: lines 5-8,16-20 list check_ci_config.py as importer and a read-only drift job"
+    - path: ".github/scripts/check_publish_gate.py"
+      issue: "WR-01: lines 124-127 name check_ci_config.load_workflows"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-02: ci.yml keep-by-hand rule points at the wrong YAML location and omits paths-ignore/branches"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-309ffc956126
+  root_cause: "ci.yml:20-21 says never put a paths: filter on a required-context job; path filters live under on.pull_request, and paths-ignore:/branches: have the same stranding effect, so a maintainer checking the job never looks at on: where the defect would be; this sentence is the only guard since check_ci_config.py is absent"
+  artifacts:
+    - path: ".github/workflows/ci.yml"
+      issue: "line 20: WR-02: ci.yml keep-by-hand rule points at the wrong YAML location and omits paths-ignore/branches"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-03: RULESETS.md inspection note omits the admin-token requirement that a ruleset-apply.yml comment says it states"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-10cbe7e3b994
+  root_cause: "RULESETS.md:27-28 says read a ruleset by id but not that an administration-capable token is needed; without one the response omits bypass_actors and the reader takes the absence as no bypass; ruleset-apply.yml:243-245 claims RULESETS.md states the token requirement"
+  artifacts:
+    - path: "RULESETS.md"
+      issue: "WR-03: lines 27-28 omit admin-token requirement and absent-key warning"
+    - path: ".github/workflows/ruleset-apply.yml"
+      issue: "WR-03: lines 243-245 cross-reference claims RULESETS.md states it"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-04: ruleset-token comment's write-scope list is incomplete (attestations, release App token)"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner. Behaviour half (narrow the release App token mint so the only-Administration-write claim is enforced) DEFERRED to Phase 7."
+  test: review-r3-ddde4a06e5e0
+  root_cause: "ruleset-apply.yml:235-242 lists only id-token and issues as other write scopes; attestations: write on both publish jobs is omitted, and the release App token in release-please.yml:45-49 is minted without permission-* inputs, so the 'only Administration-write grant' claim cannot be verified from the repo"
+  artifacts:
+    - path: ".github/workflows/ruleset-apply.yml"
+      issue: "line 235: WR-04: ruleset-token comment's write-scope list is incomplete (attestations, release App token)"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-05: RULESETS.md change-a-rule recipe silently re-applies main's old payload and has no create path"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-87fdf631a3ae
+  root_cause: "RULESETS.md:24-25 says edit the payload then run ruleset-apply from main; PRs land on develop-gsd, the workflow reads payloads from main only, so dispatch after the edit merges re-applies the old payload and verifies clean; the workflow cannot create a ruleset (exits at lines 187-190) and the create-path note was deleted while live rulesets are []"
+  artifacts:
+    - path: "RULESETS.md"
+      issue: "line 24: WR-05: RULESETS.md change-a-rule recipe silently re-applies main's old payload and has no create path"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-06: CITATION.cff tells users to cite installed version metadata, which for non-release installs is a never-released, non-unique version"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-58aee162fdd6
+  root_cause: "CITATION.cff:16-17 says cite the installed package's version metadata; with version_scheme post-release and no-local-version, a git install reports <tag>.postN with no hash (reproduced: dev venv reports 0.10.4.post407), which exists on no index and does not identify code"
+  artifacts:
+    - path: "CITATION.cff"
+      issue: "line 16: WR-06: CITATION.cff tells users to cite installed version metadata, which for non-release installs is a never-released, non-unique version"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "WR-07: RELEASE.md promotion step names neither the stripped directories nor a mechanism, and nothing checks it"
+  status: failed
+  severity: minor
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner. Highest-risk round-3 finding: a literal reading ships .planning/ and .claude/ to PyPI irreversibly. Behaviour half (Lint check that .planning/ and .claude/ are absent on PRs based on main) DEFERRED to Phase 7."
+  test: review-r3-975048ad0049
+  root_cause: "RELEASE.md:30 says promote develop-gsd to main (squashed, internal directories stripped); read literally a squash-merged develop-gsd->main PR lands .planning/ and .claude/ on main, setuptools-scm puts them in the sdist, and the next release uploads them permanently; no check fires (hygiene gate exempts those dirs, RELEASE.md:43 admits no package-content check)"
+  artifacts:
+    - path: "RELEASE.md"
+      issue: "line 30: WR-07: RELEASE.md promotion step names neither the stripped directories nor a mechanism, and nothing checks it"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "warning"
+
+- truth: "IN-01: RELEASE.md says X.Y.Z tag but the guard requires a v prefix and no pre-release suffix"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-1ace814feece
+  root_cause: "RELEASE.md:39-40 says PyPI only from an X.Y.Z tag; publish-pypi.yml:47 requires ^v[0-9]+.[0-9]+.[0-9]+$, so a hand-made 0.11.1 or v0.12.0rc1 tag is refused at publish time"
+  artifacts:
+    - path: "RELEASE.md"
+      issue: "line 39: IN-01: RELEASE.md says X.Y.Z tag but the guard requires a v prefix and no pre-release suffix"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-02: Release-As: takes an explicit version and must be on the commit that lands on main"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-713b1d7f6847
+  root_cause: "RELEASE.md:26-27 says force a minor bump with a Release-As: footer; release-please reads Release-As: <version> as an exact version and only sees commits on main (the squashed promotion commit)"
+  artifacts:
+    - path: "RELEASE.md"
+      issue: "line 26: IN-02: Release-As: takes an explicit version and must be on the commit that lands on main"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-03: lint-permissions keep-by-hand rule contradicts the block and disables the fast path if followed"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-bd8b4cae1b22
+  root_cause: "ci.yml:41-42 says leave lint permissions at contents: read; the block also holds pull-requests: read (lines 99-100) which classify-changes requires, so following the sentence makes the classifier fail safe and the fast path goes inert"
+  artifacts:
+    - path: ".github/workflows/ci.yml"
+      issue: "line 41: IN-03: lint-permissions keep-by-hand rule contradicts the block and disables the fast path if followed"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-04: 'recorded deviation' comments point at a RULESETS.md section this diff deleted"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-118821980292
+  root_cause: "publish-testpypi.yml:73,90 and ci.yml:259-262 call the TestPyPI attestation grant and the coverage floor a recorded deviation/addition; the record was RULESETS.md's Recorded deviations section, removed in this pass"
+  artifacts:
+    - path: ".github/workflows/publish-testpypi.yml"
+      issue: "IN-04: lines 73, 90 reference deleted record"
+    - path: ".github/workflows/ci.yml"
+      issue: "IN-04: lines 259-262 reference deleted record"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-05: CITATION.cff says releases are published on PyPI; none are yet"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-fe2548de9d69
+  root_cause: "CITATION.cff:16 says releases are tagged on GitHub and published on PyPI; pypi.org/pypi/pc2img/json returns 404 and v0.10.0..v0.10.4 exist only as GitHub tags; raised in round 2 and not addressed by the rewrite"
+  artifacts:
+    - path: "CITATION.cff"
+      issue: "line 16: IN-05: CITATION.cff says releases are published on PyPI; none are yet"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-06: 'Run the same checks locally' points at CONTRIBUTING.md commands that do not match CI"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-29: non-breaking hardening -> defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-29: non-breaking hardening -> defer)."
+  test: review-r3-5239cfaa197f
+  root_cause: "RULESETS.md:19 points at CONTRIBUTING.md, whose local commands omit check_publish_gate.py, pytest .github/scripts/ and the coverage floor (--cov-fail-under=55), so a contributor green locally can fail a required check"
+  artifacts:
+    - path: "RULESETS.md"
+      issue: "line 19: IN-06: 'Run the same checks locally' points at CONTRIBUTING.md commands that do not match CI"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-07: three edited lines exceed the 120-column limit"
+  status: failed
+  severity: cosmetic
+  reason: "FIX NOW at the 06-19 checkpoint in one prose-only commit (owner disposition 2026-09-29); round cap reached, review of the fix commit waived by the owner."
+  test: review-r3-e8240be04c46
+  root_cause: "ci.yml:21 (130 cols), RELEASE.md:41 (141) and CITATION.cff:16 (122) exceed the project's 120-column limit and the ~80-column wrap around them; nothing checks YAML/Markdown width"
+  artifacts:
+    - path: ".github/workflows/ci.yml"
+      issue: "IN-07: line 21 is 130 columns"
+    - path: "RELEASE.md"
+      issue: "IN-07: line 41 is 141 columns"
+    - path: "CITATION.cff"
+      issue: "IN-07: line 16 is 122 columns"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "info"
+
+- truth: "IN-08: deferred 'apply-time checklist' phrases still point at an unshipped checklist"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-29: non-breaking hardening -> defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-29: non-breaking hardening -> defer). Pairs with the round-2 deferral of the remaining kit-conditional prose."
+  test: review-r3-d5f18c5bd824
+  root_cause: "scheduled-health.yml:12-13 and classify-changes/action.yml:73-74 still say this is an apply-time checklist item; the checklist was the unshipped strategy document and every other reference to it was removed in this pass"
+  artifacts:
+    - path: ".github/workflows/scheduled-health.yml"
+      issue: "IN-08: lines 12-13"
+    - path: ".github/actions/classify-changes/action.yml"
+      issue: "IN-08: lines 73-74"
   missing: []
   debug_session: ""
   reviewer_severity: "info"
