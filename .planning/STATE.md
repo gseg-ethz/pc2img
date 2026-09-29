@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-09-29T07:37:56.826Z"
-last_activity: 2026-09-28
+stopped_at: Completed 06-14-PLAN.md
+last_updated: "2026-09-29T07:58:46.641Z"
+last_activity: 2026-09-29
 last_activity_desc: Phase 06 execution started
-state_head: 498469778f6b33d36dcc114694937942ab52c3cd
+state_head: fd1c2d93c421133960d46bf9a79eb79e82ae4986
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 57
-  completed_plans: 47
+  completed_plans: 48
 milestone_name: milestone
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 06 (Publication Hardening & Downstream Migration Record) — READY TO EXECUTE (gap closure)
-Plan: next 06-14 of 18 (gap closure 06-14..06-18 runs first, then 06-09..06-13)
+Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
+Plan: 2 of 18
 Status: Ready to execute
-Last activity: 2026-09-28 — Phase 06 execution started
+Last activity: 2026-09-29 — Phase 06 execution started
 
 Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
 
@@ -110,6 +110,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P06 | 11 min | 2 tasks | 21 files |
 | Phase 06 P07 | 38min | 3 tasks | 3 files |
 | Phase 06 P08 | 20min | 3 tasks | 0 files |
+| Phase 06 P14 | 45min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,9 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-06: release-please-config.json extra-files key removed (pointed at a nonexistent docs/conf.py); .release-please-manifest.json kept unchanged at 0.10.4 rather than overwritten with the kit's 0.0.0 placeholder
 - [Phase 06]: RULESETS.md/RELEASE.md apply-time checklist evidence is real command output run against the assembled tree, not paraphrased from the template's example shape
 - [Phase 06]: [Phase 06 P08] Retired v2.0.0a5 to archive/v2.0.0a5 and closed stale PR #6 (D-02/D-04); owner granted codecov + gseg-ruleset-admin Apps and stored RULESET_APP_ID/RULESET_APP_PRIVATE_KEY/CODECOV_TOKEN secrets (D-30 item 1); merged phase PR #13 into develop-gsd as a two-parent merge commit (6c10ee0) behind three green required contexts and a verified Codecov upload -- the assembled CI/CD workflows are now live on the integration branch ("merge first", D-17).
+- [Phase 06]: CR-01 fixed by narrowing .git_archival.txt's match= glob to pyproject's v[0-9]*.[0-9]*.[0-9]* string rather than deleting release-please.yml's shared floating-tag step
+- [Phase 06]: WR-05 fixed with plain-bash first-build-step ref guards mirroring ruleset-apply.yml's shape on both publish workflows; environment deployment-branch policies and MANIFEST.in recorded as follow-ups, not substitutes
+- [Phase 06]: WR-08 fixed by deleting CITATION.cff's preferred-citation/placeholder-DOI block entirely rather than inventing a DOI-free placeholder; both sibling repos (PCHandler, GSEGUtils) carry the identical placeholder and are noted, not edited
 
 ### Pending Todos
 
@@ -236,6 +240,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-28T15:51:46.339Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-09-29T07:58:46.404Z
+Stopped at: Completed 06-14-PLAN.md
 Resume file: None

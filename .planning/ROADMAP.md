@@ -226,7 +226,7 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `.planning/MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`; internal per D-33, stripped from `main`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 8/18 plans executed (06-14..06-18 — review-round gap closure, planned 2026-09-29, pending; 06-09..06-13 re-waved behind them)
+**Plans**: 9/18 plans executed (06-14..06-18 — review-round gap closure, planned 2026-09-29, pending; 06-09..06-13 re-waved behind them)
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -250,7 +250,7 @@ Plans:
 
 **Gap closure — waves 5–9** *(review-round fixes before the first promotion — D-33/D-34/D-35; the fix diff gets its own review before re-merge)*
 
-- [ ] 06-14-PLAN.md — CR-01 archival describe glob narrowed + git-archive regression test; WR-05 ref guards on both publish workflows + guard test; WR-08 placeholder DOI removed [CICD-02]
+- [x] 06-14-PLAN.md — CR-01 archival describe glob narrowed + git-archive regression test; WR-05 ref guards on both publish workflows + guard test; WR-08 placeholder DOI removed [CICD-02]
 - [ ] 06-15-PLAN.md — D-33 migration record -> .planning/MIGRATION-v0.11.md; D-34 full adoption record -> .planning/CICD-ADOPTION-RECORD.md and RULESETS.md/RELEASE.md condensed (WR-10 back-merge after every promotion, IN-05 procedural wording); README projections (IN-10) [CICD-02, BC-01]
 - [ ] 06-16-PLAN.md — WR-03 project_raw docstring + contract tests; WR-04 pre-commit exemption removed; IN-13 vocabulary gate extended to prose phrases; IN-04 declined-component notes [CICD-02]
 - [ ] 06-17-PLAN.md — Full gate re-run recorded; CONTRIBUTING baseline (IN-10); blocking checkpoint: /gsd-code-review 06 + /code-review high over the fix diff, findings landed [CICD-02, BC-01]
@@ -291,5 +291,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 8/13 | In Progress|  |
+| 6. Publication Hardening & Downstream Migration Record | 9/18 | In Progress|  |
 | 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |
