@@ -19,6 +19,8 @@ name: Ruleset Apply
 # is applied — in that case A2 is a raw-text scan and would flag its own
 # prohibition note, so the literal trigger name is deliberately NOT written
 # here. Do not "helpfully" restore it.
+# (not part of this assembly: the config self-inspection and
+# continuous-enforcement components were declined; see RULESETS.md)
 #
 # Permissions MUST stay at contents:read. NOTE: the Administration capability
 # this workflow exercises is intentionally ABSENT from the permissions block —

@@ -8,6 +8,9 @@ self-test) and ``preflight_ruleset_apply.py`` (the write path), all of which liv
 in this same directory, so a plain ``import ruleset_lib`` resolves through the
 script directory Python prepends to ``sys.path``.
 
+(not part of this assembly: the config self-inspection and
+continuous-enforcement components were declined; see RULESETS.md)
+
 The comparison contract is enumerated in full in :func:`normalize`. Every field
 the comparison drops, re-keys or sorts is named there **and** recorded in the
 returned removal list; a key that vanishes without a matching entry in that list

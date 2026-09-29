@@ -125,6 +125,8 @@ def collect_violations(paths: list[pathlib.Path]) -> list[str]:
             # (this one and check_ci_config.load_workflows) that disagree
             # about one file's bytes can reach two different verdicts on
             # identical input.
+            # (not part of this assembly: the config self-inspection and
+            # continuous-enforcement components were declined; see RULESETS.md)
             with wf_path.open(encoding="utf-8") as f:
                 wf = yaml.safe_load(f)
         except (OSError, ValueError, yaml.YAMLError) as error:

@@ -20,6 +20,8 @@ name: CI
 #     in `.github/scripts/check_ci_config.py` fail the build if either returns,
 #     when the config self-inspection component is applied; otherwise this is
 #     an apply-time checklist item in the strategy document.
+#     (not part of this assembly: the config self-inspection and
+#     continuous-enforcement components were declined; see RULESETS.md)
 #   - NO required-context job may depend on another job. A `needs:` edge
 #     between two required contexts is a pure fail-fast convenience, never a data
 #     dependency, and dropping it removes the skip-propagation path structurally
