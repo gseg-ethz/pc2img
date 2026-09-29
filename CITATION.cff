@@ -13,7 +13,7 @@ url: https://github.com/gseg-ethz/pc2img
 license: BSD-3-Clause
 
 message: >
-  The main branch reflects the latest released version of the software.
-  Releases are published on PyPI and tagged on GitHub. Please cite the
-  version you used. A persistent identifier will be added to this file
-  when a release is archived.
+  Releases are tagged on GitHub and published on PyPI. The main branch may be ahead of the latest release. Please cite the
+  version you used, taken from the release tag or from the installed package's version metadata.
+  A persistent identifier will be added to this file when a release is
+  archived.
