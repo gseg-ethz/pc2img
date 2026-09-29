@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-15-PLAN.md
-last_updated: "2026-09-29T08:17:44.229Z"
+stopped_at: Completed 06-16-PLAN.md
+last_updated: "2026-09-29T08:36:04.322Z"
 last_activity: 2026-09-29
 last_activity_desc: Phase 06 execution started
-state_head: 4fc329b33cd5ff33b3d8cf65532c2d23f90e3b0b
+state_head: d9e86d3823a06ee742417415eca8638fe71fd897
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 57
-  completed_plans: 49
+  completed_plans: 50
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 3 of 18
+Plan: 4 of 18
 Status: Ready to execute
 Last activity: 2026-09-29 — Phase 06 execution started
 
@@ -112,6 +112,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P08 | 20min | 3 tasks | 0 files |
 | Phase 06 P14 | 45min | 3 tasks | 6 files |
 | Phase 06 P15 | 55min | 3 tasks | 7 files |
+| Phase 06 P16 | 15min | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,8 @@ Recent decisions affecting current work:
 - [Phase 06]: WR-08 fixed by deleting CITATION.cff's preferred-citation/placeholder-DOI block entirely rather than inventing a DOI-free placeholder; both sibling repos (PCHandler, GSEGUtils) carry the identical placeholder and are noted, not edited
 - [Phase 06]: [Phase 06 P15]: D-33/D-34 executed -- migration record moved under .planning/ via git rename (verifier re-pointed, re-run green); full CI/CD adoption record preserved in .planning/CICD-ADOPTION-RECORD.md while RULESETS.md/RELEASE.md condensed to 142/100 lines at maintainer scope
 - [Phase 06]: [Phase 06 P15]: WR-10 fixed (correct f946268/69224a9/ade40f8 rationale; back-merge after every promotion AND release-PR merge) and IN-05 fixed (procedural ruleset-creation wording) in condensed RULESETS.md; IN-10 README/index half fixed (perspective projection named)
+- [Phase 06]: 06-16: Closed WR-03/WR-04/IN-13/IN-04 gap-round-1 findings; corrected project_raw docstring to (M,2)/mask.sum() contract with 3 pinning tests, removed the false-justified .pre-commit-config.yaml hygiene exemption via character-class regex spelling, extended the vocabulary gate's prose patterns (this-phase/this-milestone/gap-closure), and marked all 7 .github/ references to declined kit components -- all AST/YAML-identity proven against 6c10ee0
+- [Phase 06]: 06-16 deviation: relocated the classify-changes/action.yml declined-component note out of the file's single run: script block (where the plan's cited line numbers sat) to genuine top-level YAML comment territory, to preserve yaml.safe_load identity against 6c10ee0; logged and immediately resolved in .planning/WINDOWS.md entry 1
 
 ### Pending Todos
 
@@ -243,6 +246,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-29T08:17:43.927Z
-Stopped at: Completed 06-15-PLAN.md
+Last session: 2026-09-29T08:35:52.330Z
+Stopped at: Completed 06-16-PLAN.md
 Resume file: None
