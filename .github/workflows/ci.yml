@@ -18,17 +18,15 @@ name: CI
 #     on a check that will never arrive, with no override available under
 #     `bypass_actors: []`. Conditionality belongs on STEPS. Assertions A1 and A5
 #     in `.github/scripts/check_ci_config.py` fail the build if either returns,
-#     when the config self-inspection component is applied; otherwise this is
-#     an apply-time checklist item in the strategy document.
-#     (not part of this assembly: the config self-inspection and
-#     continuous-enforcement components were declined; see RULESETS.md)
+#     when the config self-inspection component is applied; otherwise keep this by hand: never put a job-level `if:` or a `paths:`
+#     filter on a required-context job when editing this file.
 #   - NO required-context job may depend on another job. A `needs:` edge
 #     between two required contexts is a pure fail-fast convenience, never a data
 #     dependency, and dropping it removes the skip-propagation path structurally
 #     rather than guarding it. Assertion A6 in `.github/scripts/check_ci_config.py`
 #     fails the build on this shape when the config self-inspection component is
-#     applied; otherwise this is an apply-time checklist item in the strategy
-#     document.
+#     applied; otherwise keep this by hand: never add a `needs:` edge between
+#     two required-context jobs when editing this file.
 #   - RENAMING a job is a coordinated change across this file and EVERY ruleset
 #     payload naming that context: the `name:` and the payloads move in ONE
 #     commit, or the protected branch requires a context nothing produces and
@@ -40,8 +38,8 @@ name: CI
 #     ONE commit or the release chain stops SILENTLY, with nothing red.
 #   - The lint job holds a READ content scope only. Assertion A7 fails the build
 #     the moment a write scope is added back, when the config self-inspection
-#     component is applied; otherwise this is an apply-time checklist item in
-#     the strategy document.
+#     component is applied; otherwise keep this by hand: leave the lint job's
+#     `permissions:` at `contents: read` whenever you edit it.
 #   - ALL THREE required-context jobs carry the release-artifact fast path. Each
 #     resolves the `classify-changes` composite immediately after its OWN
 #     checkout and gates EVERY subsequent step on the result, so the cost
@@ -187,7 +185,7 @@ jobs:
             echo "::error::the config self-inspection component looks half-assembled -- a related file (test_check_ci_config.py, assert_no_skip.py or integrity.yml) exists but .github/scripts/check_ci_config.py does not. Assemble the config self-inspection component completely, or remove the related files."
             exit 1
           else
-            echo "no config self-inspection component assembled — the apply-time checklist in the strategy document governs this repository"
+            echo "config self-check not configured; skipping"
           fi
 
       - name: Run .github/scripts unit tests

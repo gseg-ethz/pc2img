@@ -14,8 +14,6 @@ name: Scheduled Health
 # literal trigger name is deliberately NOT written here because A2 is a
 # raw-text scan over this directory and would flag its own prohibition note.
 # Do not "helpfully" restore the literal.
-# (not part of this assembly: the config self-inspection and
-# continuous-enforcement components were declined; see RULESETS.md)
 #
 # Permissions MUST stay scoped to contents:read + issues:write — contents:read
 # to check out, issues:write to open or comment on the ancestry alarm. NOTE:

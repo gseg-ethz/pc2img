@@ -20,9 +20,6 @@ description: >
   full suite still runs, so nothing is red, and the only symptom is a fast path
   that never engages.
 
-# (not part of this assembly: the config self-inspection and
-# continuous-enforcement components were declined; see RULESETS.md)
-
 outputs:
   release-artifacts-only:
     description: "'true' when every changed path is a release artifact; 'false' otherwise (run everything)."

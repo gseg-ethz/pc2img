@@ -19,8 +19,6 @@ name: Ruleset Apply
 # is applied — in that case A2 is a raw-text scan and would flag its own
 # prohibition note, so the literal trigger name is deliberately NOT written
 # here. Do not "helpfully" restore it.
-# (not part of this assembly: the config self-inspection and
-# continuous-enforcement components were declined; see RULESETS.md)
 #
 # Permissions MUST stay at contents:read. NOTE: the Administration capability
 # this workflow exercises is intentionally ABSENT from the permissions block —
@@ -234,14 +232,17 @@ jobs:
         with:
           app-id: ${{ secrets.RULESET_APP_ID }}
           private-key: ${{ secrets.RULESET_APP_PRIVATE_KEY }}
-          # THE one place in these workflows where a write scope is the correct
-          # answer rather than a concession: this job exists to rewrite branch
-          # protection, and the update endpoint is gated on Administration
-          # write. It is minted here, after the preflight has already passed,
-          # and the action revokes it in its post step, so it cannot be handed
-          # to another job. The nightly drift job also mints at write, but for a
-          # different reason (a read-scoped mint does not receive `bypass_actors`
-          # at all); do not read the two as the same decision.
+          # The only Administration-write grant in this repository's
+          # workflows, and the correct answer rather than a concession: this
+          # job exists to rewrite branch protection, and the update endpoint
+          # is gated on Administration write. It is minted here, after the
+          # preflight has already passed, and the action revokes it in its
+          # post step, so it cannot be handed to another job. (The other
+          # write scopes in this directory — `id-token` on the publish jobs
+          # and `issues` on the health check — are different grants for
+          # different reasons.) A read-scoped mint does not receive the
+          # bypass list at all, which is why RULESETS.md's live-inspection
+          # note reads a ruleset by id with an administration-capable token.
           permission-administration: write
 
       - name: Apply the committed payload as a complete object
