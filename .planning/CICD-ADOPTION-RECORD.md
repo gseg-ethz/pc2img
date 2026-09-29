@@ -600,3 +600,130 @@ Recorded here, not acted on — editing a sibling repository needs explicit owne
 
 Plan 06-17 records the re-run of the full pre-promotion gate after this review round's fixes
 (plans 06-14, 06-15, 06-16) land, ahead of the first promotion to `main`.
+
+### 2026-09-29 — after the review-round fixes
+
+Run in one pass from the repository root, against the tree that carries every review-round fix
+(plans 06-14, 06-15, 06-16; HEAD `cf2fe47`). Every command below exited zero.
+
+**Full test suite with the coverage floor:**
+
+```
+$ uv run --frozen pytest --cov=pc2img --cov-branch --cov-report=term-missing --cov-fail-under=55 -q
+...
+Required test coverage of 55% reached. Total coverage: 62.27%
+286 passed, 17 warnings in 6.06s
+```
+
+**Whole-tree pre-commit:**
+
+```
+$ uv run --frozen pre-commit run --all-files
+ruff check...............................................................Passed
+ruff format..............................................................Passed
+trim trailing whitespace.................................................Passed
+fix end of files.........................................................Passed
+check yaml...............................................................Passed
+check toml...............................................................Passed
+check for added large files..............................................Passed
+```
+
+**Documentation build, warnings as errors (rebuilt clean, `rm -rf docs/_build` first):**
+
+```
+$ uv sync --frozen --group doc && uv run --frozen sphinx-build -W --keep-going -b html docs/source docs/_build/html
+...
+build succeeded.
+
+The HTML pages are in docs/_build/html.
+```
+
+No `WARNING:` or `ERROR:` line appeared anywhere in the build output.
+
+**Placeholder grep, whole tree:**
+
+```
+$ grep -rn '<[A-Z_][A-Z_]*>' .github/ release-please-config.json .release-please-manifest.json
+(no output — no placeholder survived parameterisation)
+```
+
+**Planning-vocabulary gate (extended, IN-13/IN-04 patterns included):**
+
+```
+$ uv run --frozen pytest tests/test_hygiene.py -q -k planning_vocabulary
+82 passed, 6 deselected, 12 warnings in 0.26s
+```
+
+**Kit script tests:**
+
+```
+$ uv run --frozen pytest .github/scripts -q
+92 passed in 1.66s
+```
+
+**Publish containment gate:**
+
+```
+$ uv run --frozen python .github/scripts/check_publish_gate.py
+check_publish_gate: OK — publish steps found only in allowed files + environments
+```
+
+**Migration record verifier:**
+
+```
+$ mkdir -p _scrap && awk '/^## Verifier \(inline\)$/,/^```$/' .planning/MIGRATION-v0.11.md | sed -n '/^```python$/,/^```$/p' | sed '1d;$d' > _scrap/pc2img-migration-verifier.py && uv run --frozen python _scrap/pc2img-migration-verifier.py
+[ok] verified 25 entries
+```
+
+**Lockfile freshness:**
+
+```
+$ uv lock --check
+Resolved 193 packages in 2ms
+```
+
+**Build and package check:**
+
+```
+$ rm -rf dist && uv build
+Successfully built dist/pc2img-0.10.4.post429.tar.gz
+Successfully built dist/pc2img-0.10.4.post429-py3-none-any.whl
+
+$ uvx twine check dist/*
+Checking dist/pc2img-0.10.4.post429-py3-none-any.whl: PASSED
+Checking dist/pc2img-0.10.4.post429.tar.gz: PASSED
+```
+
+**Files changed since the phase PR merge (the round-2 review scope):**
+
+`git diff --name-only 6c10ee0..HEAD -- . ':!.planning'` — 21 paths:
+
+```
+.git_archival.txt
+.github/actions/classify-changes/action.yml
+.github/scripts/check_publish_gate.py
+.github/scripts/check_ruleset_drift.py
+.github/scripts/ruleset_lib.py
+.github/scripts/test_publish_ref_guard.py
+.github/workflows/ci.yml
+.github/workflows/publish-pypi.yml
+.github/workflows/publish-testpypi.yml
+.github/workflows/ruleset-apply.yml
+.github/workflows/scheduled-health.yml
+.pre-commit-config.yaml
+CITATION.cff
+MIGRATION-v0.11.md
+README.rst
+RELEASE.md
+RULESETS.md
+src/pc2img/strategies/projection.py
+tests/test_git_archival.py
+tests/test_hygiene.py
+tests/test_projection.py
+```
+
+`MIGRATION-v0.11.md` appears as a deletion — the 06-15 rename moved the draft under
+`.planning/` (D-33), so its removal from the public root is a real change to the shipped tree
+even though the pathspec above excludes `.planning/` itself. This list is the scope handed to
+both round-2 review commands in Task 2 (`/gsd-code-review 06 --files <list>` and
+`/code-review origin/develop-gsd high`).

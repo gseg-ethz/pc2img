@@ -66,8 +66,8 @@ The test suite is measured with branch coverage scoped to the `pc2img` package:
 uv run pytest --cov=pc2img --cov-branch --cov-report=term-missing
 ```
 
-**Measured baseline: 62%** (whole-package branch coverage, measured 2026-09-28 on the
-green suite of **252 passed / 0 xfailed**). The previously-unexercised core modules
+**Measured baseline: 62%** (whole-package branch coverage, measured 2026-09-29 on the
+green suite of **286 passed / 0 xfailed**). The previously-unexercised core modules
 (`projection.py`, `interpolation.py`, `derivative_features.py`, `manager.py`,
 `tiled_generator.py`, `util.py`, `rrim.py`) got behavioral coverage as the module
 test-coverage work landed. Some large modules (`derivative_features.py`,
