@@ -83,15 +83,22 @@ class ProjectionStrategy(ABC):
         Returns
         -------
         coords_raw : NDArray
-            Raw coordinates in model space, shape ``(N, 2)`` (e.g. angles or xy).
+            Raw model-space coordinates of the KEPT points only, shape ``(M, 2)``
+            with ``M == mask.sum()`` (e.g. angles or xy).
         mask : NDArray
-            Boolean array of length ``N`` indicating which points to keep.
+            Boolean array of length ``N`` (the full cloud) marking the kept
+            points. :meth:`project` and the generator select per-point values
+            with ``mask`` and pair them positionally with ``coords_raw``'s rows,
+            so an implementation returning ``N`` rows instead of ``M`` breaks
+            that pairing.
         mins : NDArray
-            Per-dimension minimum of ``coords_raw`` over the kept points, used by
-            :meth:`project` for span normalization.
+            Per-dimension normalization frame used by :meth:`project`: the
+            configured field of view / ROI bounds when the strategy has one,
+            otherwise the kept-point extent.
         maxs : NDArray
-            Per-dimension maximum of ``coords_raw`` over the kept points, used by
-            :meth:`project` for span normalization.
+            Per-dimension normalization frame used by :meth:`project`: the
+            configured field of view / ROI bounds when the strategy has one,
+            otherwise the kept-point extent.
         """
         ...
 

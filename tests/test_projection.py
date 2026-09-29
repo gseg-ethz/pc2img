@@ -305,6 +305,57 @@ def test_orthographic_project_raw_ix_equivalence(synthetic_pcd, plane):
     np.testing.assert_array_equal(coords, xyz[mask][:, cols])
 
 
+# --------------------------------------------------------------------------- #
+# WR-03: project_raw contract pinning -- kept-point (M, 2) shape, mask.sum(),  #
+# and the FoV/ROI-else-kept-extent normalization frame                        #
+# --------------------------------------------------------------------------- #
+def test_project_raw_returns_kept_points_and_fov_frame_spherical(synthetic_pcd):
+    pcd = synthetic_pcd(n=1000)
+    fov = FoV(left=-0.1, right=0.2, top=1.4, bottom=1.8)
+    coords_raw, mask, mins, maxs = SphericalProjection(field_of_view=fov).project_raw(pcd)
+
+    assert mask.shape == (pcd.nbPoints,)
+    assert 0 < int(mask.sum()) < pcd.nbPoints  # non-vacuous: the FoV actually culls part of the cloud
+    assert coords_raw.shape == (int(mask.sum()), 2)
+    # mins/maxs are the FoV bounds, not the kept-data extent.
+    np.testing.assert_array_equal(mins, np.array([fov.left, fov.top]).squeeze())
+    np.testing.assert_array_equal(maxs, np.array([fov.right, fov.bottom]).squeeze())
+
+
+def test_project_raw_returns_kept_points_and_roi_frame_orthographic(synthetic_pcd):
+    pcd = synthetic_pcd(n=32)
+    roi = (0.25, 0.25, 0.75, 0.75)
+
+    coords, mask, mins, maxs = OrthographicProjection(plane="xy", roi_box=roi).project_raw(pcd)
+    assert mask.shape == (pcd.nbPoints,)
+    assert 0 < int(mask.sum()) < pcd.nbPoints  # non-vacuous: the ROI actually culls part of the cloud
+    assert coords.shape == (int(mask.sum()), 2)
+    np.testing.assert_array_equal(mins, np.asarray(roi[:2]))
+    np.testing.assert_array_equal(maxs, np.asarray(roi[2:]))
+
+    # Without a roi_box: every point is kept and mins/maxs fall back to the
+    # kept-point extent (not the ROI frame, which does not exist here).
+    coords_all, mask_all, mins_all, maxs_all = OrthographicProjection(plane="xy").project_raw(pcd)
+    assert mask_all.all()
+    xyz = np.asarray(pcd.xyz)
+    np.testing.assert_array_equal(mins_all, xyz[:, :2].min(axis=0))
+    np.testing.assert_array_equal(maxs_all, xyz[:, :2].max(axis=0))
+
+
+def test_project_pairs_pts2d_rows_with_mask(synthetic_pcd):
+    # The pairing core.py relies on (bf_1D[mask] against pts2d, positionally):
+    # pts2d must have exactly mask.sum() rows, and mask must cover the full cloud.
+    pcd = synthetic_pcd(n=32)
+    strategies = (
+        SphericalProjection(),
+        OrthographicProjection(plane="xy", roi_box=(0.25, 0.25, 0.75, 0.75)),
+    )
+    for proj in strategies:
+        pts2d, mask = proj.project(pcd, (50, 50))
+        assert mask.shape == (pcd.nbPoints,)
+        assert pts2d.shape[0] == int(mask.sum())
+
+
 def test_spherical_inverse_projection_without_fov_raises_valueerror():
     # A default-constructed SphericalProjection (field_of_view
     # is None) cannot invert — inverse_projection has no point cloud to source a
