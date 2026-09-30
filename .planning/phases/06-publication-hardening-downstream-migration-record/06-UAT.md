@@ -32,8 +32,9 @@ blocked: 0
      `## Gaps — Round N` would make every entry below invisible. -->
 
 - truth: "CR-01: Floating vX/vX.Y release tags make every GitHub release source archive unbuildable"
-  status: failed
+  status: resolved
   severity: blocker
+  evidence: "Closed by gap plan 06-14, fix e44ac0b 'fix(release): narrow the archival describe glob to X.Y.Z tags so release archives build' (RED at 8651037 'test(release): pin release-archive version derivation against floating tags'): .git_archival.txt's describe glob narrowed to the single v[0-9]*.[0-9]*.[0-9]* match, identical to pyproject.toml's git_describe_command; proven by tests/test_git_archival.py (test_archive_of_floating_tagged_commit_substitutes_release_tag, test_release_tag_regex_parses_release_tag_only, test_archival_glob_matches_checkout_glob) plus a manual setuptools_scm run against a real extracted archive, before and after the fix."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Narrow describe match to v[0-9]*.[0-9]*.[0-9]* and add a git-archive regression test with a floating tag present."
   test: review-r1-a7fbf52f5b95
   root_cause: "release-please.yml tags v0/v0.11 on each release; .git_archival.txt describe matches v*, so git-archive describe resolves to v0 and setuptools_scm raises \"Can't parse version from tag 'v0'\" (reproduced: v0.11.0 alone builds; plus v0/v0.11 fails). Origin already carries v0/v0.10 on v0.10.4."
@@ -73,8 +74,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-03: New project_raw docstring documents a contract no implementation follows"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-16, fix 158a569 'docs(projection): document the kept-point (M, 2) contract project_raw implementations actually follow': ProjectionStrategy.project_raw's ABC docstring rewritten to the (M, 2)/mask.sum()/length-N-mask/positional-pairing/FoV-or-ROI-else-kept-extent contract every implementation and core.py actually follow; proven by tests/test_projection.py's test_project_raw_returns_kept_points_and_fov_frame_spherical, test_project_raw_returns_kept_points_and_roi_frame_orthographic and test_project_pairs_pts2d_rows_with_mask, plus an AST-identity check (docstrings stripped) against 6c10ee0 confirming no implementation changed; follow-up tracked as review-r2-d946cd47a6ca."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28)."
   test: review-r1-41b9f56f31b8
   root_cause: "Docstring says coords_raw is (N,2) and mins/maxs are kept-point extents; implementations return already-masked (M,2) coords and FoV/ROI bounds (reproduced). Ships in the public API docs."
@@ -86,8 +88,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-04: File-wide hygiene exemption for .pre-commit-config.yaml is unnecessary and falsely justified"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-16, fix 5bb45dd 'test(hygiene): scan the pre-commit config and flag prose planning phrases': removed the .pre-commit-config.yaml entry from tests/test_hygiene.py's _EXEMPTIONS, leaving the signed IP-clearance record as the sole exemption, and re-spelled the exclude regex's planning-directory alternative with a character class so it still yields zero hygiene-gate hits; proven by the gate-ok hermetic check (len(_EXEMPTIONS) == 1, _matches() == [] on .pre-commit-config.yaml) and tests/test_hygiene.py -q -> 88 passed over the whole shipped tree."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28)."
   test: review-r1-b41fa832e634
   root_cause: "The planning-vocabulary gate exempts the whole .pre-commit-config.yaml claiming YAML cannot avoid the literal; \\.plan[n]ing/ gives zero gate hits and identical excludes, so the exemption only weakens the gate. Docstring also says 'One exemption' when there are two."
@@ -99,8 +102,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-05: Publish workflows can run from any ref and would ship .planning/ and .claude/ in the sdist"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-14, fix b6d9d9f 'feat(release): ref-guard both publish workflows against a mis-dispatch or a non-release tag' (RED at f51d584 'test(release): add failing test for publish workflow ref guards'): publish-testpypi.yml's build job now refuses any dispatch ref but refs/heads/main; publish-pypi.yml's build job refuses a release ref that is not an X.Y.Z tag, then (immediately after checkout) refuses a tagged commit not reachable from origin/main; proven by .github/scripts/test_publish_ref_guard.py's 9 accept/reject cases across both workflows' guards; follow-up tracked as review-r2-4c41e7116b0b."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Owner elevated to fix-now: add a ref guard to both publish workflows."
   test: review-r1-084c307292dd
   root_cause: "Neither publish workflow asserts its ref and no GitHub environments exist; a mis-dispatch from develop-gsd builds an sdist containing .planning/ and .claude/CLAUDE.md and uploads it permanently to (Test)PyPI."
@@ -140,8 +144,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-08: CITATION.cff publishes a placeholder DOI"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-14, fix fd1c2d9 'docs(citation): drop the placeholder DOI until a release is archived': CITATION.cff's preferred-citation block (carrying doi: 10.5281/zenodo.XXXXXXX) removed entirely, message rewritten to state only facts true today; proven by the hermetic cff-ok python assertion in the plan's Task 3 verify and by uvx cffconvert --validate -i CITATION.cff."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28)."
   test: review-r1-f80cbd71c53b
   root_cause: "CITATION.cff carries doi 10.5281/zenodo.XXXXXXX, which would publish a fake identifier on public main."
@@ -167,8 +172,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-10: Ancestry alarm fires after every promotion but the documented procedure only back-merges after releases"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-15, fix d179850 'docs(rulesets): condense the branch-protection and release docs to maintainer scope; require a back-merge after every promotion': RULESETS.md's Promotion and back-merge section now requires a true-merge back-merge after every promotion to main and after every release-PR merge, states the measured merge-base rationale (f946268 common ancestor; 69224a9/ade40f8 main-only commits) in place of the false no-common-ancestor claim; proven by the plan's size/heading/rationale grep block (sizes-ok 142 100; heading and rationale counts all >=1) and tests/test_hygiene.py -q -k 'planning_vocabulary and (RULESETS or RELEASE or README or index)' -> 9 passed."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Require a true-merge back-merge after every promotion and release-PR merge; correct the rationale."
   test: review-r1-c03c3cef77e6
   root_cause: "Every squash promotion creates a main commit absent from develop-gsd, so the nightly ancestry assertion fails until a back-merge; RULESETS.md prescribes back-merge only after releases and falsely claims the branches share no common ancestor (merge-base f946268)."
@@ -222,8 +228,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-04: Comments reference kit components this assembly declined"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-16, fix d9e86d3 'ci(comments): mark the declined kit components at every reference': added an identical 'not part of this assembly ... see RULESETS.md' note at the first declined-component reference in ci.yml, scheduled-health.yml, ruleset-apply.yml, classify-changes/action.yml, check_ruleset_drift.py, ruleset_lib.py and check_publish_gate.py; proven by the marked-ok git-grep loop over all 7 files, yaml.safe_load identity for the 4 YAML files and AST identity (docstrings stripped) for the 3 Python files, all against 6c10ee0; follow-up tracked as review-r2-9de55bd743fc."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Part of the de-GSD/public-prose pass."
   test: review-r1-b073bad065c6
   root_cause: "Comments/docstrings mention check_ci_config.py, integrity.yml and ruleset-drift.yml, which were declined and do not exist in this repository."
@@ -235,8 +242,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-05: RULESETS.md states the rulesets exist, but the live list is empty"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-15, fix d179850 'docs(rulesets): condense the branch-protection and release docs to maintainer scope; require a back-merge after every promotion': RULESETS.md's Applying the rulesets section rewritten from a past-tense claim ('was done once') to a procedure describing how a ruleset gets created, never asserting one already exists; proven by the corrected word-check (wording-ok) and tests/test_hygiene.py -q -k 'planning_vocabulary and (RULESETS or RELEASE or README or index)' -> 9 passed; follow-up tracked as review-r2-9628e6ae5e41."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Part of the RULESETS.md rework."
   test: review-r1-0d3282d443c8
   root_cause: "RULESETS.md describes the rulesets as present; the live ruleset list is empty until plans 06-10/06-11 apply them."
@@ -304,8 +312,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-10: Stale or inconsistent public docs"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-15, fix 4fc329b 'docs(readme): name the perspective projection' (README.rst now names spherical, orthographic and perspective, matching docs/source/index.rst and the PROJECTIONS registry; proven by grep -c perspective on both files -> 1 each and uvx twine check on the built sdist/wheel -> both PASSED), plus gap plan 06-17, commit 5eae12c 'docs(contributing): refresh the coverage baseline after the review-round fixes' (CONTRIBUTING.md's baseline sentence now states 286 passed / 0 xfailed, 62.27%, dated 2026-09-29, closing the CONTRIBUTING.md half)."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Part of the public-doc rework."
   test: review-r1-8dbae7bf741e
   root_cause: "CONTRIBUTING.md, README.rst and docs/source/index.rst carry stale or mutually inconsistent statements about the new tooling."
@@ -345,8 +354,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-13: Planning vocabulary survives in shipped prose the gate's regexes cannot see"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-16, fix 5bb45dd 'test(hygiene): scan the pre-commit config and flag prose planning phrases': _PHASE_PLAN_PATTERN extended with two character-class-spelled alternatives (this-phase/this-milestone, gap-closure); reworded the 'deferred to the bug-fix phase' sentences and ruleset-apply.yml's 'this phase' token-mint comment; proven by tests/test_hygiene.py's test_prose_planning_phrases_are_flagged and the extended test_public_identifiers_are_not_flagged, plus the whole-tree gate run (tests/test_hygiene.py -q -> 88 passed)."
   reason: "FIX NOW before first promotion (owner disposition 2026-09-28). Part of the de-GSD/public-prose pass."
   test: review-r1-bff4e4d25bca
   root_cause: "Phrases such as 'this phase' and 'gap-closure pass' remain in shipped prose (MIGRATION-v0.11.md, ruleset-apply.yml, tests) that the vocabulary gate's patterns do not match."
@@ -363,8 +373,9 @@ blocked: 0
      `## Gaps — Round N` would make every entry below invisible. -->
 
 - truth: "WR-01: Publish ref guards only protect commits that contain them; docs overclaim"
-  status: failed
+  status: resolved
   severity: major
+  evidence: "Closed by gap plan 06-19, commits 5691315 'docs(release): rewrite the release process for outside readers and scope the ref-guard claims' and f14c97a 'docs(citation): drop the main-branch claim from the citation message': RELEASE.md and both publish workflow header comments narrowed to state the guards protect only a run started from a commit that carries them, with 'only ever create a release whose tag is on main' as the written safeguard; proven by the RELEASE.md heading/phrase greps ('protect only a run started from a commit that carries them'), the workflow-derived facts check, and yaml-identity against e929894 for publish-pypi.yml/publish-testpypi.yml."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification. Option (b): NO code change; owner declined environment deployment rules and sdist content check. Narrow RELEASE.md:66-72 and the publish-pypi.yml / publish-testpypi.yml header comments to state the guards only protect releases from commits containing them, and make 'only create releases whose tag is on main' the written safeguard."
   test: review-r2-4c41e7116b0b
   root_cause: "GitHub runs a release workflow from the tagged commit and a dispatch from the chosen branch; origin/develop-gsd, the pushed phase-06 branch and 18 older commits carry unguarded publish workflows, so a release tagged there uploads an sdist with .planning/ and .claude/ permanently. RELEASE.md and workflow header comments claim more than the in-file guards give."
@@ -380,8 +391,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-02: Every 'see RULESETS.md' pointer for the declined components dangles"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, commits 975a474 'docs(rulesets): rewrite the branch rules for outside readers', 4503b44 'ci(comments): drop the declined-component pointers and the strategy-document references' and 3e01a1c 'ci(scripts): drop the declined-component pointers from the kit scripts': the seven 'see RULESETS.md' pointer comments deleted from ci.yml, scheduled-health.yml, ruleset-apply.yml, classify-changes/action.yml, check_publish_gate.py, check_ruleset_drift.py and ruleset_lib.py; three keep-by-hand clauses added to ci.yml in their place; proven by zero 'see RULESETS.md' / 'strategy document' / pointer-note greps under .github, the three keep-by-hand clauses' presence, yaml-same-except-logline for ci.yml and yaml-same for the other workflow/action files, and AST-identity (docstrings stripped) for the three scripts, all against e929894."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification. Restore a short declined-components record + apply-time checklist in RULESETS.md, or reword the pointers."
   test: review-r2-9de55bd743fc
   root_cause: "Plan 06-15 condensed RULESETS.md (removing the declined-components record and apply-time checklist); plan 06-16 then added 7 pointers to that record, plus a runtime Lint log line at ci.yml:190 — all point at nothing."
@@ -407,8 +419,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-03: A gap-closure fix shipped a review-finding ID into tests/test_projection.py"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix e2a3f5a 'test(projection): drop the review identifier from a section header': the '# WR-03:' section header at tests/test_projection.py:309 removed; extending the hygiene gate to the ID family left out of scope, as planned; proven by a review-identifier regex ((CR|WR|IN)-[0-9]{2}) count of 0 over the file and AST-identity (docstrings stripped) against e929894."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification. Remove the ID from the comment (extending the hygiene gate to the ID family is not in scope of this pass)."
   test: review-r2-d946cd47a6ca
   root_cause: "Commit 158a569 added '# WR-03:' section header at tests/test_projection.py:309, which ships to main; the hygiene gate cannot see CR-/WR-/IN- IDs (_matches('WR-03') returns [])."
@@ -422,8 +435,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "WR-05: RULESETS.md verification recipe expects a field the list endpoint never returns"
-  status: failed
+  status: resolved
   severity: minor
+  evidence: "Closed by gap plan 06-19, fix 975a474 'docs(rulesets): rewrite the branch rules for outside readers': RULESETS.md's verification recipe repointed at the per-ruleset endpoint rather than the list endpoint; proven by the payload-derived RULESETS.md table check and the per-id 'Inspect a live ruleset' line grep. Round 3 re-raised gaps in this same recipe as review-r3-10cbe7e3b994 (admin-token requirement) and review-r3-87fdf631a3ae (create path/main-only payload source), both resolved at the 06-19 checkpoint (fix fd52d77)."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification. Point the recipe at the per-ruleset endpoint or drop the bypass_actors expectation."
   test: review-r2-9628e6ae5e41
   root_cause: "The recipe runs gh api repos/gseg-ethz/pc2img/rulesets and expects bypass_actors, which the list endpoint never returns (checked on five public repos), so the check can never pass."
@@ -435,8 +449,9 @@ blocked: 0
   reviewer_severity: "warning"
 
 - truth: "IN-04: RELEASE.md says a PyPI release cannot be deleted"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, commits 5691315 'docs(release): rewrite the release process for outside readers and scope the ref-guard claims' and f14c97a 'docs(citation): drop the main-branch claim from the citation message': RELEASE.md's Rollback section corrected to state owners can delete an uploaded version but the filename/version can never be reused; proven by the RELEASE.md Rollback phrase greps."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification."
   test: review-r2-c1587a95ad75
   root_cause: "RELEASE.md:83-87 claims neither index allows deleting an uploaded version; owners can delete, but the filename/version can never be reused."
@@ -448,8 +463,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-05: Reworded ruleset-token comment makes a false global claim"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix 4503b44 'ci(comments): drop the declined-component pointers and the strategy-document references': ruleset-apply.yml:237-238's claim to be THE one place with a write scope corrected to name it as the only Administration-write grant among other write scopes elsewhere; proven by the 'only Administration-write grant' grep and yaml-identity for ruleset-apply.yml against e929894. Round 3 re-raised the write-scope list's incompleteness as review-r3-ddde4a06e5e0, resolved at the 06-19 checkpoint (fix fd52d77)."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification."
   test: review-r2-6a4285da474b
   root_cause: "ruleset-apply.yml:237-238 claims it is THE one place in these workflows where a write scope is correct; other workflows also hold write scopes."
@@ -461,8 +477,9 @@ blocked: 0
   reviewer_severity: "info"
 
 - truth: "IN-06: CITATION.cff carries no version and claims main reflects the latest release"
-  status: failed
+  status: resolved
   severity: cosmetic
+  evidence: "Closed by gap plan 06-19, fix f14c97a 'docs(citation): drop the main-branch claim from the citation message': CITATION.cff:15-19's main-reflects-latest-release claim dropped from the message; proven by the CITATION.cff phrase grep and cffconvert --validate passing. Round 3 re-raised that the message still claimed releases are published on PyPI (none were yet) as review-r3-fe2548de9d69, resolved at the 06-19 checkpoint (fix fd52d77)."
   reason: "FIX NOW in one doc-only pass before promotion (owner disposition 2026-09-29); the fix diff gets its own /gsd-code-review before re-verification."
   test: review-r2-02618891c01a
   root_cause: "CITATION.cff:15-19 has no version and states main reflects the latest release, which is false between a promotion and the release-PR merge."
