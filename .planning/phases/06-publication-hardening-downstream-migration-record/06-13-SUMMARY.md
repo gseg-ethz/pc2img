@@ -235,3 +235,16 @@ Either way, do not mark requirement `CICD-02` complete until this is resolved or
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
 *Completed: 2026-09-30*
+
+## Post-execution resolution: ancestry drift (orchestrator, 2026-09-30)
+
+**Owner decision:** repair now (not deferred to Phase 7).
+
+**Root cause, restated:** the orchestrator promoted the RTD tag-fetch fix (PR #20) without the back-merge that RELEASE.md "Releasing" step 2 already requires after every promotion. The procedure was documented correctly; it was not followed. (Related slip: RELEASE.md step 1 says promotion PRs are squash-merged; #17 and #20 were rebase-merged. For a single-commit PR onto a linear-history `main` the result is identical, but it departs from the written procedure.) No doc todo was added, since RELEASE.md already states the rule.
+
+**Repair:**
+- Back-merge commit `1d35c19` (parents `52c6c7f` develop-gsd + `20ef688` main), built in a scratch worktree; tree unchanged vs develop-gsd; PR #22 into develop-gsd, checks green (Lint, Tests, Docs, RTD preview), merged by the owner with `--merge --delete-branch` → origin/develop-gsd `0ac9df5` (parents `52c6c7f` + `1d35c19`).
+- `git merge-base --is-ancestor origin/main origin/develop-gsd` → true.
+- `scheduled-health.yml` re-dispatched from main: run 36737255378, `success`, log line `OK: refs/remotes/origin/main is an ancestor of refs/remotes/origin/develop-gsd — the merge-base is intact.`
+- GitHub issue #21 closed with a comment linking #22 and the green run.
+- WINDOWS.md entry 2 marked fixed (`gsd-tools windows fixed 2`); CICD-02 marked complete (the ancestry mechanism, the reason it was withheld, now reads true on live state). BC-01 stays pending: its REQUIREMENTS row splits it "Phase 6 (draft), Phase 7 (finalise)".

@@ -47,7 +47,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 ### CI/CD
 
 - [x] **CICD-01**: Lightweight CI runs the test suite on pull requests (early safety net)
-- [ ] **CICD-02**: Branch protection + publication hardening matching the PCHandler template (pre-ship)
+- [x] **CICD-02**: Branch protection + publication hardening matching the PCHandler template (pre-ship)
 
 ### Downstream Migration
 
@@ -108,7 +108,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TEST-05 | Phase 5 | Complete |
 | TEST-06 | Phase 5 | Complete |
 | CICD-01 | Phase 3 | Complete |
-| CICD-02 | Phase 6 | Pending |
+| CICD-02 | Phase 6 | Complete |
 | BC-01 | Phase 6 (draft), Phase 7 (finalise) | Pending |
 | DEP-05 | Phase 7 | Pending |
 | PERF-02 | Phase 5 | Complete (v2 item pulled forward — D-03; `nanconv` float32 default + `compute_dtype` opt-in, 05-03) |
