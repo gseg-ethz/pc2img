@@ -116,6 +116,7 @@ def live_payload(*, with_bypass_actors: bool = True, allowed_merge_methods: list
                     ),
                     "dismissal_restriction": {},
                     "required_reviewers": [],
+                    "require_extra_approval_for_unattributed_changes": True,
                 },
             },
             {
@@ -267,6 +268,14 @@ def test_read_filled_key_is_dropped_when_the_committed_side_is_silent() -> None:
     norm_live, _, removed = ruleset_lib.normalize(live_payload(), committed_payload())
     assert "allowed_merge_methods" not in norm_live["rules"]["pull_request"]
     assert any("allowed_merge_methods" in record for record in removed)
+
+
+def test_unattributed_changes_approval_is_a_read_filled_key() -> None:
+    """GitHub fills require_extra_approval_for_unattributed_changes on read; a silent committed side drops it."""
+    norm_live, norm_committed, removed = ruleset_lib.normalize(live_payload(), committed_payload())
+    assert "require_extra_approval_for_unattributed_changes" not in norm_live["rules"]["pull_request"]
+    assert any("require_extra_approval_for_unattributed_changes" in record for record in removed)
+    assert not ruleset_lib.diff(norm_live, norm_committed)
 
 
 def test_read_filled_key_survives_when_the_committed_side_sets_it() -> None:
