@@ -1,29 +1,108 @@
+name: release-please
+
+# Release automation. Triggered DIRECTLY by a push to the protected branch,
+# never through a `workflow_run` indirection on the CI workflow. Why that shape,
+# stated as a rule rather than as history:
+#
+#   - The indirection adds a failure mode without adding a gate. CI has already
+#     tested the commit — that is what the required status checks on the pull
+#     request into the protected branch are for — so gating release automation
+#     on a second reading of the same result buys nothing.
+#   - The indirection's own failure is SILENT. A cancelled CI run on the
+#     protected branch fires `workflow_run` with a `cancelled` conclusion, a
+#     `conclusion == 'success'` gate reads false, and the release simply never
+#     happens with nothing red anywhere. The two-rapid-pushes shape of a release
+#     cycle is exactly what produces a cancelled run.
+#   - The redundancy the indirection appeared to buy is bought instead by
+#     `strict_required_status_checks_policy: true` on the protected branch,
+#     which forces a pull request up to date with its base before merge, so the
+#     tree that lands is the tree CI already tested.
+#
+# This trigger and the CI workflow's `push:` branch list are ONE change: the
+# protected branch leaves `ci.yml`'s push trigger in the same commit that adds
+# it here, or the release chain stops SILENTLY with nothing red.
+
 on:
   push:
-    branches:
-      - main
-name: release-please
+    branches: [main]
+
+# Every step below authenticates with the release App's minted token; the ambient
+# `GITHUB_TOKEN` is referenced nowhere in this file. It therefore gets a read
+# scope and nothing else — the App token carries the writes it was minted for.
+# The three write grants that used to sit here were unused, and an unused grant
+# is still available to any future step, and to any compromised action, in this
+# job. That is the same separation this file's own comment argues for below,
+# applied to the file itself.
+permissions:
+  contents: read
+
 jobs:
   release-please:
     runs-on: ubuntu-latest
     steps:
-      - uses: googleapis/release-please-action@v4
+      # A release App, deliberately SEPARATE from the App that applies and reads
+      # branch protection. Keeping publishing and protection behind different
+      # credentials is what limits the blast radius of either one being
+      # compromised; do not collapse them into one App to save a secret.
+      - id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
         id: release
         with:
-          token: ${{ secrets.NIME_RELEASE_PLEASE_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           config-file: release-please-config.json
-      - uses: actions/checkout@v4
-      - name: tag major and minor versions
-        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Tag major and minor versions
+        if: ${{ steps.release.outputs.release_created == 'true' }}
+        env:
+          MAJOR: v${{ steps.release.outputs.major }}
+          MINOR: v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
         run: |
+          # SHELL CONTRACT, stated because it is why the probe below is a probe.
+          # The platform runs this script under `bash -e`, so errexit is already
+          # in force before the first line here. An UNGUARDED `git ls-remote
+          # --exit-code` on an absent tag would therefore ABORT the step rather
+          # than report, which is exactly why each probe is consumed by an `if`.
+          #
+          # What this replaced: a delete/recreate pair carrying an
+          # unconditional-success suffix on all four of its commands. That
+          # discarded every status, so a remote that REFUSED a tag
+          # deletion — a tag protection rule, a ruleset, a revoked scope — was
+          # indistinguishable from a tag that was never there, and the failure
+          # surfaced two commands later as a bare non-fast-forward push with no
+          # context. Distinguishing the two costs one `ls-remote` and turns a
+          # confusing failure into a named one.
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git remote add gh-token "https://${{ secrets.NIME_RELEASE_PLEASE_TOKEN }}@github.com/googleapis/release-please-action.git"
-          git tag -d v${{ steps.release.outputs.major }} || true
-          git tag -d v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} || true
-          git push origin :v${{ steps.release.outputs.major }} || true
-          git push origin :v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} || true
-          git tag -a v${{ steps.release.outputs.major }} -m "Release v${{ steps.release.outputs.major }}"
-          git tag -a v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }} -m "Release v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}"
-          git push origin v${{ steps.release.outputs.major }}
-          git push origin v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}
+
+          for TAG in "$MAJOR" "$MINOR"; do
+            # Local delete: a local tag is absent on a fresh checkout as often as
+            # not, so its absence is not news. `-d` on a missing tag is the only
+            # thing tolerated here, and only after asking.
+            if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              git tag -d "$TAG"
+            fi
+
+            # Remote delete, ONLY when the tag is actually there, and its status
+            # is checked. `--exit-code` makes "absent" exit 2 and "present" exit
+            # 0, so the two cases are told apart before anything is deleted.
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+              if ! git push origin ":refs/tags/$TAG"; then
+                echo "::error::the remote REFUSED deletion of $TAG (tag protection, a ruleset, or an insufficient token scope). The rolling tag cannot be moved, so this release is not tagged. Do not retry blindly — the next push would fail as a non-fast-forward with no explanation."
+                exit 1
+              fi
+            fi
+
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          done

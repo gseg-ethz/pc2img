@@ -6,58 +6,198 @@ build-backend = "setuptools.build_meta"
 name = "pc2img"
 description = "Software to convert point clouds to images with various image representations."
 requires-python = "~=3.12,<3.13"
-keywords = ["one", "two"]
+keywords = [
+	"LiDAR",
+	"point cloud",
+	"range image",
+	"raster",
+	"geospatial",
+	"remote sensing",
+	"DEM",
+	"RRIM",
+]
 license = {file = "LICENSE"}
 authors = [
 	{name = "Nicholas Meyer", email = "meyernic@ethz.ch"},
 ]
 dynamic = ["version", "readme"]
 classifiers = [
-	"Programming Language :: Python :: 3"
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Science/Research",
+	"License :: OSI Approved :: BSD License",
+	"Programming Language :: Python :: 3.12",
+	"Typing :: Typed",
+	"Topic :: Scientific/Engineering :: Image Processing",
+	"Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
-	"pchandler ~= 0.4",
-	"numpy ~= 1.24",
+	"pchandler ~= 2.1",
+	"GSEGUtils >= 0.5.3, < 1.0",
+	"joblib ~= 1.5",
+	"numpy ~= 2.0",
 	"imageio ~= 2.31",
-	"joblib ~= 1.3",
 	"Pillow ~= 10.0",
-	"scipy ~= 1.11",
+	"pydantic ~= 2.11",
+	"scipy ~= 1.14",
 	"typing-extensions ~= 4.9",
 	"tifffile[all] ~= 2024.1",
 	"opencv-python ~= 4.0",
-#	"cupy-cuda12x ~= 13.2",
-#	"PyYAML ~= 6.0",
-#	"omegaconf ~= 2.2",
-#	"hydra-core ~= 1.3",
 ]
 
 [tool.setuptools.dynamic]
-#version = {attr = "pc2img.__version__"}
 readme = {file = ["README.rst"]}
 
 [tool.setuptools_scm]
 write_to = "src/pc2img/_version.py"
 local_scheme = "no-local-version"
 version_scheme = "post-release"
+tag_regex = '^v?(?P<version>\d+\.\d+\.\d+(?:(?:a|b|rc)\d+)?(?:\.post\d+)?(?:\.dev\d+)?)$'
+git_describe_command = "git describe --dirty --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*'"
 
 [project.urls]
-homepage = "https://gseg.igp.ethz.ch/"
-documentation = "https://google.com"
-#repository = "https://gseg-ethz.github.com/DeSpAn"
-
-#[project.scripts]
-#DeSpAn = "DeSpAn.cli:main"
+Homepage = "https://gseg.igp.ethz.ch/"
+Documentation = "https://pc2img.readthedocs.io/en/latest/"
+Repository = "https://github.com/gseg-ethz/pc2img"
+Issues = "https://github.com/gseg-ethz/pc2img/issues"
+Changelog = "https://github.com/gseg-ethz/pc2img/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-doc = ["sphinx ~= 5.1"]
-dev = ["black ~= 22.10"]
-cuda12 = [  # Issue with `--extra-index-url=https://pypi.nvidia.com`
-	"cudf-cu12 ~= 24.8",
-	"cuml-cu12 ~= 24.8",
-	"cupy-cuda12x ~= 13.0",
+cuda12 = ["pchandler[cuda12]"]
+cuda11 = ["pchandler[cuda11]"]
+# `rrim` is a signposting-only extra: it declares no runtime deps because the RRIM
+# feature needs nothing beyond the core (numpy/scipy are already in `dependencies`).
+# CAVEAT: a pip extra gates OPTIONAL runtime deps only; it does NOT withhold
+# the `src/pc2img/features/rrim.py` source — that module ships in the wheel regardless
+# of which extras are installed. The legal clearance to ship RRIM is the top-level
+# NOTICE + the patent-expiry basis (docs/ip/rrim-ip-findings.md), NOT this extra.
+# MECHANICAL FACT: installing `pc2img[rrim]` does NOT import `pc2img.features.rrim`
+# and does NOT register the `rrim` feature. Only an explicit
+# `import pc2img.features.rrim` runs the `@FEATURES.register` decorators that make
+# `generate(["rrim", ...])` resolve. The extra registers nothing on its own.
+rrim = []
+# `viz` is an OPTIONAL colormap extra: matplotlib is imported lazily inside
+# `util.py` (convert_to_image) only when a colormap is requested, and that path
+# already guards its absence (raises RuntimeError if matplotlib is missing). So
+# matplotlib stays an optional extra rather than a hard runtime dependency.
+viz = ["matplotlib ~= 3.9"]
+
+# Tooling deps live in PEP 735 dependency-groups, never in wheel metadata.
+# `uv sync` installs `dev` by default; `doc` is opt-in via `uv sync --group doc`.
+[dependency-groups]
+dev = [
+	"ruff ~= 0.15",
+	"pytest ~= 9.1",
+	"memory_profiler",
+	"pytest-cov ~= 5.0",
+	"coverage ~= 7.0",
+	# pre-commit and pyyaml are what the CI lint job and the repository's own
+	# gate scripts run from the locked environment.
+	"pre-commit",
+	"pyyaml",
 ]
-cuda11 = [ # Check version numbers
-	"cudf-cu11 ~= 24.8",
-	"cuml-cu11 ~= 24.8",
-	"cupy-cuda11x ~= 13.0",
+# Upper bound blocks a known autosummary regression in the 8.3 line; pinned to
+# match the sibling PCHandler template's doc toolchain.
+doc = ["sphinx ~= 8.2.3, <8.3", "sphinx_rtd_theme"]
+
+# cuda11 and cuda12 are mutually exclusive GPU stacks: cudf-cu12 pulls
+# cuda-python>=12.6.2,<13 while cudf-cu11 pulls cuda-python>=11.8.5,<12, so a
+# universal lock cannot co-satisfy both extras. Declaring them as conflicting lets
+# uv resolve each in a separate fork, keeping BOTH variants fully hash-pinned in
+# uv.lock. The cuda11-vs-cuda12 pick is deferred to install time
+# (`pip install pc2img[cuda12]` vs `[cuda11]`), driven by the user's NVIDIA driver.
+[tool.uv]
+conflicts = [
+    [
+        { extra = "cuda11" },
+        { extra = "cuda12" },
+    ],
+]
+
+# Explicit nvidia index for the RAPIDS packages pulled transitively via
+# pchandler[cudaXX]. explicit = true means this index is consulted ONLY for
+# names bound in [tool.uv.sources] below; everything else stays on PyPI, which
+# contains dependency-confusion on the RAPIDS names to the official index.
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
+
+# Caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
+# pchandler[cudaXX]. If the transitive source pins fail to bind at lock time,
+# the documented fallback is to name them directly in the cuda extras instead.
+# No entry may point at a local /scratch or third_party/ path (forbidden).
+[tool.uv.sources]
+# NOTE: the GSEGUtils reload-registration hook (register_lazy_disk_cache_class)
+# shipped in the published GSEGUtils 0.5.3 (release-please emitted a pre-major
+# PATCH bump, not 0.6.0). pc2img now resolves it straight from PyPI via the
+# `GSEGUtils >= 0.5.3, < 1.0` pin above; the temporary git-rev bridge that
+# carried it during earlier development has been removed.
+cudf-cu12      = { index = "nvidia" }
+cuspatial-cu12 = { index = "nvidia" }
+cuproj-cu12    = { index = "nvidia" }
+cuml-cu12      = { index = "nvidia" }
+dask-cudf-cu12 = { index = "nvidia" }
+cudf-cu11      = { index = "nvidia" }
+cuspatial-cu11 = { index = "nvidia" }
+cuproj-cu11    = { index = "nvidia" }
+cuml-cu11      = { index = "nvidia" }
+dask-cudf-cu11 = { index = "nvidia" }
+
+[tool.ruff]
+line-length = 120          # matches sibling PCHandler/GSEGUtils template (owner-approved)
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+# Hygiene-focused families. E/F/W = pycodestyle+pyflakes,
+# I = isort, B = bugbear, C90 = mccabe, UP = pyupgrade, NPY = numpy.
+# F401 (unused import) + F841 (unused local) + ERA001 (commented-out code)
+# are the rules that power the dead-code / unused-import sweep.
+select = ["E", "F", "W", "I", "B", "C90", "UP", "NPY"]
+extend-select = ["ERA001"]   # flag commented-out code blocks (CONCERNS §"Large volume of commented-out dead code")
+ignore = ["E203"]            # match sibling; slice-colon spacing, black-compatible
+
+[tool.ruff.lint.per-file-ignores]
+# Barrel __init__.py re-export the public surface AND trigger import-time
+# strategy/feature registration as a side effect. F401 would flag the
+# re-exports as unused; E402 can appear where a module docstring must move.
+"src/pc2img/__init__.py" = ["F401"]
+"src/pc2img/features/__init__.py" = ["F401"]
+"src/pc2img/strategies/__init__.py" = ["F401"]
+"src/pc2img/image_cache/__init__.py" = ["F401"]
+"tests/**" = ["E712", "F841", "B024"]
+
+[tool.ruff.format]
+# Drop-in for black; inherits the 120 line-length set above. quote-style/
+# skip-magic-trailing left at defaults.
+
+# Collect ONLY the project suite. third_party/ (gitignored symlinks to the
+# sibling pchandler/GSEGUtils checkouts) is a *sibling* of tests/, so testpaths
+# stops recursion into it — verified: an unscoped bare `pytest` run collects
+# from third_party/ too and errors there; scoping to tests/ collects cleanly.
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Modern import machinery: no sys.path injection, avoids duplicate-basename
+# import-file-mismatch, and is the current pytest recommendation. Do NOT add any
+# --cov flag here — coverage stays on the CLI/CI invocation only (see coverage note).
+addopts = "--import-mode=importlib --strict-markers"
+xfail_strict = false   # an unexpected pass (XPASS) must NOT fail the suite
+
+# Branch coverage of the whole pc2img package. pchandler has no
+# [tool.coverage.*] block of its own (it passes --cov=pchandler on the CLI
+# with branch off); pc2img wants branch coverage, so this minimal block is a
+# justified addition beyond what the sibling template carries.
+[tool.coverage.run]
+branch = true
+source = ["pc2img"]
+omit = ["*/_version.py"]   # setuptools_scm-generated, not meaningful to cover
+
+# NOTE: fail_under is intentionally NOT set here — the coverage gate lives on the
+# CI command line only (Plan 03), so subset/local runs never trip a floor.
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@(abc\\.)?abstractmethod",
 ]

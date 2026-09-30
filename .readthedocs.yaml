@@ -1,0 +1,31 @@
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+build:
+  os: ubuntu-24.04
+  tools:
+    python: "3.12"
+  jobs:
+    post_checkout:
+      # setuptools_scm derives the version conf.py displays from git tags;
+      # RTD's default checkout is shallow and would fall back to a tagless
+      # version otherwise, since conf.py reads the installed distribution's
+      # version and that needs tags present.
+      - git fetch --unshallow --tags || true
+    install:
+      # `doc` is a PEP 735 dependency-group entry (pyproject.toml
+      # [dependency-groups]), not a [project.optional-dependencies] extra, so
+      # RTD's usual `python.install: extra_requirements:` mechanism (which
+      # PCHandler's .readthedocs.yaml uses) cannot see it at all — that
+      # mechanism is extras-only. pip >= 25.1's `--group` install resolves a
+      # PEP 735 group and installs the project in one step. The first real
+      # RTD build (at the RTD-import checkpoint) is what proves this.
+      - python -m pip install --upgrade "pip>=25.1"
+      - python -m pip install --group doc .
+
+sphinx:
+  configuration: docs/source/conf.py
+  fail_on_warning: true

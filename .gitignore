@@ -1,10 +1,20 @@
 # Actions
-src/pchandler/_version.py
+src/**/_version.py
+
+# Third party (local dep source symlinks for GSD analysis — never committed)
+third_party/
 
 # BAK files
 **/*.bak
 
 _data/
+
+# Old files
+_old/
+_scrap/
+_future/
+
+
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
@@ -52,6 +62,9 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+# The CI Tests job's own coverage-report filename (kit-shipped convention,
+# distinct from the coverage.xml name pc2img's own local tooling used).
+coverage-unit.xml
 *,cover
 .hypothesis/
 
@@ -106,6 +119,23 @@ ENV/
 [Ll]ib64
 [Ll]ocal
 [Ss]cripts
+# Re-include the tracked top-level scripts/ source dir (the generic [Ss]cripts
+# pattern above is a virtualenv-template rule meant for nested venv Scripts/ bin
+# dirs — it would otherwise silently un-commit new files under our scripts/ src
+# dir). Both negations are needed: !/scripts/ re-includes the dir, !/scripts/**
+# re-includes its contents (a re-included dir does not auto-re-include children).
+!/scripts/
+!/scripts/**
+# ...but never track Python bytecode caches under scripts/: the broad !/scripts/**
+# re-include above would otherwise un-ignore scripts/**/__pycache__/ (generated).
+scripts/**/__pycache__/
+# Re-include .github/scripts/ (the GSEG git-strategy kit's CI helper scripts)
+# for the same reason as the top-level scripts/ block above — the generic
+# [Ss]cripts virtualenv-template rule otherwise silently gitignores this
+# directory too.
+!/.github/scripts/
+!/.github/scripts/**
+.github/scripts/**/__pycache__/
 pyvenv.cfg
 .venv
 pip-selfcheck.json
@@ -190,4 +220,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # idea folder, uncomment if you don't need it
-# .idea
+.idea

@@ -1,0 +1,36 @@
+name: Setup Python + deps (pc2img)
+description: >
+  Set up Python 3.12 via uv and install the locked development environment.
+  The caller MUST run `actions/checkout` BEFORE invoking this composite —
+  GitHub needs the repo on the runner filesystem to find this action.yml.
+  Recorded deviation from the upstream template: the template's own composite
+  installs the `dev` extra via pip, which assumes `dev` is a
+  `[project.optional-dependencies]` extra. pc2img's dev tooling (ruff,
+  pytest, pre-commit, pyyaml, ...) lives in a PEP 735 `[dependency-groups]`
+  entry instead, so that extras-based install would pull in nothing extra.
+  This composite installs from the committed, hash-pinned `uv.lock` with
+  `uv sync --frozen` instead, and puts the resulting venv first on PATH so
+  every subsequent bare-name step (`pytest`, `pre-commit`, `sphinx-build`,
+  `python`, ...) resolves into the locked environment rather than the
+  runner's ambient Python.
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990  # v8.3.2
+      with:
+        python-version: "3.12"
+        enable-cache: true
+
+    - shell: bash
+      run: uv sync --frozen
+
+    - name: Put the locked venv first on PATH
+      shell: bash
+      run: |
+        # The kit's own steps (pytest, pre-commit, sphinx-build, python, ...)
+        # are invoked by bare name, not via `uv run`. Prepending the locked
+        # venv's bin directory is what makes those bare-name invocations
+        # resolve into the environment `uv sync --frozen` just built, instead
+        # of falling through to the runner's own ambient interpreter.
+        echo "${GITHUB_WORKSPACE}/.venv/bin" >> "${GITHUB_PATH}"

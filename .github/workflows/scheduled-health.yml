@@ -1,0 +1,168 @@
+name: Scheduled Health
+
+# Nightly branch-ancestry health check. The single job `ancestry` asserts the
+# protected branch is still an ancestor of the integration branch — a wrong
+# merge method on a back-merge becomes a next-day failure instead of a
+# next-release surprise. Nothing in this repository checks live rulesets
+# against the committed payloads on a schedule; the only comparison is
+# ruleset-apply.yml's post-apply read-back.
+#
+# Triggers MUST stay restricted to schedule + workflow_dispatch — never the
+# base-repository sibling of the pull-request trigger, which runs with this
+# repository's secrets against a fork's code. That prohibition is assertion
+# A2 in .github/scripts/check_ci_config.py when the config self-inspection
+# component is applied, and an apply-time checklist item otherwise; the
+# literal trigger name is deliberately NOT written here because A2 is a
+# raw-text scan over this directory and would flag its own prohibition note.
+# Do not "helpfully" restore the literal.
+#
+# Permissions MUST stay scoped to contents:read + issues:write — contents:read
+# to check out, issues:write to open or comment on the ancestry alarm. NOTE:
+# the OIDC ID token write permission is intentionally ABSENT — this workflow
+# publishes nothing, so granting it would widen the secret surface for no
+# benefit.
+#
+# Why this job fails the run and deduplicates, stated positively: a broken
+# ancestry is a PERSISTENT condition — it stays broken until a true-merge
+# back-merge repairs it — so this workflow checks NIGHTLY. A green run would
+# be a false all-clear on a security floor, and an undeduplicated alarm would
+# be one new issue every night until someone acted.
+#
+# KEEP THIS FILE PORTABLE, which it is today and which is what lets it be copied
+# unchanged: ruleset ids are resolved BY NAME at runtime, and the repository
+# comes from the runner context. Hardcoding either would tie this file to one
+# repository.
+
+on:
+  schedule:
+    # Pick a slot offset on the WALL CLOCK from every other scheduled workflow
+    # in this repository — currently just the CI nightly — so any future
+    # scheduled workflow added here does not collide with this slot.
+    - cron: '0 6 * * *'
+  # NOT garnish. Scheduled triggers register ONLY from the default branch, so
+  # this file produces no scheduled run at all until it reaches main,
+  # which under the flow this kit describes is a second hop away. The manual
+  # dispatch is how this workflow's LOGIC is proved before its SCHEDULE can be;
+  # registration is proved separately, after promotion, by reading the
+  # repository's schedule-triggered run list.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  ancestry:
+    name: Branch ancestry assertion
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout with full history
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Fetch the protected and integration refs
+        shell: bash
+        run: |
+          set -uo pipefail
+          # A full-depth checkout deepens the checked-out ref; it does NOT
+          # guarantee any other branch is present locally. Fetch both
+          # explicitly or the assertion below fails on a missing ref and reads
+          # like a real regression.
+          git fetch --no-tags origin \
+            '+refs/heads/main:refs/remotes/origin/main' \
+            '+refs/heads/develop-gsd:refs/remotes/origin/develop-gsd'
+
+      - name: Assert the protected branch is an ancestor of the integration branch
+        id: ancestry
+        shell: bash
+        run: |
+          set -uo pipefail
+          PROTECTED='refs/remotes/origin/main'
+          INTEGRATION='refs/remotes/origin/develop-gsd'
+
+          # ANCESTRY, never a content diff, and that is the whole property. Once
+          # the protected branch has been merged back at least once, a back-merge
+          # with nothing to bring across is an EMPTY pull request that still
+          # passes this assertion — while a squash or rebase merge collapses the
+          # second-parent link SILENTLY and surfaces only at the next release. A
+          # content comparison would invert both cases: it would fail the empty
+          # back-merge and pass the collapsed one.
+          if git merge-base --is-ancestor "${PROTECTED}" "${INTEGRATION}"; then
+            echo "OK: ${PROTECTED} is an ancestor of ${INTEGRATION} — the merge-base is intact."
+            exit 0
+          fi
+
+          BASE=$(git merge-base "${PROTECTED}" "${INTEGRATION}" 2>/dev/null || echo '(no common ancestor)')
+
+          {
+            echo 'report<<__EOF__'
+            echo "${PROTECTED} is NOT an ancestor of ${INTEGRATION}."
+            echo ''
+            echo "merge-base:     ${BASE}"
+            echo "${PROTECTED} -> $(git rev-parse "${PROTECTED}" 2>/dev/null || echo '(unresolved)')"
+            echo "${INTEGRATION} -> $(git rev-parse "${INTEGRATION}" 2>/dev/null || echo '(unresolved)')"
+            echo ''
+            echo 'Remediation: open a back-merge pull request from the protected branch into'
+            echo 'the integration branch and merge it as a TRUE MERGE. Never squash and never'
+            echo 'rebase — either collapses the second parent and destroys the merge-base'
+            echo 'advance silently, which is the regression this assertion exists to catch.'
+            echo '__EOF__'
+          } >> "${GITHUB_OUTPUT}"
+
+          echo "::error::${PROTECTED} is no longer an ancestor of ${INTEGRATION} (merge-base ${BASE}) — open a back-merge pull request and merge it as a true merge, never squash or rebase."
+          exit 1
+
+      - name: Open or update ancestry-drift issue, deduped
+        if: failure() && steps.ancestry.outcome == 'failure'
+        uses: actions/github-script@d746ffe35508b1917358783b479e04febd2b8f71  # v9.0.0
+        env:
+          ANCESTRY_REPORT: ${{ steps.ancestry.outputs.report }}
+        with:
+          # Ambient workflow token by default, as above. This job mints no App
+          # token at all — it needs none.
+          script: |
+            const LABELS = ['ci', 'ancestry-drift'];
+            const TITLE = 'Branch ancestry lost — the protected branch is no longer an ancestor of the integration branch';
+            const report = process.env.ANCESTRY_REPORT || '(no report captured)';
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}` +
+              `/actions/runs/${context.runId}`;
+            const body = [
+              `Nightly ancestry assertion failed in [run ${context.runId}](${runUrl}).`,
+              '',
+              '```',
+              report,
+              '```',
+              '',
+              'Triggered by `.github/workflows/scheduled-health.yml`.',
+            ].join('\n');
+
+            // Same deduplication as the drift alarm, on its own second label so
+            // the two alarms never collide. Repository issue table, not the
+            // lagging search index.
+            const { data: openItems } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: LABELS.join(','),
+              per_page: 100,
+            });
+            const existing = openItems.find(i => !i.pull_request && i.title === TITLE);
+
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Ancestry still broken as of ${new Date().toISOString()}.\n\n${body}`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: TITLE,
+                body,
+                labels: LABELS,
+              });
+            }

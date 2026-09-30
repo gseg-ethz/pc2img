@@ -1,0 +1,107 @@
+name: Publish to PyPI
+
+# Trusted-publisher shape, and the two halves are load-bearing together:
+#
+#   - The publishing job declares an ENVIRONMENT. The trusted publisher on the
+#     index is configured to accept a token minted for THIS repository, THIS
+#     workflow filename and THIS environment name, so the environment is part of
+#     the identity being trusted rather than decoration. Renaming it here without
+#     renaming it on the index breaks publishing; renaming it on the index
+#     without renaming it here is worse, because it silently widens what the
+#     index will accept.
+#   - `id-token: write` is what mints the OIDC token that identity is carried
+#     in. It is granted on the publishing job ONLY, never at workflow level and
+#     never on the build job, which needs nothing but a read scope.
+#
+# The build and publish jobs are split for the same reason: the job that runs
+# arbitrary project build code holds no publishing credential at all, and the
+# job that holds the credential runs nothing but a download and the publish
+# action.
+#
+# Ref-guarded in two steps: the first build step refuses a release whose ref
+# is not an X.Y.Z version tag, and the step right after checkout refuses a
+# tagged commit that is not reachable from main. Both steps live in this
+# file, so they protect only a release cut from a commit that carries them —
+# a tag on an older commit runs that commit's own unguarded copy of this
+# workflow. The rule that closes that gap is written down in RELEASE.md:
+# only ever create a release whose tag is on main.
+
+"on":
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: Build distribution
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Refuse a release that is not a version tag
+        shell: bash
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -uo pipefail
+          if [ "${REF_TYPE}" != "tag" ] || ! echo "${REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::refusing to build: this release's ref is \`${REF_TYPE}:${REF_NAME}\`, not an X.Y.Z version tag. A branch, a floating major/minor tag or a pre-release archive tag is not a release, and an upload cannot be withdrawn."
+            exit 1
+          fi
+          echo "Release ref \`${REF_NAME}\` is an X.Y.Z version tag — proceeding."
+
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5.0.1
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Refuse a release commit that is not on the release branch
+        shell: bash
+        env:
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+          git fetch --no-tags --quiet origin main
+          if ! git merge-base --is-ancestor "${HEAD_SHA}" FETCH_HEAD; then
+            echo "::error::refusing to build: the tagged commit \`${HEAD_SHA}\` is not reachable from \`origin/main\`, so it was not produced by the protected release flow."
+            exit 1
+          fi
+          echo "Tagged commit \`${HEAD_SHA}\` is reachable from \`origin/main\` — proceeding."
+
+      - uses: ./.github/actions/setup-python-deps
+
+      - name: Build wheel and sdist
+        # PEP 517 isolated build of sdist + wheel into dist/; replaces the
+        # kit's pip/build sequence since the setup-python-deps composite's
+        # venv ships no pip. Uses the checked-out tags (fetch-depth 0 +
+        # fetch-tags true above) for the setuptools_scm version derivation.
+        run: uv build
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: dist-${{ github.run_id }}
+          path: dist/
+          retention-days: 1
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pc2img
+    permissions:
+      id-token: write      # OIDC token for trusted publisher + signing
+      attestations: write  # required to attach the build provenance attestation
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: dist-${{ github.run_id }}
+          path: dist/
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # v1.14.0
+        # attestations: true is the default — the attestation is auto-produced by the action
+        # No repository-url override (defaults to the production index upload endpoint)
