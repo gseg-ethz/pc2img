@@ -10,7 +10,7 @@ requires:
     provides: "origin/develop-gsd tip (d4aa911) carrying every fix from both review rounds — the tree this plan's promotion commit is built from"
 provides:
   - "Repo secrets RELEASE_APP_ID / RELEASE_APP_PRIVATE_KEY on gseg-ethz/pc2img (Task 1, owner action)"
-  - "Local promotion commit 7e53d89 in the gitignored worktree _scrap/pc2img-promotion: parent origin/main (ade40f8), tree identical to origin/develop-gsd minus .planning/ and .claude/, subject feat!:, BREAKING CHANGE: footer (self-contained, no file pointer), Release-As: 0.11.0 footer — verified mechanically, not pushed"
+  - "Local promotion commit 0819b2b in the gitignored worktree _scrap/pc2img-promotion: parent origin/main (ade40f8), tree identical to origin/develop-gsd minus .planning/ and .claude/, subject feat!:, BREAKING CHANGE: footer (self-contained, no file pointer), Release-As: 0.11.0 footer — verified mechanically, not pushed"
 affects: ["06-10 (consumes the worktree to push and open the go/no-go gate)"]
 
 # Actuals (#2632)
@@ -74,7 +74,7 @@ status: complete
 
 # Phase 6 Plan 09: Filtered Promotion Commit + Release App Grant Summary
 
-**Built and mechanically verified the first `develop-gsd` → `main` promotion commit (7e53d89) in a throwaway worktree — planning paths stripped, `feat!`/`BREAKING CHANGE`/`Release-As: 0.11.0` footers attached — without pushing anything; the release App grant (Task 1, owner action) that release-please needs on `main` is already in place.**
+**Built and mechanically verified the first `develop-gsd` → `main` promotion commit (0819b2b) in a throwaway worktree — planning paths stripped, `feat!`/`BREAKING CHANGE`/`Release-As: 0.11.0` footers attached — without pushing anything; the release App grant (Task 1, owner action) that release-please needs on `main` is already in place.**
 
 ## Performance
 
@@ -86,24 +86,24 @@ status: complete
 ## Accomplishments
 
 - **Task 1 (owner action, completed and re-verified prior session):** pc2img added to the `gseg-release-please` App's repository selection; `RELEASE_APP_ID` and `RELEASE_APP_PRIVATE_KEY` stored as repo secrets — confirmed present via `gh secret list` (6 secrets total).
-- **Task 2:** Built the filtered promotion commit. `git fetch origin` confirmed `origin/develop-gsd` at `d4aa911` (06-18's merge tip) and `origin/main` at `ade40f8`. Asserted the strip list is real (`.planning/`/`.claude/` non-empty on develop-gsd) and that no other agent-specific dot-directory is tracked besides `.github`. Created the worktree idempotently at `_scrap/pc2img-promotion` off `origin/main`, replaced its tree with `origin/develop-gsd`'s, and stripped `.planning/` and `.claude/` from both the index and the working tree. Committed (author = owner's git identity, `Nicholas Meyer <nixton.meyer@gmail.com>`) as `7e53d89`: subject `feat!: publish the 2.x architecture as the 0.11 release line`, a plain-words body, and a trailing footer block with a self-contained `BREAKING CHANGE:` summary (every clause traced to a `BC-P2I` row in `.planning/MIGRATION-v0.11.md`, per the plan's tracing requirement — see Verification below) and `Release-As: 0.11.0`. Left the worktree in place, unpushed, for plan 06-10.
+- **Task 2:** Built the filtered promotion commit. `git fetch origin` confirmed `origin/develop-gsd` at `d4aa911` (06-18's merge tip) and `origin/main` at `ade40f8`. Asserted the strip list is real (`.planning/`/`.claude/` non-empty on develop-gsd) and that no other agent-specific dot-directory is tracked besides `.github`. Created the worktree idempotently at `_scrap/pc2img-promotion` off `origin/main`, replaced its tree with `origin/develop-gsd`'s, and stripped `.planning/` and `.claude/` from both the index and the working tree. Committed (author = owner's git identity, `Nicholas Meyer <nixton.meyer@gmail.com>`) as `0819b2b`: subject `feat!: publish the 2.x architecture as the 0.11 release line`, a plain-words body, and a trailing footer block with a self-contained `BREAKING CHANGE:` summary (every clause traced to a `BC-P2I` row in `.planning/MIGRATION-v0.11.md`, per the plan's tracing requirement — see Verification below) and `Release-As: 0.11.0`. Left the worktree in place, unpushed, for plan 06-10.
 
 ## Task Commits
 
 1. **Task 1: Owner action — release App grant + secrets** — no local commit (remote-only: GitHub App installation config + `gh secret set`; verified in the prior session)
-2. **Task 2: Build and verify the filtered promotion commit** — no commit in the main checkout; the commit it produced is `7e53d89` inside the separate worktree `_scrap/pc2img-promotion` (parent `ade40f8` = `origin/main`), per the plan's explicit exception to normal per-task commit protocol
+2. **Task 2: Build and verify the filtered promotion commit** — no commit in the main checkout; the commit it produced is `0819b2b` inside the separate worktree `_scrap/pc2img-promotion` (parent `ade40f8` = `origin/main`), per the plan's explicit exception to normal per-task commit protocol
 
 **Plan metadata:** (this SUMMARY's own commit, made in the main checkout)
 
 ## Files Created/Modified
 
 - None in the main checkout (`/scratch/31_pc2img`).
-- `_scrap/pc2img-promotion/` (gitignored worktree, outside the tracked tree) — holds commit `7e53d89`, left in place for plan 06-10 to push from and read main's workflow files from.
+- `_scrap/pc2img-promotion/` (gitignored worktree, outside the tracked tree) — holds commit `0819b2b`, left in place for plan 06-10 to push from and read main's workflow files from.
 
 ## PROMOTION_SHA and commit detail
 
 ```
-PROMOTION_SHA=7e53d892f568746c59c4ea32069b3904005120a1
+PROMOTION_SHA=0819b2b754672829f45ac7e169de4e4707821266
 parent (HEAD^) = ade40f85a18729290d50e05ce5da0c2d98f45c20 (origin/main)
 ```
 
@@ -117,9 +117,8 @@ around pluggable projection, interpolation, and feature strategies, replacing
 the prior 0.10 module layout wholesale. Adopts branch protection and a full
 publication CI/CD pipeline (lint, tests, docs, PyPI publish with attestations)
 matching the sibling GSEG library template. Refreshes project metadata,
-README, and citation information for a real PyPI release; the downstream
-migration record for this release lives in the internal planning history on
-develop-gsd, not on this branch.
+README, and citation information for a real PyPI release. Migration notes for
+downstream users are summarised in the BREAKING CHANGE footer below.
 
 BREAKING CHANGE: the 0.10 module layout is replaced wholesale by the 2.x architecture (strategies, features and image_cache packages). Registry misses raise RegistryLookupError; the never-functional make_generator factory and a dead duplicate convert_to_image are removed; matplotlib moves to the optional viz extra; the disk cache codec changes from pickle to .npy plus a JSON sidecar, so a cache directory persisted by an earlier build must be regenerated; a wrapping field of view, a 4x4 rotation_matrix and a non-pinhole intrinsics matrix are now rejected; nanconv accumulates in float32 and no longer mutates its input; DiskBackedImageData arithmetic returns a plain ndarray instead of raising; RRIM feature-name validation moves to request time and the z-factor token uses shortest round-trip formatting; numpy 2.x, pchandler 2.1 and GSEGUtils 0.5.3 or newer are required; the v2.0.0a5 tag is retired, so git-based pins on the 2.0.0a line must move to pc2img ~= 0.11 from PyPI.
 Release-As: 0.11.0
@@ -174,7 +173,7 @@ footer-and-docs-ok
 --- verify 4: planning-vocabulary hit count ---
 0
 --- verify 5 (literal, FAILS — see Decisions): git describe --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD ---
-v0.10.4-5-g7e53d89   (expected pattern assumed 0 pre-existing commits past v0.10.4; there are 4)
+v0.10.4-5-g0819b2b   (expected pattern assumed 0 pre-existing commits past v0.10.4; there are 4)
 --- verify 5 (substitute, PASSES): git rev-list --count origin/main..HEAD ---
 1
 ```
@@ -191,7 +190,7 @@ Must-haves and acceptance criteria from the plan frontmatter/tasks:
 
 **1. [Rule 1 - Bug] Corrected Task 2's fifth `<verify>` check's tag-distance assumption**
 - **Found during:** Task 2, running the plan's five automated `<verify>` commands
-- **Issue:** `git describe --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD | grep -E '^v0\.10\.4-1-g'` assumes `origin/main` sits exactly at the `v0.10.4` tag (0 commits ahead), so the promotion commit would land at `-1-g`. `origin/main` is actually 4 commits ahead of that tag (pre-existing LICENSE/merge housekeeping, documented in Phase 1's `01-BRANCH-INVENTORY.md`), so the real output is `v0.10.4-5-g7e53d89`.
+- **Issue:** `git describe --tags --long --match 'v[0-9]*.[0-9]*.[0-9]*' HEAD | grep -E '^v0\.10\.4-1-g'` assumes `origin/main` sits exactly at the `v0.10.4` tag (0 commits ahead), so the promotion commit would land at `-1-g`. `origin/main` is actually 4 commits ahead of that tag (pre-existing LICENSE/merge housekeeping, documented in Phase 1's `01-BRANCH-INVENTORY.md`), so the real output is `v0.10.4-5-g0819b2b`.
 - **Fix:** Did not alter git history or the tag to force the literal string to match (that would corrupt release history). Instead verified the check's actual intent — that the promotion commit sits exactly one commit past `origin/main`'s current tip — via `git rev-list --count origin/main..HEAD` (`1`), which is also implied by check 1's already-passing `HEAD^ == origin/main` assertion.
 - **Files modified:** None (verification-only; no source or plan file changed)
 - **Verification:** `git rev-list --count origin/main..HEAD` → `1`; check 1's `promotion-tree-ok` output
@@ -212,7 +211,7 @@ None — Task 1's user-setup (release App grant + secrets) was completed and ind
 
 ## Next Phase Readiness
 
-- The exact commit (`7e53d89`) that will become public `main` exists locally in `_scrap/pc2img-promotion`, verified, and unpushed. Plan 06-10's first task is the blocking go/no-go decision on this SHA, immediately before the push it gates.
+- The exact commit (`0819b2b`) that will become public `main` exists locally in `_scrap/pc2img-promotion`, verified, and unpushed. Plan 06-10's first task is the blocking go/no-go decision on this SHA, immediately before the push it gates.
 - `origin/main` remains at `ade40f8`, unchanged. `origin/develop-gsd` remains at `d4aa911`, unchanged.
 - The worktree `_scrap/pc2img-promotion` was left in place (not removed) per the plan's explicit instruction — plan 06-10 consumes it (pushes from it, reads main's workflow files from it, then removes it).
 - No blockers carried forward.
@@ -220,7 +219,7 @@ None — Task 1's user-setup (release App grant + secrets) was completed and ind
 ## Self-Check
 
 - [x] `_scrap/pc2img-promotion` exists as a registered worktree: confirmed via `git worktree list`
-- [x] Commit `7e53d892f568746c59c4ea32069b3904005120a1` exists: confirmed via `git rev-parse HEAD` inside the worktree
+- [x] Commit `0819b2b754672829f45ac7e169de4e4707821266` exists: confirmed via `git rev-parse HEAD` inside the worktree
 - [x] `git rev-parse HEAD^` inside the worktree equals `git rev-parse origin/main` (`ade40f8`): confirmed
 - [x] `git diff --name-only origin/develop-gsd HEAD` inside the worktree, filtered to exclude `.planning/`/`.claude/`, is empty: confirmed
 - [x] `RELEASE_APP_ID` / `RELEASE_APP_PRIVATE_KEY` present via `gh secret list --repo gseg-ethz/pc2img`: confirmed (6 secrets total)
@@ -231,3 +230,14 @@ None — Task 1's user-setup (release App grant + secrets) was completed and ind
 ---
 *Phase: 06-publication-hardening-downstream-migration-record*
 *Completed: 2026-09-30*
+
+## Post-execution amendment (owner decision at the 06-10 go/no-go, 2026-09-30)
+
+The executor's original commit was `7e53d892f568746c59c4ea32069b3904005120a1`. At the go/no-go the owner chose
+"reword first": the body's last sentence pointed outside readers at internal planning history on
+develop-gsd, which is permanent public history on `main` once pushed. The orchestrator amended only the
+body in `_scrap/pc2img-promotion` (subject, footers, tree, parent and author unchanged) to end with
+"Migration notes for downstream users are summarised in the BREAKING CHANGE footer below." The new
+PROMOTION_SHA is `0819b2b754672829f45ac7e169de4e4707821266`. All five plan checks were re-run against it: tree-ok,
+footer counts 1/1/1, footer-and-docs-ok, 0 vocabulary hits (plus 0 planning terms in the message), and
+`git describe` = `v0.10.4-5-g0819b2b` (same known deviation as above). The diff stat is unchanged.
