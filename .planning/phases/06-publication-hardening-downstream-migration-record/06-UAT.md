@@ -3,7 +3,7 @@ status: diagnosed
 phase: 06-publication-hardening-downstream-migration-record
 source: [06-REVIEW.md]
 started: 2026-09-29T06:58:29Z
-updated: 2026-09-29T16:42:42Z
+updated: 2026-09-30T15:42:34Z
 gaps_source: "/gsd-code-review 06 (deep, gsd-code-reviewer/opus) over e9eb3c4..HEAD, 48 files, run mid-phase as plan 06-09 Task 2's precondition, before the first promotion to main. CR-01 independently reproduced by the orchestrator (floating v0 tag -> setuptools_scm \"Can't parse version from tag 'v0'\" on a git-archive build). Owner dispositions 2026-09-28."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -784,3 +784,120 @@ blocked: 0
   missing: []
   debug_session: ""
   reviewer_severity: "info"
+
+<!-- ROUND 4 — imported 2026-09-30T15:42:34Z by /gsd-consolidate-findings from gsd-code-review-deep (file:.planning/phases/06-publication-hardening-downstream-migration-record/06-REVIEW.md), range 4da8c6c..2a094ed.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "WR-01: Normalising require_extra_approval_for_unattributed_changes makes post-apply verification blind to a protection weakening; the key's PUT behaviour is unverified"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> minor + defer)"
+  severity: minor
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-30). Policy: keep normalising; document the five read-filled fields the apply does not govern in RULESETS.md (not pin)."
+  test: review-r4-885c39117e3e
+  root_cause: "Someone flips require_extra_approval_for_unattributed_changes to false in the GitHub UI; the committed payload is silent, rule (d) drops the live key, and check_ruleset_drift exits clean (reproduced). If GitHub's PUT preserves omitted fields, the weakening survives every ruleset-apply run, which still reports OK. Same blind spot as the other four read-filled keys."
+  artifacts:
+    - path: ".github/scripts/ruleset_lib.py"
+      issue: "line 41:"
+  missing:
+    - "Owner policy (2026-09-30): keep normalising; document in RULESETS.md the five read-filled fields the apply does not govern."
+  debug_session: ""
+
+- truth: "WR-02: Unforced git fetch --tags fails the RTD build when a floating tag moves during the build"
+  status: deferred
+  deferred_to: "Phase 7 \u2014 PRECONDITION of the 0.11.0 promotion (owner disposition 2026-09-30: non-breaking hardening -> minor + defer; fix before the release promotion)"
+  severity: minor
+  reason: "DEFERRED to Phase 7; must be fixed before the 0.11.0 promotion (owner disposition 2026-09-30)."
+  test: review-r4-842eb6edb767
+  root_cause: "release-please.yml deletes and recreates the floating v0/v0.10 tags right after a release, when RTD builds are triggered; if RTD's checkout fetch saw the old v0 and the tag moves before post_checkout, `git fetch --tags` exits 1 with `! [rejected] v0 -> v0 (would clobber existing tag)` (reproduced against a local bare repo) and the docs build fails at release time."
+  artifacts:
+    - path: ".readthedocs.yaml"
+      issue: "line 20:"
+  missing:
+    - "Use `git fetch --tags --force` (RTD's own fetch already runs with --force)."
+  debug_session: ""
+
+- truth: "WR-03: `git fetch --unshallow || true` swallows every unshallow failure, not only the complete-repository case"
+  status: deferred
+  deferred_to: "Phase 7 \u2014 PRECONDITION of the 0.11.0 promotion (owner disposition 2026-09-30: non-breaking hardening -> minor + defer; fix before the release promotion)"
+  severity: minor
+  reason: "DEFERRED to Phase 7; must be fixed before the 0.11.0 promotion (owner disposition 2026-09-30)."
+  test: review-r4-c65845dea29b
+  root_cause: "On a genuinely shallow clone (develop-gsd, or any branch >50 commits past its tag) a network/server error in --unshallow is swallowed; the build continues shallow and derives a wrong version silently, reproduced: 0.10.4.post344 instead of 0.10.4.post473, green build. If the tag falls outside the shallow window the version degrades to 0.0.postN."
+  artifacts:
+    - path: ".readthedocs.yaml"
+      issue: "line 16:"
+  missing:
+    - "Unshallow only when `git rev-parse --is-shallow-repository` is true, without `|| true`."
+  debug_session: ""
+
+- truth: "WR-04: The RTD build has no tagless-version assertion, the guard that would have caught the original bug"
+  status: deferred
+  deferred_to: "Phase 7 \u2014 PRECONDITION of the 0.11.0 promotion (owner disposition 2026-09-30: non-breaking hardening -> minor + defer; fix before the release promotion)"
+  severity: minor
+  reason: "DEFERRED to Phase 7; must be fixed before the 0.11.0 promotion (owner disposition 2026-09-30)."
+  test: review-r4-500c92ff21e0
+  root_cause: "A degraded 0.0.postN version (as RTD build 34851945 rendered, 0.0.post41) builds clean and goes green on RTD, because unlike the CI docs job (ci.yml asserts the version does not start with 0.0.) the RTD config has no such check."
+  artifacts:
+    - path: ".readthedocs.yaml"
+      issue: "line 21:"
+  missing:
+    - "Add a post_install job asserting importlib.metadata.version('pc2img') does not start with 0.0. and that the repo is not shallow."
+  debug_session: ""
+
+- truth: "IN-01: The live-payload test fixture does not match the measured live shapes"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> minor + defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> defer)."
+  test: review-r4-70531511f52c
+  root_cause: "Fixture models dismissal_restriction as {} and status-check integration_id as 15368, but live reads return {\"enabled\": false, \"allowed_actors\": []} and no integration_id after an apply, so tests exercise shapes GitHub no longer returns."
+  artifacts:
+    - path: ".github/scripts/test_ruleset_lib.py"
+      issue: "line 117:"
+  missing:
+    - "Update the fixture to the measured shapes; keep one UI-created-ruleset case with integration_id 15368."
+  debug_session: ""
+
+- truth: "IN-02: The rule (c) docstring and removal record describe a live integration_id value that no longer exists"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> minor + defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> defer)."
+  test: review-r4-e41c4e0d09cd
+  root_cause: "Every rule (c) audit line reads `[committed] ... integration_id differs live-vs-committed` although the live read carries no integration_id, so the drift log claims a difference that was never read."
+  artifacts:
+    - path: ".github/scripts/ruleset_lib.py"
+      issue: "line 266:"
+  missing:
+    - "Reword the docstring and make the record text neutral (e.g. 'dropped integration_id (not compared)')."
+  debug_session: ""
+
+- truth: "IN-03: No test pins that require_extra_approval_for_unattributed_changes is compared when the committed side sets it"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> minor + defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> defer)."
+  test: review-r4-a002e9ea36b0
+  root_cause: "A future change could stop comparing the key even when a committed payload pins it and no test would fail; the conditional-compare test only covers allowed_merge_methods."
+  artifacts:
+    - path: ".github/scripts/test_ruleset_lib.py"
+      issue: "line 273:"
+  missing:
+    - "Parametrise the survive test over PULL_REQUEST_READ_FILLED_KEYS and STATUS_CHECKS_READ_FILLED_KEYS."
+  debug_session: ""
+
+- truth: "IN-04: The 'enumerated in full' comparison contract does not list the rule (d) keys"
+  status: deferred
+  deferred_to: "Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> minor + defer)"
+  severity: cosmetic
+  reason: "DEFERRED to Phase 7 (owner disposition 2026-09-30: non-breaking hardening -> defer)."
+  test: review-r4-9ef31b6d9ec2
+  root_cause: "A reader of the module docstring cannot see that require_extra_approval_for_unattributed_changes (and four other keys) are excluded from comparison, although the docstring claims the contract is enumerated in full."
+  artifacts:
+    - path: ".github/scripts/ruleset_lib.py"
+      issue: "line 11:"
+  missing:
+    - "List the five keys under rule (d) or reference the two tuples by name."
+  debug_session: ""
