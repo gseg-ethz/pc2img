@@ -14,18 +14,22 @@ automated target that exists before the work starts:
    Asserts the *key* exists, not its contents.
 4. ``test_ruff_check_src_is_clean`` — LIVE since the ruff sweep landed.
    Shells ``ruff check src/`` over the *hygiene-fixable* rule subset (ignoring the
-   E402/C901/B008 findings deferred to the bug-fix phase, which stay visible in a
-   bare ``ruff check`` as breadcrumbs) and asserts a clean exit, plus that
-   ``ruff format --check`` reports no reformatting.
+   E402/C901/B008 findings, which are excluded from this gate and tracked
+   separately, and stay visible in a bare ``ruff check`` as breadcrumbs) and
+   asserts a clean exit, plus that ``ruff format --check`` reports no
+   reformatting.
 5. ``test_shipped_file_has_no_planning_vocabulary`` — parametrized over every
    git-tracked path outside the internal planning directories. Publication
    hardening requires the shipped tree to carry no internal decision,
    requirement, review-ledger or phase/plan references — comments and
    docstrings should read as plain technical prose, not project-management
-   breadcrumbs. One exemption is held in ``_EXEMPTIONS`` below, each with the
+   breadcrumbs. A single exemption is held in ``_EXEMPTIONS`` below, with the
    reason stated at the exemption. ``test_public_identifiers_are_not_flagged``
    is a companion self-check proving the word-boundary rules do not clip
-   legitimate public identifiers that merely share a hyphenated shape.
+   legitimate public identifiers that merely share a hyphenated shape, and
+   ``test_prose_planning_phrases_are_flagged`` proves the gate catches prose
+   referencing an internal milestone or a closure round that a bare
+   phase/plan-number pattern cannot see.
 
 All checks are now normal passing tests, except the parametrized gate, which
 is red on any shipped file that still carries the vocabulary it scans for.
@@ -94,9 +98,9 @@ def test_pyproject_viz_extra_exists() -> None:
 
 
 # The E402/C901/B008 findings (rrim import ordering, cyclomatic complexity,
-# mutable-default seed) are deferred to the bug-fix phase. They stay
-# visible in a bare ``ruff check`` as breadcrumbs, so the gate scopes to
-# the hygiene-fixable subset by ignoring exactly those three families.
+# mutable-default seed) are excluded from this gate and tracked separately.
+# They stay visible in a bare ``ruff check`` as breadcrumbs, so the gate scopes
+# to the hygiene-fixable subset by ignoring exactly those three families.
 _DEFERRED_RULES = "E402,C901,B008"
 
 
@@ -152,12 +156,6 @@ _EXEMPTIONS: dict[str, str] = {
     "docs/ip/rrim-eth-signoff.md": (
         "signed ETH IP-clearance record shipped verbatim; editing it would weaken what it attests"
     ),
-    ".pre-commit-config.yaml": (
-        "the exclude regex must literally name the internal planning directory to scope hook "
-        "exclusion out of it; this is a path definition, not a planning-artifact reference, and "
-        "the same trick this module uses to avoid self-matching is not available in a static YAML "
-        "regex literal"
-    ),
 }
 
 # Case-sensitive families: internal identifier codes and artifact filenames.
@@ -180,9 +178,19 @@ _CODE_PATTERN = re.compile(
 
 # Case-insensitive families: phase and plan references. Deliberately NOT a
 # bare two-digit-hyphen-two-digit pattern -- that would match ISO dates.
+#
+# The last two alternatives catch the prose forms a bare phase/plan-number
+# pattern above cannot see: a demonstrative reference to "this" internal
+# phase or milestone, and either spelling of a closure round. Each is
+# written with a character class ([ ] / [- ]) rather than the literal
+# separator, the same self-match-avoidance trick _PLANNING_DIR uses above --
+# this module is itself an unexempted, git-tracked scan target, and the raw
+# contiguous phrase would flag this very definition.
 _PHASE_PLAN_PATTERN = re.compile(
     r"\bphase[- ]?[0-9]+(?:\.[0-9]+)?\b"
-    r"|\bplans?\s[0-9]{2}-[0-9]{2}\b",
+    r"|\bplans?\s[0-9]{2}-[0-9]{2}\b"
+    r"|\bthis[ ](?:phase|milestone)\b"
+    r"|\bgap[- ]closure\b",
     re.IGNORECASE,
 )
 
@@ -253,6 +261,35 @@ def test_shipped_file_has_no_planning_vocabulary(path: str) -> None:
 def test_public_identifiers_are_not_flagged() -> None:
     """Self-check: a public identifier family sharing the internal families'
     hyphenated shape, but with letters (not digits) after the hyphen, must
-    never match -- e.g. a downstream migration-record identifier."""
+    never match -- e.g. a downstream migration-record identifier. Also covers
+    the negative side of the two prose alternatives added for internal
+    milestone/closure-round references: legitimate technical prose that
+    merely shares a word ("phase", "gap", "pass") must not be clipped."""
     for identifier in ("BC-P2I-001", "BC-GSEG-006"):
         assert _CODE_PATTERN.search(identifier) is None, f"{identifier} was incorrectly flagged as planning vocabulary"
+
+    safe_phrases = (
+        "the two-phase project_raw()/normalize contract",
+        "phase unwrapping",
+        "bug-fix pass",
+        "BC-P2I-001",
+        "BC-GSEG-006",
+        "2026-09-29",
+    )
+    for phrase in safe_phrases:
+        assert not _matches(phrase), f"{phrase!r} was incorrectly flagged as planning vocabulary"
+
+
+def test_prose_planning_phrases_are_flagged() -> None:
+    """Self-check: the prose alternatives added to ``_PHASE_PLAN_PATTERN`` for
+    the phrases the review found actually catch them. Assembled from string
+    parts so this test's own source does not contain the contiguous literal
+    either -- this module is itself an unexempted, git-tracked scan target."""
+    phrases = (
+        "this" + " phase",
+        "this" + " milestone",
+        "gap" + "-closure",
+        "gap" + " closure",
+    )
+    for phrase in phrases:
+        assert _matches(phrase), f"{phrase!r} was NOT flagged as planning vocabulary"

@@ -14,6 +14,7 @@ milestone: v1.0
 **Baseline:** `dev/v2` tip (`91b4ab6`, 2025-11-06) — the fork point of `develop-gsd`.
 **Target:** `develop-gsd` HEAD (`e9eb3c48354a73e294c0aff8718fac562215d958`) at draft time. Re-stamped
 to the `v0.11.0` release tag when this record is finalized.
+This record lives under the internal planning directory on `develop-gsd` and is not shipped on `main`; downstream projects read it from the branch.
 
 ## Summary
 
@@ -118,10 +119,11 @@ r"""Inline executor-time verifier for pc2img MIGRATION-v0.11.md.
 
 Extract this block and run it from the repository root:
 
-    awk '/^## Verifier \(inline\)$/,/^```$/' MIGRATION-v0.11.md \
+    mkdir -p _scrap
+    awk '/^## Verifier \(inline\)$/,/^```$/' .planning/MIGRATION-v0.11.md \
         | sed -n '/^```python$/,/^```$/p' | sed '1d;$d' \
-        > /tmp/pc2img-migration-verifier.py
-    uv run --frozen python /tmp/pc2img-migration-verifier.py
+        > _scrap/pc2img-migration-verifier.py
+    uv run --frozen python _scrap/pc2img-migration-verifier.py
 
 Tier 1 AST-walks the four public __init__.py barrels' `__all__` list literals and
 asserts every non-dotted top-level symbol named in a BC-P2I entry's

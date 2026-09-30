@@ -10,10 +10,11 @@ name: Ruleset Apply
 # one. An unattended job holding a protection-write credential is the
 # auto-reconcile this design explicitly REFUSES — it would turn detection into
 # self-healing at exactly the moment nobody is watching, and a silent self-heal
-# is indistinguishable from no drift ever having happened. Detection lives in
-# the continuous-enforcement component's ruleset-drift workflow, which holds no
-# write. Never the base-repo-context sibling of the pull-request trigger
-# either, which runs with this repository's secrets against a fork's code;
+# is indistinguishable from no drift ever having happened. Nothing in this
+# repository checks live rulesets against the committed payloads on a
+# schedule; the only comparison is this workflow's own post-apply read-back.
+# Never the base-repo-context sibling of the pull-request trigger either,
+# which runs with this repository's secrets against a fork's code;
 # that prohibition is enforced repo-wide by assertion A2 in
 # .github/scripts/check_ci_config.py when the config self-inspection component
 # is applied — in that case A2 is a raw-text scan and would flag its own
@@ -232,14 +233,20 @@ jobs:
         with:
           app-id: ${{ secrets.RULESET_APP_ID }}
           private-key: ${{ secrets.RULESET_APP_PRIVATE_KEY }}
-          # THE one place in this phase where a write scope is the correct
-          # answer rather than a concession: this job exists to rewrite branch
-          # protection, and the update endpoint is gated on Administration
-          # write. It is minted here, after the preflight has already passed,
-          # and the action revokes it in its post step, so it cannot be handed
-          # to another job. The nightly drift job also mints at write, but for a
-          # different reason (a read-scoped mint does not receive `bypass_actors`
-          # at all); do not read the two as the same decision.
+          # The only Administration-write grant in this repository's
+          # workflows, and the correct answer rather than a concession: this
+          # job exists to rewrite branch protection, and the update endpoint
+          # is gated on Administration write. It is minted here, after the
+          # preflight has already passed, and the action revokes it in its
+          # post step, so it cannot be handed to another job. (The other
+          # write grants in this repository's workflows — `id-token` and
+          # `attestations` on the publish jobs, `issues` on the health check,
+          # and the release App's token in release-please.yml, minted with
+          # no `permission-*` inputs and so carrying that App's full
+          # installation grant — are different grants for different
+          # reasons.) A read-scoped mint does not receive the bypass list at
+          # all, which is why RULESETS.md's live-inspection note reads a
+          # ruleset by id with an administration-capable token.
           permission-administration: write
 
       - name: Apply the committed payload as a complete object

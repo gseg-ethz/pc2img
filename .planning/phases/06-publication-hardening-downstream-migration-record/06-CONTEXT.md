@@ -346,6 +346,31 @@ migration record, and its merge of the release PR ships 0.11.0 to PyPI.
 </canonical_refs>
 
 <code_context>
+### Review-round decisions (owner, 2026-09-28 — after the mid-phase code review, before the first promotion)
+- **D-28 REVERSED → D-33:** `MIGRATION-v0.11.md` moves from the repo root to
+  **`.planning/MIGRATION-v0.11.md`** (milestone-level, not the phase folder). It is stripped from
+  public `main` like every other planning artifact. **Why:** the owner sees the record as internal
+  bookkeeping for downstream reworks (iof3D reads it locally on `develop-gsd`); intentionally
+  diverges from PCHandler/GSEGUtils, which ship `MIGRATION-v1.0.md` publicly. Consequences:
+  (a) the promotion squash's `BREAKING CHANGE:` footer (D-03) must carry a short, self-contained
+  public summary of the breaking changes instead of pointing at the file — release-please copies it
+  into `CHANGELOG.md`; (b) every plan/verifier reference to the root path (06-09, 06-10, 06-13,
+  the verifier's extraction command, RULESETS.md's recorded gate) is repointed; (c) Phase 7's
+  finalisation (D-29) targets `.planning/MIGRATION-v0.11.md`.
+- **D-34 (amends D-15):** `RULESETS.md` and `RELEASE.md` stay at the repo root and ship, but must
+  read as plain repository docs: no GSD/planning wording, and condensed to roughly sibling size
+  (PCHandler/GSEGUtils: ~135–150 and ~95–100 lines). The adoption record D-15 required (interview
+  answers, taken/declined components with cost, every deviation, the superseded floor-only
+  decision, apply-time checklist evidence, the recorded pre-promotion gate) is **preserved** by
+  moving it into `.planning/` — not deleted. Public docs keep one-liners only for deviations a
+  maintainer needs (uv-based setup, coverage floor).
+- **D-35:** Fix before the first promotion, via a gap-closure plan whose diff gets its own review
+  before re-merge to `develop-gsd`: CR-01 (floating-tag archive break), WR-03, WR-04, WR-05
+  (owner-elevated: ref guard on both publish workflows), WR-08, WR-10, IN-04, IN-05, IN-10, IN-13.
+  All others (WR-01/02/06/07/09, remaining IN) are deferred to Phase 7 and recorded
+  `status: deferred` in `06-UAT.md`. Cross-repo note (no edit here; owner approval required): the
+  floating-tag release step comes from the shared GSEG kit, so PCHandler/GSEGUtils likely share CR-01.
+
 ## Existing Code Insights
 
 ### Reusable Assets

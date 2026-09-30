@@ -3,8 +3,9 @@ name: Scheduled Health
 # Nightly branch-ancestry health check. The single job `ancestry` asserts the
 # protected branch is still an ancestor of the integration branch — a wrong
 # merge method on a back-merge becomes a next-day failure instead of a
-# next-release surprise. Ruleset drift detection is a separate workflow
-# shipped by the continuous-enforcement component, not part of this file.
+# next-release surprise. Nothing in this repository checks live rulesets
+# against the committed payloads on a schedule; the only comparison is
+# ruleset-apply.yml's post-apply read-back.
 #
 # Triggers MUST stay restricted to schedule + workflow_dispatch — never the
 # base-repository sibling of the pull-request trigger, which runs with this
@@ -35,9 +36,8 @@ name: Scheduled Health
 on:
   schedule:
     # Pick a slot offset on the WALL CLOCK from every other scheduled workflow
-    # in this repository — the CI nightly, the drift workflow the
-    # continuous-enforcement component adds, and anything else a component
-    # adds — so no two scheduled workflows ever share a slot.
+    # in this repository — currently just the CI nightly — so any future
+    # scheduled workflow added here does not collide with this slot.
     - cron: '0 6 * * *'
   # NOT garnish. Scheduled triggers register ONLY from the default branch, so
   # this file produces no scheduled run at all until it reaches main,
