@@ -17,11 +17,11 @@ affects: ["phase close / ship gate — CICD-02 and BC-01 deliberately NOT marked
 
 # Actuals (#2632)
 actuals:
-  tokens: 7200
+  tokens: 11440
   tasks: 3
   commits: 2
   plan_head_before: 86f97bb7669940703c8d1c57c94d5b4f013882fe
-  plan_head_after: PENDING_FINAL_COMMIT
+  plan_head_after: 7798aad5e36a9ce74513bbb06f9d95f6a0b81757
 
 # Tech tracking
 tech-stack:
