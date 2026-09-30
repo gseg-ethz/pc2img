@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-09-PLAN.md
-last_updated: "2026-09-30T09:07:05.658Z"
+stopped_at: Completed 06-11-PLAN.md
+last_updated: "2026-09-30T12:29:09.382Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 06 execution started
-state_head: 070a52f268a5eaa572cadf0c20f6e66ab73629f3
+state_head: 2999949ecf2397b3ff58019f8842efe915fcac2f
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 58
-  completed_plans: 54
+  completed_plans: 56
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 2 of 19
+Plan: 4 of 19
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 06 execution started
 
@@ -116,6 +116,8 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P19 | 35min | 4 tasks | 16 files |
 | Phase 06 P18 | ~10min | 2 tasks | 1 files |
 | Phase 06 P09 | 20min | 2 tasks | 0 files |
+| Phase 06 P10 | ~30min (this continuation) | 3 tasks | 0 files |
+| Phase 06 P11 | 20min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -214,6 +216,10 @@ Recent decisions affecting current work:
 - [Phase 06]: Directory names in RELEASE.md/RULESETS.md written without a trailing slash (.planning, .claude) to avoid tripping the hygiene gate's own .planning/-literal pattern while still naming them unambiguously
 - [Phase 06]: [Phase 06 P18]: Task 2's outward-facing GitHub actions (push, PR create, CI watch, merge) were owner-executed with orchestrator-supplied commands and orchestrator-run verification, because Claude Code's auto-mode classifier denied the agent dispatch that would have pushed/merged; PR #14 merged into develop-gsd as a two-parent merge commit (d4aa911) behind three green contexts, carrying every round-1/round-2 fix
 - [Phase 06]: 06-09: promotion commit 7e53d89 built in worktree _scrap/pc2img-promotion (parent origin/main, tree=develop-gsd minus .planning/.claude, feat!/BREAKING CHANGE/Release-As footers); not pushed. Plan verify-check 5's tag-distance literal failed on pre-existing main/v0.10.4 divergence (Phase 1 01-BRANCH-INVENTORY.md) -- substituted equivalent rev-list check, both prove parent==origin/main.
+- [Phase 06]: 06-10: promoted main to 0819b2b then 6e759d3 (drift-comparator fix); protect-main ruleset active, bypass_actors empty, comparator clean after PRs #16/#17 closed a false-positive drift finding on require_extra_approval_for_unattributed_changes; release PR #15 open unmerged
+- [Phase 06]: [Phase 06 P11]: protect-develop-gsd (id 24244420) active/comparator-clean/idempotent (2nd apply run 36713544557); direct-push-refusal test replaced with a read-only branch-rules API proof (owner decision)
+- [Phase 06]: [Phase 06 P11]: ancestry graft landed on develop-gsd via PR #18 as a true merge commit (243710a, parents 2af2257 + 6e759d3); origin/main is now an ancestor of origin/develop-gsd, trees match outside .planning/.claude
+- [Phase 06]: [Phase 06 P11]: scheduled-health.yml dispatched from main (run 36714649924), success with the OK ancestry line, schedule registered active (cron 0 6 * * *); first cron-triggered run pending human-check 2026-10-01 06:00 UTC
 
 ### Pending Todos
 
@@ -253,6 +259,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T09:07:05.274Z
-Stopped at: Completed 06-09-PLAN.md
+Last session: 2026-09-30T12:29:09.139Z
+Stopped at: Completed 06-11-PLAN.md
 Resume file: None
