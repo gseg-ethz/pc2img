@@ -226,7 +226,7 @@ Plans:
   3. `develop-gsd` is promoted to `main` (planning paths stripped; no planning vocabulary in the shipped tree); the ancestry graft is done and the nightly ancestry assertion has been observed passing; release-please has opened the 0.11.0 release PR (left unmerged).
   4. A draft `.planning/MIGRATION-v0.11.md` (migration-spec format, baseline `91b4ab6`; internal per D-33, stripped from `main`) documents the Phase 1–6 public API/behavior changes and its inline verifier passes.
 
-**Plans**: 16/19 plans executed (06-14..06-19 — review-round gap closure, planned 2026-09-29; 06-19 added for the round-2 doc pass and 06-18 re-waved behind it; 06-09..06-13 re-waved behind them)
+**Plans**: 17/19 plans executed (06-14..06-19 — review-round gap closure, planned 2026-09-29; 06-19 added for the round-2 doc pass and 06-18 re-waved behind it; 06-09..06-13 re-waved behind them)
 
 **Wave 1** *(tree work on the phase branch, parallel)*
 
@@ -261,7 +261,7 @@ Plans:
 
 - [x] 06-09-PLAN.md — Owner: release App + RELEASE_APP_*; build and verify the filtered promotion commit (feat!, self-contained BREAKING CHANGE summary per D-33a, Release-As 0.11.0), unpushed [CICD-02]
 - [x] 06-10-PLAN.md — Go/no-go gate; push to main; release PR 0.11.0 opened (unmerged); bootstrap + apply protect-main, read back bypass_actors [] [CICD-02]
-- [ ] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
+- [x] 06-11-PLAN.md — Bootstrap + apply protect-develop-gsd (+ idempotent re-apply); ancestry graft (true merge via PR); nightly assertion dispatched and observed passing [CICD-02]
 - [ ] 06-12-PLAN.md — Owner: RTD import; RTD build verified live; testpypi environment; owner: TestPyPI trusted publisher [CICD-02]
 - [ ] 06-13-PLAN.md — TestPyPI dry run with PEP 740 attestations (+ idempotent re-dispatch); end-of-phase live re-verification; todo bookkeeping [CICD-02, BC-01]
 
@@ -292,5 +292,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 3. Test & CI Foundation | 3/3 | Complete    | 2026-07-09 |
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
-| 6. Publication Hardening & Downstream Migration Record | 16/19 | In Progress|  |
+| 6. Publication Hardening & Downstream Migration Record | 17/19 | In Progress|  |
 | 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |
