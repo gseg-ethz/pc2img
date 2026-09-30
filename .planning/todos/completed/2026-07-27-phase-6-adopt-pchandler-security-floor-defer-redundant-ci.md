@@ -108,3 +108,14 @@ human approval — this todo does not authorize touching pchandler or GSEGUtils.
   GSEGUtils resolved to **0.5.3, not 0.6.0**, because `bump-patch-for-minor-pre-major: true`
   makes a pre-1.0 `feat` bump the patch. pc2img is pre-1.0 too (currently 0.10.4) — confirm
   what `release-please-config.json` does here before assuming a `feat` yields a minor bump.
+
+## Closed 2026-09-30
+
+**Superseded by D-07**: Phase 6 adopted the full PCHandler publication template
+(branch-protection rulesets, OIDC trusted-publisher TestPyPI/PyPI publish, PEP 740
+attestations, required status checks, self-merge guard) rather than the floor-only
+option this todo proposed — SEED-001's redesign had not landed by the time Phase 6
+executed, and full-template adoption was judged the lower-risk path once the phase was
+actually planned. The "write the divergence down" deliverable this todo asked for either
+way was delivered as the internal `.planning/CICD-ADOPTION-RECORD.md` (full record) with
+condensed public one-liners in `RULESETS.md`/`RELEASE.md` (D-34).
