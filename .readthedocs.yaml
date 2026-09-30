@@ -13,8 +13,11 @@ build:
       # setuptools_scm derives the version conf.py displays from git tags;
       # RTD's default checkout is shallow and would fall back to a tagless
       # version otherwise, since conf.py reads the installed distribution's
-      # version and that needs tags present.
-      - git fetch --unshallow --tags || true
+      # version and that needs tags present. The two fetches stay separate:
+      # when RTD's depth-50 fetch already holds the whole history,
+      # `--unshallow` is fatal and would take a combined `--tags` down with it.
+      - git fetch --unshallow || true
+      - git fetch --tags
     install:
       # `doc` is a PEP 735 dependency-group entry (pyproject.toml
       # [dependency-groups]), not a [project.optional-dependencies] extra, so
