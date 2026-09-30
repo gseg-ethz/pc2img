@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.11.0](https://github.com/gseg-ethz/pc2img/compare/v0.10.4...v0.11.0) (2026-09-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* the 0.10 module layout is replaced wholesale by the 2.x architecture (strategies, features and image_cache packages). Registry misses raise RegistryLookupError; the never-functional make_generator factory and a dead duplicate convert_to_image are removed; matplotlib moves to the optional viz extra; the disk cache codec changes from pickle to .npy plus a JSON sidecar, so a cache directory persisted by an earlier build must be regenerated; a wrapping field of view, a 4x4 rotation_matrix and a non-pinhole intrinsics matrix are now rejected; nanconv accumulates in float32 and no longer mutates its input; DiskBackedImageData arithmetic returns a plain ndarray instead of raising; RRIM feature-name validation moves to request time and the z-factor token uses shortest round-trip formatting; numpy 2.x, pchandler 2.1 and GSEGUtils 0.5.3 or newer are required; the v2.0.0a5 tag is retired, so git-based pins on the 2.0.0a line must move to pc2img ~= 0.11 from PyPI.
+
+### ✨ Features
+
+* publish the 2.x architecture as the 0.11 release line ([0819b2b](https://github.com/gseg-ethz/pc2img/commit/0819b2b754672829f45ac7e169de4e4707821266))
+
+
+### 🐛 Bug Fixes
+
+* **docs:** fetch tags on Read the Docs even when the clone is already complete ([20ef688](https://github.com/gseg-ethz/pc2img/commit/20ef688c161804aed80ab7c3d5922cf6e013bf90))
+
+
+### 📚 Documentation
+
+* Create LICENSE ([f946268](https://github.com/gseg-ethz/pc2img/commit/f946268ed96ad64c4341734d4076150f03bc7ac3))
+
+
+### 🧹 Miscellaneous Chores
+
+* **license:** switch from MIT to BSD-3-Clause ([ade40f8](https://github.com/gseg-ethz/pc2img/commit/ade40f85a18729290d50e05ce5da0c2d98f45c20))
+* Merge branch 'main' of github.com:gseg-ethz/pc2img ([69224a9](https://github.com/gseg-ethz/pc2img/commit/69224a9644046386264d23dc568f9719b5a89da8))
+
+
+### 🤖 Continuous Integration
+
+* **rulesets:** normalise the unattributed-changes approval key GitHub fills on read ([6e759d3](https://github.com/gseg-ethz/pc2img/commit/6e759d3af5e0fe2862c7ffc7ef8606f716e4b575))
+
 ## [0.10.4](https://github.com/gseg-ethz/pc2img/compare/v0.10.3...v0.10.4) (2025-04-15)
 
 
