@@ -42,6 +42,7 @@ PULL_REQUEST_READ_FILLED_KEYS: tuple[str, ...] = (
     "allowed_merge_methods",
     "dismissal_restriction",
     "required_reviewers",
+    "require_extra_approval_for_unattributed_changes",
 )
 STATUS_CHECKS_READ_FILLED_KEYS: tuple[str, ...] = ("do_not_enforce_on_create",)
 
