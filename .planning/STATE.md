@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 06
 current_phase_name: Publication Hardening & Downstream Migration Record
 status: executing
-stopped_at: Completed 06-12-PLAN.md
-last_updated: "2026-09-30T15:06:00.133Z"
+stopped_at: Completed 06-13-PLAN.md (ancestry-drift regression unresolved, owner decision needed)
+last_updated: "2026-09-30T15:25:17.342Z"
 last_activity: 2026-09-30
 last_activity_desc: Phase 06 execution started
-state_head: e9a3a9821e185fcbcf517cd281b5b38c394d9d39
+state_head: 416f2325d377bac6d84e65c079fea0db9b7e6238
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 58
-  completed_plans: 57
+  completed_plans: 58
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 5 of 19
+Plan: 6 of 19
 Status: Ready to execute
 Last activity: 2026-09-30 — Phase 06 execution started
 
@@ -119,6 +119,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P10 | ~30min (this continuation) | 3 tasks | 0 files |
 | Phase 06 P11 | 20min | 3 tasks | 0 files |
 | Phase 06 P12 | 25min | 3 tasks | 1 files |
+| Phase 06 P13 | ~35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,9 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06 P12]: Owner imported pc2img on Read the Docs; owner decision: leave stable pointed at pre-0.11 v0.10.4 tag until v0.11.0 ships
 - [Phase 06]: [Phase 06 P12]: Found and fixed (Rule 1, run before reading) an RTD post_checkout bug: fused 'git fetch --unshallow --tags || true' silently failed once RTD's own depth-50 fetch already held full history, rendering docs as 0.0.post41; split into separate fetches (e9a3a98), landed via develop-gsd promotion PR #19/#20 to main 20ef688, site now renders 0.10.4.post7
 - [Phase 06]: [Phase 06 P12]: testpypi GitHub environment created via gh api; owner registered TestPyPI pending trusted publisher (pc2img/gseg-ethz/pc2img/publish-testpypi.yml/testpypi); running proof deferred to 06-13's dispatch
+- [Phase 06]: [Phase 06 P13]: TestPyPI dry run proven twice (runs 36734621068/36734867977) with PEP 740 attestations on both files, sigstore/OIDC exchange visible in the log, no persisted API token; production index 404 before/after
+- [Phase 06]: [Phase 06 P13]: Closing sweep found a NEW regression — origin/main is no longer an ancestor of origin/develop-gsd (06-11's graft broken by 06-12's second promotion, PR #20, with no follow-up back-merge); confirmed via a manual scheduled-health.yml dispatch (run 36735321144, failure) which opened GitHub issue #21 (ancestry-drift); NOT fixed (no git ref pushed per plan instruction) — owner decision required before phase close; CICD-02/BC-01 deliberately left un-marked
+- [Phase 06]: [Phase 06 P13]: Todo bookkeeping reconciled — ruff-lint-CI + pchandler-security-floor todos closed; round-5 hygiene todo split (4 phase-6 items ticked, resolves_phase retargeted to 7); GSEGUtils 0.6 todo confirmed already phase-7-scoped
 
 ### Pending Todos
 
@@ -241,6 +245,7 @@ Recent decisions affecting current work:
   **G9 owner decision (2026-07-27):** do BOTH halves — widen `_Z_FACTOR_RE` to accept exponent notation AND switch `_format_number`'s non-integer branch from `format(v,"g")` to `repr(float(v))`. Chosen over regex-only because the emitted token stays byte-identical for every z that works correctly today; only already-mis-encoded names change.
 
 - Requirement-count discrepancy: REQUIREMENTS.md coverage note said "23 total" but there are 24 distinct requirement IDs. Traceability corrected to 24; confirm at next review.
+- Phase 6 not shippable as-is: origin/main is no longer an ancestor of origin/develop-gsd (GitHub issue #21, ancestry-drift, opened by scheduled-health.yml run 36735321144). 06-11's one-time ancestry graft was broken by 06-12's second promotion (PR #20) with no follow-up back-merge. Requires owner decision: authorize a follow-up plan to re-graft (mirror 06-11's true-merge recipe), or explicitly waive until Phase 7's next promotion. CICD-02 and BC-01 deliberately left un-marked pending this. See 06-13-SUMMARY.md coverage D4.
 
 ### Quick Tasks Completed
 
@@ -263,6 +268,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T15:05:59.740Z
-Stopped at: Completed 06-12-PLAN.md
+Last session: 2026-09-30T15:25:17.048Z
+Stopped at: Completed 06-13-PLAN.md (ancestry-drift regression unresolved, owner decision needed)
 Resume file: None
