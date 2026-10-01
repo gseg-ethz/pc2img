@@ -278,7 +278,33 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: TBD
+**Plans**: 11 plans
+
+**Wave 1** *(parallel; owner decision gate before the pins are written)*
+
+- [ ] 07-01-PLAN.md — Tracer: confirm the one-way pins (D-01/D-02/D-21), re-lock + in-process provenance, delete the store overrides and adopt purge (D-07..D-10, D-22), rewrite the 12 store tests; D-11/D-12 triage table [DEP-05]
+- [ ] 07-04-PLAN.md — AR-07 publish gate (uv publish + composite actions), AR-08 preflight PR-trigger filter (D-14), RTD tag-fetch hardening with scratch-clone simulation (D-13) [DEP-05]
+- [ ] 07-05-PLAN.md — Ruleset-comparator polish: measured fixture shapes, parametrised read-filled test, rule (c)/(d) docstrings, RULESETS.md ungoverned fields (D-15) [DEP-05]
+
+**Wave 2** *(blocked on 07-01)*
+
+- [ ] 07-02-PLAN.md — Whole-tree snapshot escape corpus (6 spellings x 6 routes), containment-before-shape pin, del/purge/read-only sensors, key-rule characterization, autouse tempfile isolation, tiled docstrings (D-09..D-12, D-22) [DEP-05]
+- [ ] 07-03-PLAN.md — Tiled re-generation race (D-20): reproduce, draft + owner-approve two public issues, file upstream then tracking, xfail regression test with real URLs, extend_cache_paths refusal pin [DEP-05, BC-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 07-06-PLAN.md — Finalise MIGRATION-v0.11.md: amend 002/012/017, append 026-030, target_ref v0.11.0, verifier Tier-2 checks, `[ok] verified 30 entries` (D-18, D-19, D-21) [BC-01]
+
+**Wave 4** *(phase gate)*
+
+- [ ] 07-07-PLAN.md — Full gate re-run, D-03 unlocked-wheel check, blocking checkpoint: /gsd-code-review 7 + /gsd-consolidate-findings before any merge [DEP-05, BC-01]
+
+**Waves 5-8** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
+
+- [ ] 07-08-PLAN.md — Phase PR into develop-gsd (merge commit); build + verify the single filtered promotion commit with a public BREAKING CHANGE footer; go/no-go gate (D-16) [DEP-05, BC-01]
+- [ ] 07-09-PLAN.md — Promotion PR into main (squash with the recorded message), release PR #15 refreshed, RTD live proof; back-merge as a merge commit; nightly ancestry assertion green (D-16) [DEP-05, BC-01]
+- [ ] 07-10-PLAN.md — `pypi` environment with required reviewer; owner: PyPI trusted publisher (D-17); go/no-go on merging release PR #15 with D-03/D-18/RTD preconditions [DEP-05, BC-01]
+- [ ] 07-11-PLAN.md — Release evidence (tag, publish run, attestations, fresh-install), post-release back-merge + nightly, verifier against v0.11.0, todo closures and security follow-up annotations (D-14) [DEP-05, BC-01]
 
 ## Progress
 
