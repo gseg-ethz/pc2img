@@ -1,272 +1,193 @@
 ---
 phase: 06-publication-hardening-downstream-migration-record
-reviewed: 2026-09-29T15:27:30Z
+review_round: 4
+review_scope: "late-phase fix diffs fb44899 (ruleset drift normalisation) + e9a3a98 (RTD tag fetch), git diff 4da8c6c..1b6751f"
+reviewed: 2026-09-30T15:37:32Z
 depth: deep
-files_reviewed: 13
+files_reviewed: 3
 files_reviewed_list:
-  - .github/actions/classify-changes/action.yml
-  - .github/scripts/check_publish_gate.py
-  - .github/scripts/check_ruleset_drift.py
   - .github/scripts/ruleset_lib.py
-  - .github/workflows/ci.yml
-  - .github/workflows/publish-pypi.yml
-  - .github/workflows/publish-testpypi.yml
-  - .github/workflows/ruleset-apply.yml
-  - .github/workflows/scheduled-health.yml
-  - CITATION.cff
-  - RELEASE.md
-  - RULESETS.md
-  - tests/test_projection.py
+  - .github/scripts/test_ruleset_lib.py
+  - .readthedocs.yaml
 findings:
   critical: 0
-  warning: 7
-  info: 8
-  total: 15
+  warning: 4
+  info: 4
+  total: 8
 status: issues_found
 ---
 
-# Phase 6: Code Review Report (round 3: round-2 doc pass, 5691315..c3b44d9)
+# Phase 6: Code Review Report (round 4: late-phase fix diffs fb44899 + e9a3a98)
 
-**Reviewed:** 2026-09-29T15:27:30Z
+**Reviewed:** 2026-09-30T15:37:32Z
 **Depth:** deep
-**Files Reviewed:** 13
+**Files Reviewed:** 3
 **Status:** issues_found
+
+This replaces the prior 06-REVIEW.md (kept in git at `f5d9037`). It reviews only the two fixes that landed after that review:
+
+- `fb44899` `ci(rulesets): normalise the unattributed-changes approval key GitHub fills on read`
+- `e9a3a98` `fix(docs): fetch tags on Read the Docs even when the clone is already complete`
+
+It also covers the surrounding code those fixes touch: `check_ruleset_drift.py`, `ruleset-apply.yml`, the committed `.github/rulesets/*.json`, the `release-please.yml` floating-tag step, and the version guard in the `ci.yml` docs job.
 
 ## Summary
 
-Scope: `git diff 29039d5..HEAD` over the 13 listed files. This is a prose, comment and docstring pass.
+**How this was checked.** Every claim below was checked by running code, not by reading it. Scratch work is in `/tmp/claude-1000/-scratch-31-pc2img/rv3/`.
 
-**Behaviour, checked by running code:**
-- `yaml.safe_load` of all six workflow/action files plus `CITATION.cff` gives the same objects at `29039d5` and `HEAD`, with two intended exceptions:
-  - `jobs.lint.steps[5].run` in `ci.yml` (the one Lint log string);
-  - `message` in `CITATION.cff`.
-- `ast.dump` is identical for `check_publish_gate.py` and `tests/test_projection.py`.
-- `check_ruleset_drift.py` and `ruleset_lib.py` differ only in their module docstrings; with docstrings stripped, their ASTs are identical.
-- `cffconvert --validate` passes.
-- `tests/test_hygiene.py` plus `.github/scripts/` give 180 passed.
-- No planning IDs, planning paths or review-finding identifiers appear in the added lines or in the full files. The only hit is the real branch name `develop-gsd`.
+- `uv run --frozen pytest .github/scripts -q` gives **93 passed**.
+- Both live rulesets were read with `gh api "repos/gseg-ethz/pc2img/rulesets/24237564?includes_parents=false"` and `.../24244420?...`. `check_ruleset_drift.py` then compared them against `main.json` and `develop.json`. Result: **exit 0**, 2 rulesets, 0 surviving differences, 31 normalised away.
+- The same live read, run through the **pre-fix** `ruleset_lib.py` from `4da8c6c`, gives exit 1 on `require_extra_approval_for_unattributed_changes: live=true committed=<absent>`. So the fix is what closes that gap.
 
-**What matches the source:**
-- The RULESETS.md rules table matches `.github/rulesets/main.json` and `develop.json` cell by cell.
-- RELEASE.md's secrets and environment names match the workflows, and so do its trigger chain (release-please on push to `main`, then `release: published`, then publish-pypi) and its version-bump rules (`bump-minor-pre-major`, `bump-patch-for-minor-pre-major`).
-- The `RELEASE.md "Ref guards"` pointer resolves.
+**fb44899: answers to the orchestrator's questions, all from running code** (probe script `rv3/probe.py`, applied to the real live payload):
 
-**Defects.** They are all in what the prose now says, or no longer says:
-1. Deleting the "declined component" pointers left present-tense claims that a nightly drift workflow and `check_ci_config.py` exist. Neither ships.
-2. The new keep-by-hand rule in `ci.yml` is now the only enforcement, and it points at the wrong YAML location.
-3. The shortened RULESETS.md drops two things:
-   - the admin-token requirement for reading the bypass list, even though a new `ruleset-apply.yml` comment says the doc states it;
-   - the fact that an edited payload must reach `main` before the apply workflow can see it.
-4. The new CITATION.cff sentence tells users to cite a version string that, for any install that is not a release, was never released. This was reproduced: the dev venv reports `0.10.4.post407`.
+- **Does a committed pin still compare?** Yes. With the committed side pinned to `true` and live `false`, it reports `live=false committed=true`. Pinned `true` with the key absent from live reports `live=<absent> committed=true`. Pinned `null` with live `true` also reports a difference. In every pinned case, nothing is recorded as removed.
+- **Can a committed-side value be dropped silently?** No. `committed_rules` is indexed from the committed payload itself, so `_drop_keys` never removes a key from the committed side. Every rule (d) removal record is `[live]`.
+- **Can normalising the key hide a weakening made in the GitHub UI?** Yes, and it is reproduced: live `false` with the committed side silent gives **0 differences**. The treatment matches the other four read-filled keys, which are just as blind:
+  - `dismissal_restriction` turned on;
+  - `required_reviewers` added;
+  - `allowed_merge_methods` narrowed to `["merge"]` on a branch that requires linear history;
+  - `do_not_enforce_on_create: true`.
 
-**Live state, read-only:**
-- `gh api repos/gseg-ethz/pc2img/rulesets` returns `[]`.
-- `main` has no branch protection.
-- The repository has no environments.
-- `pc2img` returns 404 on both PyPI and TestPyPI.
+  All four also read clean. The key is also **absent from GitHub's published REST OpenAPI description**, fetched today. The PUT schema for the `pull_request` rule lists only the other eight parameters. So whether the apply's PUT resets this key or preserves it is undocumented. See WR-01.
+- **Keys the fixture does not model.** The measured live shapes differ from the fixture in two places (IN-01):
+  - `dismissal_restriction` is live as `{"enabled": false, "allowed_actors": []}`; the fixture has `{}`;
+  - live status-check entries carry **no** `integration_id` at all; the fixture has `15368`.
 
-Both docs describe a target state that does not exist yet. That is expected before 06-18, but it makes the ruleset-bootstrap gap in WR-05 current, not hypothetical.
+  Today's OpenAPI lists no further `pull_request` or `required_status_checks` parameters that are not already committed or in the drop list. The next such key will most likely be another undocumented one like this, which cannot be predicted from the spec.
+
+**e9a3a98: RTD's clone sequence, reproduced locally** (`rv3/D`, `E`, `F`, `G`, `H`):
+
+- **`main` (42 commits, complete at depth 50).** `--unshallow` fails fatally and `|| true` swallows it. `git fetch --tags` exits 0. setuptools_scm gives `0.10.4.post7`, matching the hosted build recorded in 06-12.
+- **`develop-gsd` (473 commits past `v0.10.4`, the "more than 50 commits past the tag" case).** `--unshallow` does real work (379 to 508 commits). The tags resolve and the result is `0.10.4.post473`, which is correct.
+- **PR-preview sequence (`pull/16/head:external-16`).** Unshallow succeeds, and the result is `0.10.4.post455`, which is correct. A fork PR uses the same `pull/N/head` refspec against the base repo, so the tags come from the base repo. This was not run with a real fork PR, because the repo has none.
+- **Ordering.** RTD's own `--force --prune --prune-tags --depth 50` fetch is part of the checkout step, which runs before `post_checkout`. That is what RTD's build-job docs say, and it matches the order in the 06-12 hosted build log. So `--prune-tags` cannot delete tags that `post_checkout` fetched. This could not be re-run on RTD itself.
+- **What remains broken.** `git fetch --tags` without `--force` now fails the build if a tag moves between the two fetches (reproduced; WR-02). `|| true` still swallows **every** unshallow failure, not only the complete-repository one. When unshallow fails, the result is a silently wrong version: reproduced as `0.10.4.post344` against the true `post473` (WR-03). The RTD build also has no equivalent of the CI job's tagless-version guard (WR-04).
 
 ## Narrative Findings (AI reviewer)
 
 ## Warnings
 
-### WR-01: Deleting the "declined" pointers turned disclosed absences into false present-tense claims about drift detection and a CI self-check
+### WR-01: Normalising `require_extra_approval_for_unattributed_changes` makes post-apply verification blind to a protection weakening, and the key's PUT behaviour is unverified
 
-**File:**
-- `.github/workflows/ruleset-apply.yml:13-15`
-- `.github/workflows/scheduled-health.yml:6-7, 36-39`
-- `.github/scripts/check_ruleset_drift.py:11-19`
-- `.github/scripts/ruleset_lib.py:5-8, 16-20`
-- `.github/scripts/check_publish_gate.py:124-127`
+**File:** `.github/scripts/ruleset_lib.py:41-46` (rule (d) in `_drop_keys`, lines 581-606; the claim is in the docstring at 279-286)
 
-**Issue:** At each of these sites the removed two-line comment was the only thing in the file saying the referenced component is not in this repository. The claims it qualified are still there, and they are not conditional:
-- **`ruleset-apply.yml:13-15`:** "Detection lives in the continuous-enforcement component's ruleset-drift workflow, which holds no write."
-- **`check_ruleset_drift.py:11-17`:** "Called from two workflows in this kit … The nightly job in the continuous-enforcement component's `ruleset-drift.yml` runs it on a schedule … Both callers write…"
-- **`ruleset_lib.py:5-8`:** "Importers are `check_ruleset_drift.py` …, `check_ci_config.py` (the CI self-test) and `preflight_ruleset_apply.py` …, all of which live in this same directory." Lines 16-20 also describe a "read-only drift job".
-- **`check_publish_gate.py:124-127`:** names a sibling parser `check_ci_config.load_workflows`.
+**Issue:** The owner chose to normalise this key rather than pin it (06-10 key-decisions), and the fix does what it says. The consequence has not been recorded anywhere, though.
 
-`ls` confirms that `.github/workflows/ruleset-drift.yml`, `.github/workflows/integrity.yml` and `.github/scripts/check_ci_config.py` do not exist.
+- **Reproduced:** if live reads `false` and the committed payload is silent, the drift check exits clean. The name describes an approval requirement. It is `true` by default on both rulesets, and `false` is the weaker setting.
+- The only caller of the check is `ruleset-apply.yml`'s post-apply read-back, which runs after a six-key PUT that never mentions this field.
+- If GitHub's PUT **preserves** omitted fields, a UI change to `false` survives every apply, and the apply still reports `check_ruleset_drift: OK`. The workflow's own comment says "committed is authoritative" has to be literally true or it is nothing. It is not literally true for this field.
+- The key is absent from GitHub's published OpenAPI description, so preserve-or-reset cannot be settled from documentation. **Not reproduced:** settling it by running code would mean writing to a production ruleset, and that was not attempted.
+- Consistency: the other four read-filled keys are exactly as blind (probes P8-P11). One of them, `allowed_merge_methods` narrowed to `["merge"]` on `protect-main`, contradicts `required_linear_history`, and the check still reads clean.
+- The `normalize` docstring justifies rule (d) as conditional precisely so that `allowed_merge_methods` would not be dropped unconditionally. But neither committed file pins **any** read-filled key, so in this repository rule (d) is unconditional in practice. That is the fail-open the docstring warns about.
 
-The practical harm is false assurance on a safety property. A maintainer who reads `ruleset-apply.yml` will believe a ruleset edited in the web UI gets detected overnight. Nothing detects it: the only caller of `check_ruleset_drift.py` is the post-apply read-back. The plan deferred only the conditional "when the … component is applied" phrasing. These sentences are unconditional, so the deferral does not cover them.
+**Fix:** Pick one of the following and record it.
 
-**Fix:** Keep the pointers deleted, but make each claim true for this repository. For example:
-```yaml
-# ruleset-apply.yml:13-15
-# Nothing in this repository checks live rulesets against the committed payloads
-# on a schedule; the only comparison is this workflow's post-apply read-back.
-```
-```python
-# check_ruleset_drift.py — replace lines 11-19 with:
-"""Called from ``ruleset-apply.yml``'s post-apply read-back, which writes the live
-read with ``includes_parents=false`` first — a parent organization ruleset is not
-drift in a committed file and would be reported as one."""
-```
-- **`ruleset_lib.py`:** drop `check_ci_config.py` from the importer list.
-- **`check_publish_gate.py`:** drop the `check_ci_config.load_workflows` reference.
-- **`scheduled-health.yml:6-7`:** drop the drift-workflow sentence.
+- (a) Pin `"require_extra_approval_for_unattributed_changes": true`, and preferably `allowed_merge_methods`, in `main.json` and `develop.json`. Rule (d) then compares them (probe P2/P3 shows this works). `to_payload` already forwards a pinned key (probe P12). This only works once a PUT carrying the undocumented key has been shown to be accepted, so verify that first against a throwaway ruleset or repository.
+- (b) Keep the normalisation, and state the blind set in RULESETS.md: five `pull_request`/`required_status_checks` fields that neither the apply nor its verification governs. That way "committed is authoritative" is scoped honestly.
 
-### WR-02: The new keep-by-hand rule in `ci.yml` points at the wrong YAML location and is narrower than the rule it replaces, and it is now the only enforcement
+### WR-02: Unforced `git fetch --tags` fails the RTD build when a floating tag moves during the build
 
-**File:** `.github/workflows/ci.yml:20-21`
-**Issue:** The rule in lines 13-15: no job-level `if:`, and no filter key (`paths:`, `paths-ignore:`, `branches:`, …) under `pull_request:`. The new hand instruction reads: "never put a job-level `if:` or a `paths:` filter on a required-context job."
-- **Wrong location:** path filters cannot go on a job. They go on the workflow trigger (`on.pull_request.paths`), where they filter every job in the file. A maintainer checking "the job" against this sentence never looks at `on:`, which is where the defect would actually be.
-- **Too narrow:** it names only `paths:`. `paths-ignore:` and `branches:` have the same effect: the run never reports, and the pull request is stranded under `bypass_actors: []`.
+**File:** `.readthedocs.yaml:20`
 
-`check_ci_config.py` (assertions A1/A5) does not exist, so this sentence is the only guard. Line 21 is also 130 columns, past the project's 120 limit and unlike the ~80-column wrap around it (see IN-07).
+**Issue:** `release-please.yml` (lines 65-108) deletes and recreates the annotated floating tags `v0` and `v0.10` on every release. It does this right after release-please creates the release, which is also the moment the push to `main` and the new-tag webhook start RTD builds.
+
+- If RTD's checkout fetch sees the old `v0` and the release step moves it before `post_checkout` runs, `git fetch --tags` refuses to update the existing tag. It exits 1 and fails the build.
+- **Reproduced** against a local bare repo:
+
+  ```
+  ! [rejected] v0 -> v0 (would clobber existing tag)
+  fetch_tags_rc=1
+  ```
+
+- The old combined command's `|| true` masked this. The split exposes it.
+- Failing loudly is the right default for a network failure: the tags are needed, and a transient failure can simply be rebuilt. A clobber rejection is different. It says nothing about the fetch being unsafe, because the clone is ephemeral, and RTD's own fetch already runs with `--force`.
 
 **Fix:**
 ```yaml
-#     in `.github/scripts/check_ci_config.py` fail the build if either returns,
-#     when the config self-inspection component is applied; otherwise keep this
-#     by hand: never add a job-level `if:` to any job here, and never add a
-#     `paths:`, `paths-ignore:` or `branches:` key under `on.pull_request`.
+      - git fetch --tags --force
 ```
 
-### WR-03: RULESETS.md's inspection note omits the admin-token requirement, and a new `ruleset-apply.yml` comment says the note includes it
+### WR-03: `git fetch --unshallow || true` still swallows every unshallow failure, not only the one it means to tolerate
 
-**File:** `RULESETS.md:27-28`, `.github/workflows/ruleset-apply.yml:243-245`
+**File:** `.readthedocs.yaml:16-19`
+
+**Issue:** The comment says `|| true` exists for a single case: `--unshallow` on a complete repository. It suppresses every failure, though, including a network or server error on a clone that really is shallow, which is the case for `develop-gsd` or any branch more than 50 commits past its tag.
+
+The build then continues shallow, and `git fetch --tags` still succeeds. **Reproduced** on `develop-gsd` with the unshallow step skipped:
+
+- setuptools_scm prints only a `UserWarning: ... is shallow` during install;
+- it derives `0.10.4.post344` instead of `0.10.4.post473`;
+- the build passes, because `fail_on_warning` covers Sphinx warnings only.
+
+If the tag is not reachable inside the shallow window, the version degrades to `0.0.postN`. That is the same silent failure this fix set out to remove.
+
+**Fix:** Tolerate only the "already complete" state by checking it rather than swallowing the error:
+```yaml
+      - if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch --unshallow; fi
+      - git fetch --tags --force
+```
+
+### WR-04: The RTD build has no tagless-version assertion, the guard that would have caught the original bug
+
+**File:** `.readthedocs.yaml:21-30` (compare with `.github/workflows/ci.yml:330-351`)
+
 **Issue:**
-- **The cross-reference is wrong.** The rewritten token-mint comment says a read-scoped token "does not receive the bypass list at all, which is why RULESETS.md's live-inspection note reads a ruleset by id with an administration-capable token." RULESETS.md says only `gh api repos/gseg-ethz/pc2img/rulesets/<id>` "(the list endpoint omits the bypass list)". It says nothing about the token.
-- **The note itself can give a false answer.** By this repository's own premise (the same comment), a reader whose `gh` token lacks administration access gets a response with no `bypass_actors` key. They then read the absence as "no bypass". This is the exact misreading the old doc warned about ("an absent key tells you nothing, only an empty array tells you the list really is empty"), and the rewrite dropped that warning.
 
-**Fix:** In RULESETS.md:
-```markdown
-- **Inspect a live ruleset:** `gh api repos/gseg-ethz/pc2img/rulesets/<id>` with a
-  token that has repository administration access. Without it the response omits
-  `bypass_actors` entirely; only an empty array (`[]`) confirms there is no bypass.
-  The list endpoint never includes it.
-```
-Alternatively, drop "which is why RULESETS.md's …" from the workflow comment.
+- The CI docs job asserts that `importlib.metadata.version("pc2img")` does not start with `0.0.`. Its own comment explains why: "a degraded version builds clean and reports success."
+- The RTD config has no such check. Its first hosted build (34851945) rendered `pc2img 0.0.post41` and went green.
+- e9a3a98 fixes that particular cause, but any future cause (WR-02 if forced but still failing, WR-03, a tag-glob change) will again publish a wrong version with a passing badge.
+- Nothing in the RTD build checks that the tags actually resolved.
 
-### WR-04: The write-scope list in the ruleset-token comment is incomplete, repeating the defect class of the round-2 fix
-
-**File:** `.github/workflows/ruleset-apply.yml:235-242`
-**Issue:** The comment says "The other write scopes in this directory — `id-token` on the publish jobs and `issues` on the health check —". Enumerating every `permissions:` block and every App-token mint gives:
-- `attestations: write` on both publish jobs (`publish-pypi.yml:94`, `publish-testpypi.yml:78`). The comment omits it.
-- The release App token (`release-please.yml:45-49`). It is minted with **no** `permission-*` inputs, so it carries the full installation grant of `gseg-release-please`.
-
-Because of that second point, the lead claim "The only Administration-write grant in this repository's workflows" cannot be checked from the repository. It holds only if the release App's installation was never granted Administration, and nothing in the repository narrows or asserts that.
-
-**Fix:**
+**Fix:** Add a `post_install` job after the install step:
 ```yaml
-# ... (The other write grants here — `id-token` and `attestations` on
-# the publish jobs, `issues` on the health check, and the release App's token
-# in release-please.yml — are different grants for different reasons.)
-permission-administration: write
+    post_install:
+      - python -c "import importlib.metadata as m, sys; v = m.version('pc2img'); print('docs version:', v); sys.exit(1 if v.startswith('0.0.') else 0)"
+      - test "$(git rev-parse --is-shallow-repository)" = false
 ```
-Also narrow the release mint (`permission-contents: write`, `permission-pull-requests: write`) so the "only Administration-write" claim is enforced rather than assumed. That part is a behaviour change: plan it separately, not under this prose-only plan.
-
-### WR-05: RULESETS.md's "change a rule" recipe applies the old payload after a normal edit, and fails outright with no ruleset to update
-
-**File:** `RULESETS.md:24-25`
-**Issue:** "edit `.github/rulesets/main.json` or `develop.json`, then run the `ruleset-apply` workflow from `main`."
-- **Normal edit: silent no-op.** The same doc says to open PRs against `develop-gsd`, so a payload edit lands there first. `ruleset-apply.yml` refuses every ref except `main` (lines 75-86) and applies the payload from **main's** checkout (lines 88-93, 128-132). Dispatching right after the edit merges re-applies main's old payload. The verify step then compares live against that same old file and passes, so the run reports "applied" and verifies clean while nothing changed. The doc says nothing about the edit having to reach `main` (by promotion) first.
-- **No ruleset: hard failure.** The workflow has no create path. It exits with "no ruleset named `protect-main`" when none exists (lines 187-190). Live, `gh api repos/gseg-ethz/pc2img/rulesets` returns `[]` today. The old doc's note ("the first creation posts the preflight-produced payload once directly through the API") was deleted, so after the rewrite the shipped docs contain no working procedure for the current state, or for re-creating a deleted ruleset.
-
-**Fix:**
-```markdown
-- **Changing a rule:** edit `.github/rulesets/main.json` or `develop.json` and get
-  the change onto `main` (the workflow reads payloads from `main` only), then run
-  the `ruleset-apply` workflow from `main`. It updates an existing ruleset only;
-  creating one is a single `gh api --method POST repos/gseg-ethz/pc2img/rulesets
-  --input <payload>`. Never edit rulesets in the web UI.
-```
-Check that 06-18 covers the initial POST, since live state has none.
-
-### WR-06: CITATION.cff tells users to cite installed version metadata, which for any install that is not a release is a version that was never released and is not unique
-
-**File:** `CITATION.cff:16-17`
-**Issue:** New text: "cite the version you used, taken from the release tag or from the installed package's version metadata."
-- `pyproject.toml:52-53` sets `version_scheme = "post-release"` and `local_scheme = "no-local-version"`. Any install from a commit that is not a tag therefore reports `<last-tag>.postN`, with no commit hash.
-- Reproduced: `importlib.metadata.version('pc2img')` in the dev venv reports `0.10.4.post407`. No such version exists on any index or tag.
-- `N` counts commits since the tag. Two different branches with the same distance report the same string, so it does not identify code either.
-
-This is citation guidance for a project whose core value is reproducible output. Following it for a git install produces a citation that points at nothing.
-
-**Fix:**
-```yaml
-message: >
-  Releases are tagged on GitHub. Please cite the release you used (the tag,
-  e.g. v0.11.0). If you used an unreleased commit, cite the commit hash instead
-  of the installed version string, which does not identify unreleased code.
-  A persistent identifier will be added to this file when a release is archived.
-```
-
-### WR-07: RELEASE.md's promotion step, the premise every ref guard depends on, names neither the directories nor a mechanism, and nothing checks it
-
-**File:** `RELEASE.md:30`
-**Issue:**
-- **Why this step matters.** "Promote `develop-gsd` to `main` (squashed, internal directories stripped)." Every ref guard in `publish-pypi.yml` and `publish-testpypi.yml` rests on the premise that `main` is the stripped tree. The TestPyPI guard's own error text says "every other ref still carries the internal planning directories".
-- **What the doc leaves out.** It does not say which directories are "internal", and gives no mechanism for stripping them.
-- **The literal reading does the damage.** Read literally, "promote `develop-gsd` to `main` (squashed)" means opening a PR from `develop-gsd` to `main` and squash-merging it. That lands `.planning/` and `.claude/` on `main`.
-- **Nothing catches it.** setuptools-scm's file finder puts every git-tracked file into the sdist. The next release then uploads them permanently, and no re-upload can undo it (RELEASE.md's own Rollback section). RELEASE.md:43 admits "No environment rule or package-content check backs this up". The hygiene gate exempts exactly those directories (`tests/test_hygiene.py:151-152`), so no CI signal fires either.
-
-**Fix:**
-- In the doc, name the stripped paths and the mechanism. For example:
-```markdown
-1. Promote `develop-gsd` to `main`: open the pull request from a branch cut from
-   `main` that carries `develop-gsd`'s tree minus `.planning/` and `.claude/`
-   (never a pull request from `develop-gsd` itself), and squash-merge it.
-```
-- Separately (a behaviour change, so for a later plan): add a Lint step that fails when `.planning/` or `.claude/` is present on a PR whose base is `main`. That gives the premise an automated check instead of only a written one.
+The first line is the same `0.0.` check CI uses. The second turns WR-03's silent degradation into a failure.
 
 ## Info
 
-### IN-01: "X.Y.Z tag" does not match the guard, which requires a `v` prefix
+### IN-01: The live fixture does not match the measured live shapes
 
-**File:** `RELEASE.md:39-40`
-**Issue:** "PyPI only from an `X.Y.Z` tag on `main`." `publish-pypi.yml:47` requires `^v[0-9]+\.[0-9]+\.[0-9]+$`. Meanwhile `pyproject.toml:54` (`tag_regex`) accepts an optional `v` and pre-release suffixes, and the guard refuses both. A hand-made `0.11.1` tag or `v0.12.0rc1` release is refused at publish time.
-**Fix:** "PyPI only from a `vX.Y.Z` tag on `main` (no pre-release suffix)."
+**File:** `.github/scripts/test_ruleset_lib.py:117, 128-129`
 
-### IN-02: `Release-As:` needs an explicit version and must be on the commit that lands on `main`
+**Issue:** The fixture's measured live shapes are out of date:
 
-**File:** `RELEASE.md:26-27`
-**Issue:** "Force a minor bump with a `Release-As:` footer." release-please reads `Release-As: <version>` as an exact version, not as a bump level. It only sees commits on `main`, which here means the squashed promotion commit.
-**Fix:** "Force a specific version with a `Release-As: 0.12.0` footer on the promotion commit."
+- **`dismissal_restriction`.** The fixture has `{}`. The live read today returns `{"enabled": false, "allowed_actors": []}` on both rulesets.
+- **Status-check entries.** The fixture gives them `integration_id: 15368`. The live read now returns entries with **no** `integration_id` key, because `to_payload` (s2) strips the nulls on PUT.
 
-### IN-03: Following the lint-permissions keep-by-hand rule literally disables the fast path
+Tests pass either way, but the fixture is described as "the shape the API actually returns".
 
-**File:** `.github/workflows/ci.yml:41-42`
-**Issue:** "leave the lint job's `permissions:` at `contents: read`". The block actually holds `contents: read` **and** `pull-requests: read` (lines 99-100). The second is needed by `classify-changes` (its description says the caller MUST grant it). Following the sentence literally makes the classifier fail safe: a warning appears and the fast path goes inert.
-**Fix:** "leave the lint job's `permissions:` read-only (`contents: read`, `pull-requests: read`) whenever you edit it."
+**Fix:** Update the fixture to the measured shapes. Keep one test that has a live `integration_id: 15368` as the UI-created-ruleset case.
 
-### IN-04: "Recorded deviation" comments now point at a record that was deleted
+### IN-02: The rule (c) docstring and removal record describe a live value that no longer exists
 
-**File:** `.github/workflows/publish-testpypi.yml:73, 90`; `.github/workflows/ci.yml:259-262`
-**Issue:** These comments call the attestation grant on TestPyPI, and the coverage floor, a "recorded deviation" or "recorded addition". The record was RULESETS.md's "Recorded deviations" section, which this diff removed. They now reference nothing.
-**Fix:** Drop "recorded" and state the reason inline, which both comments mostly do already.
+**File:** `.github/scripts/ruleset_lib.py:266-268, 542-544, 557-561`
 
-### IN-05: CITATION.cff says releases are published on PyPI; none are yet
+**Issue:** The docstring says "live returns the integer 15368". The actual live read has no `integration_id`, so every rule (c) record is now `[committed] ... integration_id differs live-vs-committed`. That wording claims a live value differs when none was read.
 
-**File:** `CITATION.cff:16`
-**Issue:** "Releases are tagged on GitHub and published on PyPI." Right now `https://pypi.org/pypi/pc2img/json` returns 404, and the existing releases `v0.10.0`..`v0.10.4` exist only as GitHub tags. Round 2 raised this point (in the CITATION finding), and this rewrite did not address it. It becomes partly true once 0.11.0 is uploaded, but remains untrue for every earlier tag.
-**Fix:** "Releases are tagged on GitHub; from 0.11.0 on, they are also published on PyPI."
+**Fix:** Change it to "live returns 15368 for a UI-created ruleset and omits the key after an apply; the committed files carry null". Make the record text neutral, for example "dropped `integration_id` (not compared)".
 
-### IN-06: "Run the same checks locally" points at commands that do not match CI
+### IN-03: No test pins that the new key is compared when the committed side sets it
 
-**File:** `RULESETS.md:19`
-**Issue:**
-- **Lint:** CONTRIBUTING.md's local commands do not cover the `Lint (pre-commit)` job's `check_publish_gate.py` and `pytest .github/scripts/` steps.
-- **Tests:** the local `uv run pytest` skips the `Tests (pytest)` job's `-m "not benchmark" … --cov-fail-under=55`.
+**File:** `.github/scripts/test_ruleset_lib.py:273-289`
 
-A contributor who is green locally can still fail a required check.
-**Fix:** "Run the main checks locally (CONTRIBUTING.md). CI runs extra gate scripts and a coverage floor on top of them." Alternatively, add those commands to CONTRIBUTING.md.
+**Issue:** The conditional-compare test only covers `allowed_merge_methods`. For this key, the probe shows correct behaviour (P2-P6). Still, the one key whose weakening matters most (WR-01) has only a drop test and no survive test.
 
-### IN-07: Three edited lines were not rewrapped
+**Fix:** Parametrise `test_read_filled_key_survives_when_the_committed_side_sets_it` over `PULL_REQUEST_READ_FILLED_KEYS` and `STATUS_CHECKS_READ_FILLED_KEYS`.
 
-**File:** `.github/workflows/ci.yml:21` (130 cols), `RELEASE.md:41` (141), `CITATION.cff:16` (122)
-**Issue:** The surrounding text is wrapped at about 80 columns. These three lines exceed even the project's 120-column limit. Nothing checks YAML/Markdown width, so they will stay this way.
-**Fix:** Rewrap to match the neighbouring lines.
+### IN-04: The "enumerated in full" contract does not list the rule (d) keys
 
-### IN-08: The deferred "apply-time checklist" phrases point at a checklist that is not shipped
+**File:** `.github/scripts/ruleset_lib.py:11-14, 269`
 
-**File:** `.github/workflows/scheduled-health.yml:12-13`, `.github/actions/classify-changes/action.yml:73-74`
-**Issue:** Both still say that, without the self-inspection component, this is "an apply-time checklist item". The checklist was the strategy document, which is not shipped, and every other reference to it was removed in this pass. The plan explicitly deferred these two, so this entry only records that they still dangle after the pass.
-**Fix:** Use the same wording as the `ci.yml` rewrite: "otherwise keep this by hand: …".
+**Issue:** The module docstring says the comparison contract is "enumerated in full in `normalize`", and rule (a) does list its eight keys. Rule (d) says only "Keys GitHub fills on read", and now covers five unnamed keys. A reader of the docstring cannot see that `require_extra_approval_for_unattributed_changes` is excluded from comparison.
+
+**Fix:** List the five keys under (d), or reference `PULL_REQUEST_READ_FILLED_KEYS` / `STATUS_CHECKS_READ_FILLED_KEYS` by name there.
 
 ---
 
-_Reviewed: 2026-09-29T15:27:30Z_
+_Reviewed: 2026-09-30T15:37:32Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: deep_

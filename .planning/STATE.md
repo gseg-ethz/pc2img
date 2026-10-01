@@ -1,19 +1,19 @@
 ---
 gsd_state_version: "1.0"
 milestone: v1.0
-current_phase: 06
-current_phase_name: Publication Hardening & Downstream Migration Record
-status: executing
-stopped_at: Completed 06-11-PLAN.md
-last_updated: "2026-09-30T12:29:09.382Z"
-last_activity: 2026-09-30
-last_activity_desc: Phase 06 execution started
-state_head: 2999949ecf2397b3ff58019f8842efe915fcac2f
+current_phase: 07
+current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
+status: "Phase 06 shipped — PR #23"
+stopped_at: Phase 06 complete, ready to plan Phase 07
+last_updated: "2026-10-01T11:59:27.996Z"
+last_activity: 2026-10-01
+state_head: 996c454cfa085e57c0030d0f6f0c457e208af34e
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 58
-  completed_plans: 56
+  completed_plans: 58
+  percent: 86
 milestone_name: milestone
 ---
 
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 
 ## Current Position
 
-Phase: 06 (Publication Hardening & Downstream Migration Record) — EXECUTING
-Plan: 4 of 19
-Status: Ready to execute
-Last activity: 2026-09-30 — Phase 06 execution started
+Phase: 07 — GSEGUtils 0.6 Adoption & 0.11.0 Release
+Plan: Not started
+Status: Phase 06 shipped — PR #23
+Last activity: 2026-10-01
 
-Progress: [████████████████████] 35/35 plans ([████████░░] 83%)
+Progress: [████████████████████] 35/35 plans ([█████████░] 86%)
 
 Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Phase 6 is current.
 
@@ -41,7 +41,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 
 **Velocity:**
 
-- Total plans completed: 32
+- Total plans completed: 51
 - Average duration: - min
 - Total execution time: 0.0 hours
 
@@ -54,6 +54,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | 03 | 3 | - | - |
 | 03.1 | 3 | - | - |
 | 05 | 19 | - | - |
+| 06 | 19 | - | - |
 
 **Recent Trend:**
 
@@ -118,6 +119,8 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P09 | 20min | 2 tasks | 0 files |
 | Phase 06 P10 | ~30min (this continuation) | 3 tasks | 0 files |
 | Phase 06 P11 | 20min | 3 tasks | 0 files |
+| Phase 06 P12 | 25min | 3 tasks | 1 files |
+| Phase 06 P13 | ~35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -220,6 +223,13 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06 P11]: protect-develop-gsd (id 24244420) active/comparator-clean/idempotent (2nd apply run 36713544557); direct-push-refusal test replaced with a read-only branch-rules API proof (owner decision)
 - [Phase 06]: [Phase 06 P11]: ancestry graft landed on develop-gsd via PR #18 as a true merge commit (243710a, parents 2af2257 + 6e759d3); origin/main is now an ancestor of origin/develop-gsd, trees match outside .planning/.claude
 - [Phase 06]: [Phase 06 P11]: scheduled-health.yml dispatched from main (run 36714649924), success with the OK ancestry line, schedule registered active (cron 0 6 * * *); first cron-triggered run pending human-check 2026-10-01 06:00 UTC
+- [Phase 06]: [Phase 06 P12]: Owner imported pc2img on Read the Docs; owner decision: leave stable pointed at pre-0.11 v0.10.4 tag until v0.11.0 ships
+- [Phase 06]: [Phase 06 P12]: Found and fixed (Rule 1, run before reading) an RTD post_checkout bug: fused 'git fetch --unshallow --tags || true' silently failed once RTD's own depth-50 fetch already held full history, rendering docs as 0.0.post41; split into separate fetches (e9a3a98), landed via develop-gsd promotion PR #19/#20 to main 20ef688, site now renders 0.10.4.post7
+- [Phase 06]: [Phase 06 P12]: testpypi GitHub environment created via gh api; owner registered TestPyPI pending trusted publisher (pc2img/gseg-ethz/pc2img/publish-testpypi.yml/testpypi); running proof deferred to 06-13's dispatch
+- [Phase 06]: [Phase 06 P13]: TestPyPI dry run proven twice (runs 36734621068/36734867977) with PEP 740 attestations on both files, sigstore/OIDC exchange visible in the log, no persisted API token; production index 404 before/after
+- [Phase 06]: [Phase 06 P13]: Closing sweep found a NEW regression — origin/main is no longer an ancestor of origin/develop-gsd (06-11's graft broken by 06-12's second promotion, PR #20, with no follow-up back-merge); confirmed via a manual scheduled-health.yml dispatch (run 36735321144, failure) which opened GitHub issue #21 (ancestry-drift); NOT fixed (no git ref pushed per plan instruction) — owner decision required before phase close; CICD-02/BC-01 deliberately left un-marked
+- [Phase 06]: [Phase 06 P13]: Ancestry drift repaired on owner decision (fix now): back-merge PR #22 merged as a true merge (develop-gsd 0ac9df5); scheduled-health run 36737255378 success with the OK line; issue #21 closed; WINDOWS entry 2 fixed; CICD-02 marked complete
+- [Phase 06]: [Phase 06 P13]: Todo bookkeeping reconciled — ruff-lint-CI + pchandler-security-floor todos closed; round-5 hygiene todo split (4 phase-6 items ticked, resolves_phase retargeted to 7); GSEGUtils 0.6 todo confirmed already phase-7-scoped
 
 ### Pending Todos
 
@@ -259,6 +269,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T12:29:09.139Z
-Stopped at: Completed 06-11-PLAN.md
+Last session: 2026-09-30T15:25:17.048Z
+Stopped at: Phase 06 complete, ready to plan Phase 07
 Resume file: None

@@ -43,3 +43,11 @@ itself forward or keep it in Phase 4 and only wire CI here.
 
 Match pchandler's ruff version/config (`ruff ~= 0.15`) where reasonable for
 cross-library consistency.
+
+## Closed 2026-09-30
+
+Resolved by Phase 6's CI/CD assembly: `ruff` (matching pchandler's `~= 0.15` pin) runs
+lint and format-check inside the required `Lint (pre-commit)` status check on `main` and
+`develop-gsd` (D-11), and `black` has been fully removed from the dev tooling. The swap
+this todo asked for and its CI wiring are both live and enforced by the branch-protection
+rulesets closed out in this same phase (06-10/06-11).
