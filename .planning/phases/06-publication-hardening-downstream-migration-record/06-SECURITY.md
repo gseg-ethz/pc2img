@@ -145,7 +145,7 @@ created: "2026-10-01"
 - **T-06-13** — RTD version handling (round-4 WR-02 / WR-03 / WR-04); **must land before the 0.11.0 promotion.**
 - **T-06-10** — migration-record verifier coverage (round-1 WR-02).
 - **T-06-SC@06-02** — align the ruff pre-commit hook rev with the locked ruff version (round-1 IN-07).
-- **Unregistered: `NIME_RELEASE_PLEASE_TOKEN`** — repo secret referenced by no workflow or action (leftover PAT from before the release App). Owner to delete the secret and revoke the underlying token (2026-10-01).
+- **Unregistered: `NIME_RELEASE_PLEASE_TOKEN`**: a repo secret that no workflow or action referenced (a leftover PAT from before the release App). **Resolved for pc2img on 2026-10-01**: the owner deleted the secret from pc2img, and also from pchandler and PythonTemplate, where it was likewise unused. **The token itself is not revoked yet**: `gseg-ethz/F2S3_pc_deformation_monitoring` still uses it in `release-please.yml` (main, develop, v1 and two other branches). Revoke it after F2S3 moves to the release App. That work belongs to F2S3, not to pc2img. Side note for F2S3: its workflow adds a git remote that embeds the token in a URL pointing at `googleapis/release-please-action`, copied from the upstream example.
 - **T-06-56** — plan cites RULESETS.md for the back-merge procedure; it now lives in RELEASE.md (informational).
 
 ---
