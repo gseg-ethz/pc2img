@@ -549,3 +549,16 @@ Both reviewers cited `file:line` evidence throughout, so both are weighted as gr
 - **07-03 risk:** Antigravity rates it HIGH (exception non-determinism and the dependency on `gh`). Codex rates it MEDIUM. The `gh` dependency is already verified (admin on both repos), so the real disagreement is the scope of `raises=`.
 - **07-04 and 07-07 risk:** Antigravity rates both LOW. Codex rates them MEDIUM and MEDIUM-HIGH because of the two reproduced verification flaws above. Since those flaws reproduced, Codex's ratings hold.
 - **07-01 Task 1 pin-confirmation gate:** Antigravity calls it an unnecessary interruption for constants already locked in CONTEXT. It is a deliberate reversibility gate (REVERSIBILITY_GATES on, pins one-way on PyPI) and doubles as the package-legitimacy confirmation, so keep it unless the owner says otherwise.
+
+---
+
+## Owner Dispositions (2026-10-01, binding for `/gsd-plan-phase 7 --reviews`)
+
+| # | Finding | Owner decision | Plan(s) |
+|---|---------|----------------|---------|
+| O-1 | xfail `raises=` breadth (Agreed Concern 1) | **Widen** to `raises=(RuntimeError, OSError)`. This supersedes revision-1's "never wider than measured" rule. Keep the 07-03 Task 1 measurement and record what it observes. The xfail `reason=`, BC-P2I-030 and the 07-08 public footer must name both exception families (`BrokenProcessPool`/`TerminatedWorkerError` ⊂ `RuntimeError`; worker `FileNotFoundError` ⊂ `OSError`). Do not widen beyond these two families. | 07-03, 07-06, 07-08 |
+| O-2 | `review-r4-da637a8dfe3c` bare `assert` (Agreed Concern 2) | **Keep deferred** (D-11 step 4) as currently planned. | 07-01 table (unchanged) |
+| O-3 | Stale `[tool.uv.sources]` RAPIDS entries and the 0.5.3 pin comment | **Clean up in 07-01.** Delete the `cuproj-cu1x`, `cuml-cu1x` and `dask-cudf-cu1x` entries that pchandler 2.1.1 no longer pulls, rewrite the comment to describe the current pins, and re-lock in the same task. Add a row to the triage table (D-11 step 4, a one-line change with no behaviour change). | 07-01 |
+| O-4 | Reproduced defects: 07-04 shallow clone (`file://`), 07-07 D-03 test-copy and `rrim.py` source path (+ `--no-cov`) | **Fix** (reproduced, no owner choice involved). | 07-04, 07-07 |
+| O-5 | Remaining LOW/MEDIUM items (polling loops, `packaging` parsing for `requires_dist` and versions, `_tree` symlinks, nested composite actions, `mkdir -p _scrap`, `git grep`/`-z`, body file instead of `<(...)`, 07-06 hard-stop on missing URLs) | **Planner's discretion.** Incorporate, or defer or reject each one in the Review Dispositions Ledger with a reason. No new hardening loops (D-11). | various |
+| O-6 | 07-01 Task 1 pin-confirmation gate called unnecessary (Antigravity) | **Keep** the gate: it is a reversibility gate and also serves as the package-legitimacy confirmation. | 07-01 |
