@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-10-02T09:31:41.044Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-10-02T09:34:47.546Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: 4d5f339075623e82eb3dbbb7259d70481b7c0c18
+state_head: 80f2c507aa9d6e90f91e72edf9ebee7a90a6d18b
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 69
-  completed_plans: 60
+  completed_plans: 61
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 07 (GSEGUtils 0.6 Adoption & 0.11.0 Release) — EXECUTING
-Plan: 3 of 11
+Plan: 4 of 11
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 07 execution started
 
@@ -123,6 +123,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P13 | ~35min | 3 tasks | 3 files |
 | Phase 07 P04 | 30 min | 3 tasks | 6 files |
 | Phase 07 P01 | 4 min | 3 tasks | 4 files |
+| Phase 07 P05 | 20 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -237,6 +238,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-04: RTD post_checkout = conditional unshallow + fetch --tags --force; post_install asserts non-0.0.* version and non-shallow clone; proven by 07-rtd-simulation.sh
 - [Phase 07]: 07-01: pins written as pchandler >= 2.1.1, ~= 2.1 / GSEGUtils ~= 0.6.0 / numpy >= 2.2, < 2.4 (owner 'proceed' on the one-way-door gate); GSEGUtils 0.6.0 and pchandler 2.1.1 accepted as first-party
 - [Phase 07]: 07-01: add_image_to_store keeps one containment-first get_npy_path statement, then shape check, then purge-on-overwrite (D-22); six stale RAPIDS [tool.uv.sources] bindings deleted, proven inert by a from-scratch resolve with/without them
+- [Phase 07]: RULESETS.md read-filled-fields bullet omits 'change them in the web UI' (contradicts 'Never edit rulesets in the web UI'); names the five fields and the comparator-ignores-unless-set fact
 
 ### Pending Todos
 
@@ -276,6 +278,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T09:31:40.861Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-10-02T09:34:47.352Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
