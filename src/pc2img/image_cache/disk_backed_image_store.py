@@ -1,10 +1,39 @@
 from collections.abc import Mapping
+from pathlib import Path
 
-from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig, get_npy_path
+from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig, get_meta_path, get_npy_path
+from GSEGUtils.lazy_disk_cache.paths import (
+    get_memmap_path,
+    get_memmap_tmp_path,
+    get_meta_tmp_path,
+    get_npy_tmp_path,
+)
 from numpy.typing import NDArray
 from pydantic import ConfigDict, validate_call
 
 from .disk_backed_image_data import DiskBackedImageData, _assert_image_shape
+
+
+def _has_on_disk_artefact(cache_dir: Path, key: str) -> bool:
+    """Return whether any file the base store derives for ``key`` exists on disk.
+
+    The six names are the ones :meth:`DiskBackedStore.purge` removes: the codec
+    pair, the memmap, and their three temporary siblings. Each is built through
+    the upstream builders, so an invalid or escaping key raises the upstream
+    ``StoreKeyError`` here exactly as it does for the first statement of
+    :meth:`DiskBackedImageStore.add_image_to_store`.
+    """
+    return any(
+        build(cache_dir, key).exists()
+        for build in (
+            get_npy_path,
+            get_meta_path,
+            get_npy_tmp_path,
+            get_meta_tmp_path,
+            get_memmap_path,
+            get_memmap_tmp_path,
+        )
+    )
 
 
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
@@ -127,7 +156,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         """
         get_npy_path(self.cache_dir, img_name)
         _assert_image_shape(img_data)
-        if img_name in self:
+        if img_name in self or _has_on_disk_artefact(self.cache_dir, img_name):
             self.purge(img_name)
         self.add_data_to_store(
             img_name,
