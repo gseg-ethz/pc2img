@@ -113,18 +113,24 @@ conflicts = [
     ],
 ]
 
-# Explicit nvidia index for the RAPIDS packages pulled transitively via
-# pchandler[cudaXX]. explicit = true means this index is consulted ONLY for
-# names bound in [tool.uv.sources] below; everything else stays on PyPI, which
-# contains dependency-confusion on the RAPIDS names to the official index.
+# NVIDIA package index, intended for the RAPIDS packages (cudf, cuspatial) that
+# arrive transitively through pchandler[cudaXX]. explicit = true means uv consults
+# this index only for names bound in [tool.uv.sources] below.
 [[tool.uv.index]]
 name = "nvidia"
 url = "https://pypi.nvidia.com"
 explicit = true
 
-# Caveat (verify at `uv lock`): these RAPIDS names arrive transitively through
-# pchandler[cudaXX]. If the transitive source pins fail to bind at lock time,
-# the documented fallback is to name them directly in the cuda extras instead.
+# Measured state of the committed uv.lock: every RAPIDS package, including the
+# bound cudf-cu12 and cuspatial-cu12, resolves from https://pypi.org/simple, and a
+# search of uv.lock for pypi.nvidia.com finds nothing. These names reach pc2img
+# only transitively through pchandler[cuda11] / pchandler[cuda12], and re-locking
+# with and without the four bindings below produced byte-identical locks.
+# Consequence: the bindings currently have no effect on resolution and give no
+# protection against a look-alike package name on PyPI.
+# They are kept as the wiring that would apply if the RAPIDS names were declared
+# directly in the cuda11 / cuda12 extras above. That step has not been taken; once
+# it is, a re-lock must show pypi.nvidia.com entries in uv.lock.
 # No entry may point at a local /scratch or third_party/ path (forbidden).
 [tool.uv.sources]
 # NOTE: GSEGUtils is pinned to its 0.6 minor because a pre-1.0 GSEGUtils minor can
