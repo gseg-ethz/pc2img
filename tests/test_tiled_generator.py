@@ -22,13 +22,15 @@ limitation (an ``xfail``), so it is the only test here that spawns processes.
 
 from __future__ import annotations
 
+import pickle
 import subprocess
 import sys
 
 import pytest
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
 
-from pc2img.core import ImgRes
+import pc2img.tiled_generator as tiled_module
+from pc2img.core import ImgRes, PointCloudImageGenerator
 from pc2img.tiled_generator import PointCloudTile, TIGSettings, TiledPointCloudImageGenerator
 
 
@@ -86,19 +88,6 @@ def test_extend_cache_paths_refuses_a_traversing_folder_name() -> None:
         settings.extend_cache_paths("../x")
 
 
-@pytest.mark.xfail(
-    strict=False,
-    raises=(RuntimeError, OSError),
-    reason=(
-        "known limitation on GSEGUtils 0.6.0: a reused TiledPointCloudImageGenerator, at least two "
-        "tiles and n_jobs >= 2 - every .dat memmap is rebuilt through one fixed <key>.dat.tmp name "
-        "and the loky workers that unpickle all tile stores race it, surfacing as a loky pool error "
-        "(BrokenProcessPool/TerminatedWorkerError, RuntimeError) or as the worker's "
-        "FileNotFoundError (OSError); "
-        "upstream: https://github.com/gseg-ethz/GSEGUtils/issues/82; "
-        "tracking: https://github.com/gseg-ethz/pc2img/issues/24"
-    ),
-)
 def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_pcd) -> None:
     """Repeated ``generate()`` on one instance with two workers must keep working.
 
@@ -134,3 +123,67 @@ def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_p
 
     for tile_id in ("tile_00", "tile_01"):
         assert (tile_id, "range") in result, f"no range raster for {tile_id}: {list(result)}"
+
+
+def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
+    tmp_path, synthetic_pcd, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Each task handed to the worker pool carries one tile, never the whole generator.
+
+    ``Parallel`` is replaced by a recorder that captures the ``(func, args, kwargs)``
+    triples ``generate()`` builds with ``delayed`` and runs them inline, so the fan-out
+    shape is checked deterministically and without spawning processes. A bound method of
+    the tiled generator as the dispatched callable would pickle every tile's generator,
+    store and point cloud into every task - the shape that makes each worker unpickle every
+    tile's store at once.
+    """
+    recorded: list[list[tuple]] = []
+
+    class _RecordingParallel:
+        def __init__(self, *args, **kwargs) -> None:
+            pass
+
+        def __call__(self, iterable):
+            triples = list(iterable)
+            recorded.append(triples)
+            return [func(*args, **kwargs) for func, args, kwargs in triples]
+
+    monkeypatch.setattr(tiled_module, "Parallel", _RecordingParallel)
+
+    tile_ids = ("tile_00", "tile_01")
+    tiles = [
+        PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
+        PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+    ]
+    gen = TiledPointCloudImageGenerator(
+        tiles,
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path),
+    )
+
+    gen.generate(["range"], n_jobs=2)
+    gen.generate(["range"], n_jobs=2)
+
+    assert len(recorded) == 2
+    for call_index, triples in enumerate(recorded):
+        assert len(triples) == len(tile_ids), "expected exactly one task per tile"
+        for func, args, kwargs in triples:
+            values = [*args, *kwargs.values()]
+            assert getattr(func, "__self__", None) is None, f"bound method dispatched: {func!r}"
+            assert func is tiled_module._process_tile
+            assert not any(value is gen for value in values), "the tiled generator itself is in a task payload"
+
+            own = [tile_id for tile_id in tile_ids if tile_id in values]
+            assert len(own) == 1, f"a task must name exactly one tile id, got {own}"
+            (tile_id,) = own
+            other = next(t for t in tile_ids if t != tile_id)
+
+            generators = [value for value in values if isinstance(value, PointCloudImageGenerator)]
+            assert len(generators) <= 1, "a task carries at most one tile generator"
+            if call_index == 1:
+                assert generators == [gen.image_generators[tile_id]], "second call must reuse the tile's own generator"
+
+            payload = pickle.dumps((func, args, kwargs))
+            assert other.encode() not in payload, f"{tile_id}'s task payload contains {other}'s state"
