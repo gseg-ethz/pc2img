@@ -264,9 +264,20 @@ def normalize(live: dict[str, Any], committed: dict[str, Any]) -> tuple[dict[str
           ``id``, ``node_id``, ``source``, ``source_type``, ``created_at``,
           ``updated_at``, ``_links``, ``current_user_can_bypass``.
       (c) ``integration_id`` on every entry of the inner ``required_status_checks``
-          list -- live returns the integer 15368 (the GitHub Actions app), the
-          committed files carry JSON ``null``.
-      (d) Keys GitHub fills on read that the committed side is silent about.
+          list. A ruleset that has been applied through the API reads back
+          WITHOUT ``integration_id``; one created in the web UI reads back the
+          integer 15368 (the GitHub Actions app); the committed files carry
+          JSON ``null``. The key is dropped from every entry, whichever form
+          appears.
+      (d) Keys GitHub fills on read that the committed side is silent about:
+          on the ``pull_request`` rule the four keys of
+          :data:`PULL_REQUEST_READ_FILLED_KEYS` (``allowed_merge_methods``,
+          ``dismissal_restriction``, ``required_reviewers``,
+          ``require_extra_approval_for_unattributed_changes``), and on the
+          ``required_status_checks`` rule the one key of
+          :data:`STATUS_CHECKS_READ_FILLED_KEYS` (``do_not_enforce_on_create``).
+          ``dismissal_restriction`` reads back as
+          ``{"enabled": false, "allowed_actors": []}``.
 
     Re-keys and sorts (shape-only, no information removed, so not recorded):
       (b) ``rules`` goes from a list of ``{type, parameters}`` objects to a
@@ -539,9 +550,10 @@ def _normalize_rules(
 def _clean_status_checks(parameters: dict[str, Any], side: str, removed: list[str]) -> dict[str, Any]:
     """Pop `integration_id` from every status-check entry and sort on context -- rule (c).
 
-    Live returns the integer 15368 (the GitHub Actions app) where the committed
-    files carry JSON ``null``, so the field is dropped from both sides and every
-    drop is recorded.
+    A ruleset applied through the API reads back without the field, one created
+    in the web UI reads back the integer 15368 (the GitHub Actions app), and the
+    committed files carry JSON ``null``, so the field is dropped from whichever
+    side carries it and every drop is recorded.
     """
     checks = parameters.get("required_status_checks")
     if not isinstance(checks, list):
