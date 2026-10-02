@@ -38,7 +38,8 @@ class PointCloudTile(NamedTuple):
     (a path separator, a backslash, a colon, a trailing dot or space, an empty,
     ``.`` or ``..`` name, or a Windows device name) raises ``StoreKeyError`` (a
     ``ValueError``) from ``extend_cache_path``, unwrapped, also when raised
-    inside a worker process.
+    inside a worker process. Ids must be unique within a run; a repeated id raises
+    ``ValueError`` from the ``TiledPointCloudImageGenerator`` constructor.
     """
 
     tile_id: str
@@ -150,6 +151,10 @@ class TiledPointCloudImageGenerator:
         interp_kwargs: Mapping[str, Any] | None = None,
         lazy_disk_cache_config: LazyDiskCacheConfig | None = None,
     ):
+        tile_ids = [tile.tile_id for tile in pcd_tiles]
+        if len(tile_ids) != len(set(tile_ids)):
+            duplicated = sorted({tile_id for tile_id in tile_ids if tile_ids.count(tile_id) > 1})
+            raise ValueError(f"tile ids must be unique; duplicated: {duplicated}")
         self.pcd_tiles = pcd_tiles
         self._img_res = img_res
         self.proj_cls: type[ProjectionStrategy] = cast(type[ProjectionStrategy], proj_cls)
