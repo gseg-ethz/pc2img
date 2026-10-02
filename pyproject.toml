@@ -137,7 +137,8 @@ explicit = true
 # withdraw surface pc2img uses, so each GSEGUtils minor is adopted deliberately with
 # a pc2img release. pchandler's floor is 2.1.1, the first pchandler that itself
 # requires GSEGUtils 0.6; its cuda11/cuda12 extras now pull only cudf, cuspatial
-# and geopandas, which is why only those names keep an index binding.
+# and geopandas. The cudf and cuspatial names are the two RAPIDS names the four
+# bindings below would cover; as stated above, they have no effect today.
 cudf-cu12      = { index = "nvidia" }
 cuspatial-cu12 = { index = "nvidia" }
 cudf-cu11      = { index = "nvidia" }
