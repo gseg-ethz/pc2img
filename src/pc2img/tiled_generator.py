@@ -105,13 +105,28 @@ class TIGSettings:
 class TiledPointCloudImageGenerator:
     """Run the projection, interpolation and feature pipeline over many tiles in parallel.
 
-    Every ``generate()`` call dispatches one loky task per tile. A task carries only that tile's
-    generator (built in the worker on the first call, reused from ``image_generators``
-    afterwards) and picklable inputs, never the tiled generator itself, so repeated
-    ``generate()`` calls on one instance with ``n_jobs >= 2`` are supported. GSEGUtils 0.6.0
+    Every ``generate()`` call makes one ``_process_tile`` call per tile - joblib may batch
+    several calls into one worker task, but each tile's generator is still unpickled once per
+    call. A call carries only that tile's generator (built in the worker on the first call,
+    reused from ``image_generators`` afterwards) and picklable inputs, never the tiled generator
+    itself, so repeated ``generate()`` calls on one instance are supported whenever the work
+    runs in a worker pool (any ``n_jobs`` other than 1, including the default ``-1``). Tile ids
+    are unique (a repeated id raises ``ValueError`` at construction). GSEGUtils 0.6.0
     rebuilds each ``.dat`` memmap through one fixed ``<key>.dat.tmp`` name, which still races
     when one store is unpickled by several processes at once
     (https://github.com/gseg-ethz/GSEGUtils/issues/82); this dispatch no longer does that.
+
+    **Disk persistence after a pooled run.** Entries returned by a pooled ``generate()`` (any
+    ``n_jobs`` other than 1, including the default ``-1``) and the entries of the stores kept in
+    ``image_generators`` have purge-on-garbage-collection disabled, so releasing one call's
+    results never deletes a ``.dat`` memmap that a later call's results read. The price: released
+    results and dropped generators no longer delete their cache files at all. Every
+    ``<tile_id>/<key>.dat`` (and the codec pair the pickling writes) persists until ``purge()`` is
+    called or the cache directory is removed. That includes the default temporary directory a
+    store creates with ``tempfile.mkdtemp`` when no ``cache_path`` is configured, which nothing
+    cleans up afterwards. Routes: configure ``cache_path`` and remove that directory when the run
+    is done; or keep the stores owned by this process by using ``n_jobs=1`` for every call and
+    purge from it. ``n_jobs=1`` keeps the single-object behaviour.
 
     With ``n_jobs >= 2`` every tile's ``DiskBackedImageStore`` is constructed inside a worker
     and records that worker's process id as its owner. GSEGUtils refuses ``purge`` from any other
@@ -171,9 +186,9 @@ class TiledPointCloudImageGenerator:
         features: list[str],
         n_jobs: int = -1,
     ) -> dict[ImageKey, DiskBackedImageData]:
-        """Generate ``features`` for every tile, one worker task per tile.
+        """Generate ``features`` for every tile, one ``_process_tile`` call per tile.
 
-        Each task is the module-level ``_process_tile`` called with that tile's own generator
+        Each call is the module-level ``_process_tile`` with that tile's own generator
         (``None`` on the first call) and picklable inputs; the tiled generator itself is never
         part of a task.
 

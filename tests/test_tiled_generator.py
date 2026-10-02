@@ -15,10 +15,13 @@ Covers the ``tiled_generator`` findings:
   partially-initialized-module ``ImportError``.
 
 The tests build a real ``PointCloudData`` only where needed; the settings-level
-checks are pure-object, keeping them deterministic and CI-safe. Three tests concern the
-fan-out: repeated generation on one instance with two workers and the worker-owned-store
-pin spawn real loky processes, while the fan-out shape test replaces the pool with a
-recorder and runs inline.
+checks are pure-object, keeping them deterministic and CI-safe. The fan-out tests are:
+the regression test that repeats ``generate()`` on one instance at ``n_jobs=1`` and
+``n_jobs=2``, rebinds the result and reads every raster and store entry (the pooled case
+spawns real loky processes); the flag test that pins purge-on-garbage-collection off for
+pooled results and on for sequential ones; the duplicate-id test; the shape test, which
+replaces the pool with a recorder and runs inline; and the pin test for worker-owned stores,
+which also spawns real loky processes.
 """
 
 from __future__ import annotations
