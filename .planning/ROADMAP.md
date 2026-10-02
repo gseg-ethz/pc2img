@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 11/18 plans executed
+**Plans**: 12/18 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -311,7 +311,7 @@ Plans:
 - [ ] 07-15-PLAN.md — Gap round 1: draft #82/#24 issue notes; owner approves exact text before posting (blocking-human) [DEP-05]
 - [x] 07-16-PLAN.md — Gap round 2 (G1-CR-01, G1-WR-04): pooled results disarmed from delete-on-GC so rasters stay readable; duplicate tile ids rejected [DEP-05]
 - [x] 07-17-PLAN.md — Gap round 2 (G1-WR-01): overwrite gate narrowed (.npy hard, .dat/.meta.json soft); leftovers no longer refuse regeneration [DEP-05]
-- [ ] 07-18-PLAN.md — Gap round 2: pyproject NOTE, tiled refusal docs + sensor, MIGRATION 027/028/030 to the final behaviour [DEP-05, BC-01]
+- [x] 07-18-PLAN.md — Gap round 2: pyproject NOTE, tiled refusal docs + sensor, MIGRATION 027/028/030 to the final behaviour [DEP-05, BC-01]
 
 ## Progress
 
@@ -326,4 +326,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 11/18 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 12/18 | In Progress|  |

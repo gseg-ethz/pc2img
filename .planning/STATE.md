@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-17-PLAN.md (gap round 2; 07-07 and 07-15 still paused; round diff awaits its own review)
-last_updated: "2026-10-02T14:14:34.959Z"
+stopped_at: Completed 07-18-PLAN.md (gap round 2 complete; 07-07 and 07-15 still paused; round diff awaits its own review)
+last_updated: "2026-10-02T14:22:51.976Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: 20b0ed74a4e351e3e16b621e29877535f38225c0
+state_head: 9fe871beedf653c1636fd1d0c269701c3db1e020
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 76
-  completed_plans: 69
+  completed_plans: 70
 milestone_name: milestone
 ---
 
@@ -132,6 +132,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 07 P14 | 25min | 2 tasks | 2 files |
 | Phase 07 P16 | 5min | 3 tasks | 2 files |
 | Phase 07 P17 | 5min | 2 tasks | 2 files |
+| Phase 07 P18 | 7min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -253,6 +254,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-12: tiled generate() dispatches module-level _process_tile per tile; twelve-round measurement 12/12 failing before, 0/12 after (CR-01 closed); worker-owned tile stores refusing parent purge documented and pinned (WR-01 tiled half)
 - [Phase 07]: 07-16: pooled generate() results and reassembled store entries are disarmed with the public LazyDiskCache.disable_purge() when n_jobs != 1; accepted cost (owner 2026-10-02): .dat files persist until purge() or directory removal, including the default mkdtemp directory
 - [Phase 07]: 07-17: overwrite gate is hard for a tracked key or an on-disk <key>.npy (refusals propagate) and soft for a lone .meta.json/.dat (only the exact StorePurgeRefusedError tolerated; subclasses propagate); temporary names not consulted; three upstream builders pinned against STORE_PATH_BUILDERS (fix b2a3baa)
+- [Phase 07]: 07-18: sources NOTE no longer gives the inert bindings a purpose; tiled docstring and BC-P2I-030 state the reproduced refusal trigger (untracked key with its codec pair on disk; pool-random, deterministic at n_jobs=1 after a pooled run; leftovers tolerated) and the corrected workaround; BC-P2I-027/028 amended to shas b2a3baa/3d0b43d; verifier prints [ok] verified 30 entries with two new probes
 
 ### Pending Todos
 
@@ -292,6 +294,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T14:14:34.739Z
-Stopped at: Completed 07-17-PLAN.md (gap round 2; 07-07 and 07-15 still paused; round diff awaits its own review)
+Last session: 2026-10-02T14:22:51.772Z
+Stopped at: Completed 07-18-PLAN.md (gap round 2 complete; 07-07 and 07-15 still paused; round diff awaits its own review)
 Resume file: None
