@@ -1,39 +1,41 @@
 from collections.abc import Mapping
 from pathlib import Path
 
-from GSEGUtils.lazy_disk_cache import DiskBackedStore, LazyDiskCacheConfig, get_meta_path, get_npy_path
-from GSEGUtils.lazy_disk_cache.paths import (
-    get_memmap_path,
-    get_memmap_tmp_path,
-    get_meta_tmp_path,
-    get_npy_tmp_path,
+from GSEGUtils.lazy_disk_cache import (
+    DiskBackedStore,
+    LazyDiskCacheConfig,
+    StorePurgeRefusedError,
+    get_meta_path,
+    get_npy_path,
 )
+from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
 from numpy.typing import NDArray
 from pydantic import ConfigDict, validate_call
 
 from .disk_backed_image_data import DiskBackedImageData, _assert_image_shape
 
 
-def _has_on_disk_artefact(cache_dir: Path, key: str) -> bool:
-    """Return whether any file the base store derives for ``key`` exists on disk.
+def _adoptable_artefact_exists(cache_dir: Path, key: str) -> bool:
+    """Return whether ``<key>.npy`` is on disk, the one file a fresh store adopts.
 
-    The six names are the ones :meth:`DiskBackedStore.purge` removes: the codec
-    pair, the memmap, and their three temporary siblings. Each is built through
-    the upstream builders, so an invalid or escaping key raises the upstream
-    ``StoreKeyError`` here exactly as it does for the first statement of
-    :meth:`DiskBackedImageStore.add_image_to_store`.
+    The base store's startup scan globs ``*.npy``, so a lone ``.npy`` is adopted
+    as a tracked key (a read of it is a cache miss) and the codec pair is served;
+    a lone ``.meta.json`` or ``.dat`` is not adopted. Only this file can make a
+    store serve a stale raster. Built through the upstream builder, so an invalid
+    or escaping key raises the upstream ``StoreKeyError`` here exactly as it does
+    for the first statement of :meth:`DiskBackedImageStore.add_image_to_store`.
     """
-    return any(
-        build(cache_dir, key).exists()
-        for build in (
-            get_npy_path,
-            get_meta_path,
-            get_npy_tmp_path,
-            get_meta_tmp_path,
-            get_memmap_path,
-            get_memmap_tmp_path,
-        )
-    )
+    return get_npy_path(cache_dir, key).exists()
+
+
+def _leftover_artefact_exists(cache_dir: Path, key: str) -> bool:
+    """Return whether a ``<key>.meta.json`` or ``<key>.dat`` is on disk.
+
+    Neither is served by a fresh store, but a ``.dat`` can still be the recorded
+    path of a dropped entry whose cleanup hook is armed in this process, and only
+    :meth:`DiskBackedStore.purge` detaches that hook.
+    """
+    return get_meta_path(cache_dir, key).exists() or get_memmap_path(cache_dir, key).exists()
 
 
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
@@ -180,8 +182,14 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         """
         get_npy_path(self.cache_dir, img_name)
         _assert_image_shape(img_data)
-        if img_name in self or _has_on_disk_artefact(self.cache_dir, img_name):
+        if img_name in self or _adoptable_artefact_exists(self.cache_dir, img_name):
             self.purge(img_name)
+        elif _leftover_artefact_exists(self.cache_dir, img_name):
+            try:
+                self.purge(img_name)
+            except StorePurgeRefusedError as exc:
+                if type(exc) is not StorePurgeRefusedError:
+                    raise
         self.add_data_to_store(
             img_name,
             img_data,
