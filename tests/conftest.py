@@ -23,7 +23,9 @@ new tests can share one source.
 
 from __future__ import annotations
 
+import tempfile
 from collections.abc import Callable, Mapping
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -149,6 +151,24 @@ def make_synthetic_pcd(
 # --------------------------------------------------------------------------- #
 # Fixtures                                                                     #
 # --------------------------------------------------------------------------- #
+@pytest.fixture(autouse=True)
+def _isolate_tempdir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Redirect ``tempfile``'s default directory under the test's ``tmp_path``.
+
+    Several modules call ``tempfile.mkdtemp`` / ``TemporaryDirectory`` without a
+    ``dir=`` (the default cache location of a store, for one), which leaked
+    about eighteen ``tmp*`` entries per full run into the system temp
+    directory. Pointing the module-level default at ``tmp_path / "_tmp"`` keeps
+    them under pytest's own tree, which pytest prunes. A subdirectory rather
+    than ``tmp_path`` itself, so a test that snapshots ``tmp_path`` can exclude
+    it. A test that sets ``tempfile.tempdir`` itself runs after this fixture and
+    wins.
+    """
+    tmp = tmp_path / "_tmp"
+    tmp.mkdir()
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp))
+
+
 @pytest.fixture
 def synthetic_pcd() -> Callable[..., PointCloudData]:
     """Factory fixture: call it to build a deterministic ``PointCloudData``.

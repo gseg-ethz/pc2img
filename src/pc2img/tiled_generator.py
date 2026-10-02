@@ -31,6 +31,16 @@ logger = logging.getLogger(__name__)
 
 
 class PointCloudTile(NamedTuple):
+    """One tile of a tiled run: its id, its point cloud and its per-tile kwargs.
+
+    ``tile_id`` becomes a cache sub-directory name, so it must be a legal store
+    key as defined upstream by GSEGUtils (``is_valid_store_key``). An illegal id
+    (a path separator, a backslash, a colon, a trailing dot or space, an empty,
+    ``.`` or ``..`` name, or a Windows device name) raises ``StoreKeyError`` (a
+    ``ValueError``) from ``extend_cache_path``, unwrapped, also when raised
+    inside a worker process.
+    """
+
     tile_id: str
     tile_pcd: PointCloudData
     tile_kwargs: Mapping[str, Any]
@@ -58,6 +68,11 @@ class TIGSettings:
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True), validate_return=False)
     def extend_cache_paths(self, new_folder: str) -> Self:
+        """Return a copy whose cache paths are extended by the sub-directory ``new_folder``.
+
+        ``new_folder`` is validated upstream by GSEGUtils (``is_valid_store_key``):
+        an illegal segment raises ``StoreKeyError`` (a ``ValueError``) unwrapped.
+        """
         updates = {}
         if "lazy_disk_cache_config" in self.interp_kwargs and isinstance(
             self.interp_kwargs["lazy_disk_cache_config"], LazyDiskCacheConfig

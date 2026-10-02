@@ -144,7 +144,8 @@ def test_purge_removes_the_codec_pair_and_the_memmap(tmp_path: Path):
 
     store.purge("range")
 
-    assert sorted(p.name for p in tmp_path.iterdir()) == []
+    # ``_tmp`` is the test session's tempfile redirect, not part of the cache directory.
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name != "_tmp") == []
     assert "range" not in store
 
 
@@ -315,7 +316,7 @@ def test_tree_snapshot_records_links_by_target_and_survives_a_dangling_one(tmp_p
     (tmp_path / "file.bin").write_bytes(b"abc")
     (tmp_path / "dir").mkdir()
     (tmp_path / "dangling").symlink_to(tmp_path / "does-not-exist")
-    (tmp_path / "_tmp").mkdir()
+    (tmp_path / "_tmp").mkdir(exist_ok=True)  # the session's tempfile redirect target
     (tmp_path / "_tmp" / "litter").write_bytes(b"ignored")
 
     assert _tree(tmp_path) == {
