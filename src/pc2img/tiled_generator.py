@@ -128,14 +128,21 @@ class TiledPointCloudImageGenerator:
     is done; or keep the stores owned by this process by using ``n_jobs=1`` for every call and
     purge from it. ``n_jobs=1`` keeps the single-object behaviour.
 
-    With ``n_jobs >= 2`` every tile's ``DiskBackedImageStore`` is constructed inside a worker
-    and records that worker's process id as its owner. GSEGUtils refuses ``purge`` from any other
-    process with ``StorePurgeRefusedError`` (a ``RuntimeError``), and ``add_image_to_store`` over
-    an existing key purges first, so after ``generate()`` returns the parent process can neither
-    purge nor overwrite those stores, and a later ``generate()`` that has to overwrite a key in a
-    different worker can fail the same way. Ways around it:
+    Whenever the work runs in a worker pool, every tile's ``DiskBackedImageStore`` is constructed
+    inside a worker and records that worker's process id as its owner, for good. GSEGUtils refuses
+    ``purge`` from any other process with ``StorePurgeRefusedError`` (a ``RuntimeError``), and
+    ``add_image_to_store`` purges first when the key is tracked or its ``<key>.npy`` codec file is
+    on disk. After a pooled run the parent process can therefore neither purge nor overwrite those
+    stores. A later ``generate()`` that requests a feature which is untracked but still has its
+    codec pair in the tile directory (dropped with ``del``, ``pop``, ``popitem`` or ``clear`` while
+    offloaded) raises ``StorePurgeRefusedError`` when that tile's ``_process_tile`` runs in a process
+    other than the owner. In a pool that depends on which worker gets the tile; after a pooled run
+    it always happens at ``n_jobs=1``, because the parent is not the owner either. Leftover
+    temporary files, a lone ``.meta.json`` or a lone ``.dat`` (a killed worker, or a session with
+    ``purge_disk_on_gc=False``) do not trigger it. Ways around it:
 
-    * run with ``n_jobs=1`` when the instance will be purged from or overwritten;
+    * use ``n_jobs=1`` for every call on an instance that will be purged from or overwritten; an
+      instance that has run in a pool once is owned by its workers for good;
     * build a fresh ``TiledPointCloudImageGenerator`` for each ``generate()`` call;
     * drop the tile's generator and remove its cache sub-directory ``<cache_path>/<tile_id>``
       (for example with ``shutil.rmtree``).
