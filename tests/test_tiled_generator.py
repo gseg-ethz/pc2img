@@ -15,9 +15,10 @@ Covers the ``tiled_generator`` findings:
   partially-initialized-module ``ImportError``.
 
 The tests build a real ``PointCloudData`` only where needed; the settings-level
-checks are pure-object, keeping them deterministic and CI-safe. One regression
-test deliberately drives the real loky fan-out with two workers to pin a known
-limitation (an ``xfail``), so it is the only test here that spawns processes.
+checks are pure-object, keeping them deterministic and CI-safe. Three tests concern the
+fan-out: repeated generation on one instance with two workers and the worker-owned-store
+pin spawn real loky processes, while the fan-out shape test replaces the pool with a
+recorder and runs inline.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ import subprocess
 import sys
 
 import pytest
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StorePurgeRefusedError, get_npy_path
 
 import pc2img.tiled_generator as tiled_module
 from pc2img.core import ImgRes, PointCloudImageGenerator
@@ -89,21 +90,16 @@ def test_extend_cache_paths_refuses_a_traversing_folder_name() -> None:
 
 
 def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_pcd) -> None:
-    """Repeated ``generate()`` on one instance with two workers must keep working.
+    """Repeated ``generate()`` on one instance with two workers keeps working.
 
-    Pins a known limitation: on GSEGUtils 0.6.0 every worker unpickles every tile's
-    disk-backed store and rebuilds each ``.dat`` through the single temporary name
-    ``<key>.dat.tmp``, so the second or third call fails. Two exception families are
-    known manifestations of the one race - a loky pool error
-    (``BrokenProcessPool``/``TerminatedWorkerError``, ``RuntimeError``) and the
-    worker's own ``FileNotFoundError`` (``OSError``) - and the marker names exactly
-    these two, never a third. The pc2img-level reproduction on the migrated tree saw
-    OBSERVED_TYPES: joblib.externals.loky.process_executor.BrokenProcessPool
-    (``RuntimeError``) in every round; the ``OSError`` family was not seen at this level.
-
-    ``strict=False`` because the failure is a race (upstream it fired in 12 of 12 rounds
-    in one measurement and 11 of 12 in another). An XPASS is the signal to drop the
-    marker and bump the GSEGUtils pin.
+    Each task carries only its own tile's generator, so a worker never unpickles another
+    tile's disk-backed store. The earlier failure mode - every worker unpickling every tile's
+    store at once and racing the single temporary name ``<key>.dat.tmp`` GSEGUtils 0.6.0 uses
+    to rebuild a ``.dat`` memmap, surfacing as a loky ``BrokenProcessPool`` or a worker
+    ``FileNotFoundError`` - is what the fan-out shape test guards. GSEGUtils#82
+    (https://github.com/gseg-ethz/GSEGUtils/issues/82) remains the upstream defect for any
+    program that unpickles one store in several processes at once;
+    https://github.com/gseg-ethz/pc2img/issues/24 tracks it here.
     """
     tiles = [
         PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
@@ -188,3 +184,48 @@ def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
 
             payload = pickle.dumps((func, args, kwargs))
             assert other.encode() not in payload, f"{tile_id}'s task payload contains {other}'s state"
+
+
+def test_tile_stores_built_by_workers_refuse_purge_from_the_parent(tmp_path, synthetic_pcd) -> None:
+    """Stores built inside a worker belong to that worker; the parent cannot purge them.
+
+    Pins the ownership limit documented on ``TiledPointCloudImageGenerator`` so the docstring
+    cannot silently go stale: with ``n_jobs=2`` the tile stores record the worker's process id
+    as owner and GSEGUtils refuses ``purge`` from the parent, leaving the key and its files
+    untouched; with ``n_jobs=1`` the parent owns the stores and purges them. When the limit is
+    lifted this test is rewritten, not deleted.
+    """
+
+    def _tiles() -> list[PointCloudTile]:
+        return [
+            PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
+            PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+        ]
+
+    pooled = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "pooled"),
+    )
+    pooled.generate(["range"], n_jobs=2)
+    store = pooled.image_generators["tile_00"].feature_mgr.cache_store
+
+    with pytest.raises(StorePurgeRefusedError):
+        store.purge("range")
+    assert "range" in store
+    assert get_npy_path(store.cache_dir, "range").exists()
+
+    sequential = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "seq"),
+    )
+    sequential.generate(["range"], n_jobs=1)
+    own_store = sequential.image_generators["tile_00"].feature_mgr.cache_store
+
+    own_store.purge("range")
+    assert "range" not in own_store

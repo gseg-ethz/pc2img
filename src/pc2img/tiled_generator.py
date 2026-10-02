@@ -102,6 +102,29 @@ class TIGSettings:
 
 
 class TiledPointCloudImageGenerator:
+    """Run the projection, interpolation and feature pipeline over many tiles in parallel.
+
+    Every ``generate()`` call dispatches one loky task per tile. A task carries only that tile's
+    generator (built in the worker on the first call, reused from ``image_generators``
+    afterwards) and picklable inputs, never the tiled generator itself, so repeated
+    ``generate()`` calls on one instance with ``n_jobs >= 2`` are supported. GSEGUtils 0.6.0
+    rebuilds each ``.dat`` memmap through one fixed ``<key>.dat.tmp`` name, which still races
+    when one store is unpickled by several processes at once
+    (https://github.com/gseg-ethz/GSEGUtils/issues/82); this dispatch no longer does that.
+
+    With ``n_jobs >= 2`` every tile's ``DiskBackedImageStore`` is constructed inside a worker
+    and records that worker's process id as its owner. GSEGUtils refuses ``purge`` from any other
+    process with ``StorePurgeRefusedError`` (a ``RuntimeError``), and ``add_image_to_store`` over
+    an existing key purges first, so after ``generate()`` returns the parent process can neither
+    purge nor overwrite those stores, and a later ``generate()`` that has to overwrite a key in a
+    different worker can fail the same way. Ways around it:
+
+    * run with ``n_jobs=1`` when the instance will be purged from or overwritten;
+    * build a fresh ``TiledPointCloudImageGenerator`` for each ``generate()`` call;
+    * drop the tile's generator and remove its cache sub-directory ``<cache_path>/<tile_id>``
+      (for example with ``shutil.rmtree``).
+    """
+
     @overload
     def __init__(
         self,
