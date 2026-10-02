@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 8/15 plans executed
+**Plans**: 9/15 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -307,7 +307,7 @@ Plans:
 - [ ] 07-11-PLAN.md — Release evidence (tag, publish run, attestations, fresh-install), post-release back-merge + nightly, verifier against v0.11.0, todo closures and security follow-up annotations (D-14) [DEP-05, BC-01]
 - [x] 07-12-PLAN.md — Gap round 1 (CR-01): per-tile module-level tiled dispatch; race xfail becomes a passing regression test; WR-01 documented + pinned [DEP-05]
 - [x] 07-13-PLAN.md — Gap round 1 (CR-02, WR-05): overwrite purges tracked-or-on-disk keys, GC variant covered; overwrite docstring corrected; WR-01 store docstring [DEP-05]
-- [ ] 07-14-PLAN.md — Gap round 1 (WR-04 + record): nvidia-index comment corrected; MIGRATION BC-P2I-030/027 amended to the fixes [DEP-05, BC-01]
+- [x] 07-14-PLAN.md — Gap round 1 (WR-04 + record): nvidia-index comment corrected; MIGRATION BC-P2I-030/027 amended to the fixes [DEP-05, BC-01]
 - [ ] 07-15-PLAN.md — Gap round 1: draft #82/#24 issue notes; owner approves exact text before posting (blocking-human) [DEP-05]
 
 ## Progress
@@ -323,4 +323,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 8/15 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 9/15 | In Progress|  |
