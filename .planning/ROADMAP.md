@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 4/11 plans executed
+**Plans**: 5/11 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -289,7 +289,7 @@ Plans:
 **Wave 2** *(blocked on 07-01)*
 
 - [x] 07-02-PLAN.md — Whole-tree snapshot escape corpus (6 spellings x 6 routes), containment-before-shape pin, del/purge/read-only sensors, key-rule characterization, autouse tempfile isolation, tiled docstrings (D-09..D-12, D-22) [DEP-05]
-- [ ] 07-03-PLAN.md — Tiled re-generation race (D-20): reproduce, draft + owner-approve two public issues, file upstream then tracking, xfail regression test with real URLs, extend_cache_paths refusal pin [DEP-05, BC-01]
+- [x] 07-03-PLAN.md — Tiled re-generation race (D-20): reproduce, draft + owner-approve two public issues, file upstream then tracking, xfail regression test with real URLs, extend_cache_paths refusal pin [DEP-05, BC-01]
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -319,4 +319,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 4/11 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 5/11 | In Progress|  |
