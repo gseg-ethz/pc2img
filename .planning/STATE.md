@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-06-PLAN.md
-last_updated: "2026-10-02T09:58:50.944Z"
+stopped_at: Completed 07-12-PLAN.md (gap round 1; 07-07 still paused at its review checkpoint)
+last_updated: "2026-10-02T12:25:20.898Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: dd1c6949cdbf07615d2528f20abc1dbe1c5ee521
+state_head: 50fd27589e65eaaf546f36d331cdec940050c786
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 69
-  completed_plans: 64
+  total_plans: 73
+  completed_plans: 65
 milestone_name: milestone
 ---
 
@@ -127,6 +127,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 07 P02 | 10min | 2 tasks | 3 files |
 | Phase 07 P03 | n/a (split across two executors) | 3 tasks | 3 files |
 | Phase 07 P06 | 12 min | 2 tasks | 1 files |
+| Phase 07 P12 | 30 min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -245,6 +246,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-02: leak check counts tmp* entries (uv run leaves its own uv-*.lock in TMPDIR); tempfile redirect stays at tmp_path/_tmp and tests enumerating tmp_path ignore it
 - [Phase 07]: 07-03: tiled re-generation race filed upstream (GSEGUtils#82) and tracked (pc2img#24); pinned by xfail raises=(RuntimeError, OSError) per O-1
 - [Phase 07]: BC-P2I-026..030 appended to the migration record; 030 (tiled re-generation race on GSEGUtils 0.6.0) classified dep-constraint/should-review with both exception families and both issue URLs; record counts derived from tables (20 should-review, 1 must-edit, 5 informational, 4 additive)
+- [Phase 07]: 07-12: tiled generate() dispatches module-level _process_tile per tile; twelve-round measurement 12/12 failing before, 0/12 after (CR-01 closed); worker-owned tile stores refusing parent purge documented and pinned (WR-01 tiled half)
 
 ### Pending Todos
 
@@ -284,6 +286,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T09:58:50.740Z
-Stopped at: Completed 07-06-PLAN.md
+Last session: 2026-10-02T12:25:20.704Z
+Stopped at: Completed 07-12-PLAN.md (gap round 1; 07-07 still paused at its review checkpoint)
 Resume file: None
