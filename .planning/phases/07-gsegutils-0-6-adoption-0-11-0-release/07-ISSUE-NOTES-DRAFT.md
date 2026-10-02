@@ -84,4 +84,4 @@ gh issue close 24 --repo gseg-ethz/pc2img --comment "<the owner's closing line>"
 
 | Decision | Date | Variant | Comment URLs |
 |----------|------|---------|--------------|
-|          |      |         |              |
+| #82 note DROPPED by owner (upstream issue stays about the upstream defect; pc2img status belongs in #24). #24 comment ON HOLD: gap-round-1 review (07-REVIEW-GAP1.md CR-01) found the second pooled generate() returns unreadable rasters, so the drafted 'fix' text is not yet true; redraft after gap round 2 is reviewed. Nothing posted. | 2026-10-02 | — | — |
