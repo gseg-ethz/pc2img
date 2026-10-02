@@ -31,10 +31,10 @@ classifiers = [
 	"Topic :: Scientific/Engineering :: GIS",
 ]
 dependencies = [
-	"pchandler ~= 2.1",
-	"GSEGUtils >= 0.5.3, < 1.0",
+	"pchandler >= 2.1.1, ~= 2.1",
+	"GSEGUtils ~= 0.6.0",
 	"joblib ~= 1.5",
-	"numpy ~= 2.0",
+	"numpy >= 2.2, < 2.4",
 	"imageio ~= 2.31",
 	"Pillow ~= 10.0",
 	"pydantic ~= 2.11",
@@ -127,21 +127,15 @@ explicit = true
 # the documented fallback is to name them directly in the cuda extras instead.
 # No entry may point at a local /scratch or third_party/ path (forbidden).
 [tool.uv.sources]
-# NOTE: the GSEGUtils reload-registration hook (register_lazy_disk_cache_class)
-# shipped in the published GSEGUtils 0.5.3 (release-please emitted a pre-major
-# PATCH bump, not 0.6.0). pc2img now resolves it straight from PyPI via the
-# `GSEGUtils >= 0.5.3, < 1.0` pin above; the temporary git-rev bridge that
-# carried it during earlier development has been removed.
+# NOTE: GSEGUtils is pinned to its 0.6 minor because a pre-1.0 GSEGUtils minor can
+# withdraw surface pc2img uses, so each GSEGUtils minor is adopted deliberately with
+# a pc2img release. pchandler's floor is 2.1.1, the first pchandler that itself
+# requires GSEGUtils 0.6; its cuda11/cuda12 extras now pull only cudf, cuspatial
+# and geopandas, which is why only those names keep an index binding.
 cudf-cu12      = { index = "nvidia" }
 cuspatial-cu12 = { index = "nvidia" }
-cuproj-cu12    = { index = "nvidia" }
-cuml-cu12      = { index = "nvidia" }
-dask-cudf-cu12 = { index = "nvidia" }
 cudf-cu11      = { index = "nvidia" }
 cuspatial-cu11 = { index = "nvidia" }
-cuproj-cu11    = { index = "nvidia" }
-cuml-cu11      = { index = "nvidia" }
-dask-cudf-cu11 = { index = "nvidia" }
 
 [tool.ruff]
 line-length = 120          # matches sibling PCHandler/GSEGUtils template (owner-approved)
