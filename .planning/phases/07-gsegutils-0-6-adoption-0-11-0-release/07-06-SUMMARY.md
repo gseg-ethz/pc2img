@@ -175,7 +175,7 @@ None. The plan edits a planning record and its inline verifier; the verifier sta
 ## Issues Encountered
 
 - The research note put the verifier extraction/run command under `uv run --frozen`; `--frozen` ran fine here, and the other runs in this plan used `uv run --no-sync` as instructed.
-- BC-P2I-026's rationale cites the 30 failing tests measured in the 07-01 summary on a plain 0.6.0 install of the old pins.
+- BC-P2I-026's rationale (a 0.6.0 minor withdrew private surface the old store wrapper called) rests on the 07-01 measurement of 30 failing tests on a plain 0.6.0 install of the old pins; that figure is not repeated in the record.
 
 ## Self-Check: PASSED
 

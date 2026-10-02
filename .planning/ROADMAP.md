@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 5/11 plans executed
+**Plans**: 6/11 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -293,7 +293,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 07-06-PLAN.md — Finalise MIGRATION-v0.11.md: amend 002/012/017, append 026-030, target_ref v0.11.0, verifier Tier-2 checks, `[ok] verified 30 entries` (D-18, D-19, D-21) [BC-01]
+- [x] 07-06-PLAN.md — Finalise MIGRATION-v0.11.md: amend 002/012/017, append 026-030, target_ref v0.11.0, verifier Tier-2 checks, `[ok] verified 30 entries` (D-18, D-19, D-21) [BC-01]
 
 **Wave 4** *(phase gate)*
 
@@ -319,4 +319,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 5/11 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 6/11 | In Progress|  |
