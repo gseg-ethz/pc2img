@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-10-02T09:25:09.163Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-10-02T09:31:41.044Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: 89356f878fb9bec74f29f7612be268cbcb7bcb54
+state_head: 4d5f339075623e82eb3dbbb7259d70481b7c0c18
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 69
-  completed_plans: 59
+  completed_plans: 60
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 07 (GSEGUtils 0.6 Adoption & 0.11.0 Release) — EXECUTING
-Plan: 2 of 11
+Plan: 3 of 11
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 07 execution started
 
@@ -122,6 +122,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P12 | 25min | 3 tasks | 1 files |
 | Phase 06 P13 | ~35min | 3 tasks | 3 files |
 | Phase 07 P04 | 30 min | 3 tasks | 6 files |
+| Phase 07 P01 | 4 min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -234,6 +235,8 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-04: publish_composite_actions returns (flagged, unreadable-action violations); unreadable composite action is a named violation, nested local composites followed to a fixpoint
 - [Phase 07]: 07-04: preflight counts pull_request and pull_request_target jobs only; schedule/push/workflow_dispatch workflows contribute no matchable contexts (AR-08 closed)
 - [Phase 07]: 07-04: RTD post_checkout = conditional unshallow + fetch --tags --force; post_install asserts non-0.0.* version and non-shallow clone; proven by 07-rtd-simulation.sh
+- [Phase 07]: 07-01: pins written as pchandler >= 2.1.1, ~= 2.1 / GSEGUtils ~= 0.6.0 / numpy >= 2.2, < 2.4 (owner 'proceed' on the one-way-door gate); GSEGUtils 0.6.0 and pchandler 2.1.1 accepted as first-party
+- [Phase 07]: 07-01: add_image_to_store keeps one containment-first get_npy_path statement, then shape check, then purge-on-overwrite (D-22); six stale RAPIDS [tool.uv.sources] bindings deleted, proven inert by a from-scratch resolve with/without them
 
 ### Pending Todos
 
@@ -273,6 +276,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T09:25:08.963Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-10-02T09:31:40.861Z
+Stopped at: Completed 07-01-PLAN.md
 Resume file: None

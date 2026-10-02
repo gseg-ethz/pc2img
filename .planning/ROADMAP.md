@@ -278,11 +278,11 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 1/11 plans executed
+**Plans**: 2/11 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
-- [ ] 07-01-PLAN.md — Tracer: confirm the one-way pins (D-01/D-02/D-21), re-lock + in-process provenance, delete the store overrides and adopt purge (D-07..D-10, D-22), rewrite the 12 store tests; D-11/D-12 triage table [DEP-05]
+- [x] 07-01-PLAN.md — Tracer: confirm the one-way pins (D-01/D-02/D-21), re-lock + in-process provenance, delete the store overrides and adopt purge (D-07..D-10, D-22), rewrite the 12 store tests; D-11/D-12 triage table [DEP-05]
 - [x] 07-04-PLAN.md — AR-07 publish gate (uv publish + composite actions), AR-08 preflight PR-trigger filter (D-14), RTD tag-fetch hardening with scratch-clone simulation (D-13) [DEP-05]
 - [ ] 07-05-PLAN.md — Ruleset-comparator polish: measured fixture shapes, parametrised read-filled test, rule (c)/(d) docstrings, RULESETS.md ungoverned fields (D-15) [DEP-05]
 
@@ -319,4 +319,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 1/11 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 2/11 | In Progress|  |
