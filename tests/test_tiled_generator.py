@@ -23,12 +23,15 @@ recorder and runs inline.
 
 from __future__ import annotations
 
+import gc
 import pickle
 import subprocess
 import sys
 
+import numpy as np
 import pytest
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StorePurgeRefusedError, get_npy_path
+from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
 
 import pc2img.tiled_generator as tiled_module
 from pc2img.core import ImgRes, PointCloudImageGenerator
@@ -89,8 +92,20 @@ def test_extend_cache_paths_refuses_a_traversing_folder_name() -> None:
         settings.extend_cache_paths("../x")
 
 
-def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_pcd) -> None:
-    """Repeated ``generate()`` on one instance with two workers keeps working.
+_FEATURES = ["range", "gradient_x_range", "hillshade_range_315_45"]
+_TILE_IDS = ("tile_00", "tile_01")
+
+
+def _read_every_raster(result) -> None:
+    """Read every returned raster; an unlinked ``.dat`` raises ``FileNotFoundError`` here."""
+    for key in result:
+        arr = np.asarray(result[key])
+        assert arr.shape == (8, 8), f"{key}: unexpected shape {arr.shape}"
+
+
+@pytest.mark.parametrize("n_jobs", [1, 2], ids=["n_jobs=1", "n_jobs=2"])
+def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_pcd, n_jobs) -> None:
+    """Repeated ``generate()`` on one instance returns rasters that can be read.
 
     Each task carries only its own tile's generator, so a worker never unpickles another
     tile's disk-backed store. The earlier failure mode - every worker unpickling every tile's
@@ -100,6 +115,12 @@ def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_p
     (https://github.com/gseg-ethz/GSEGUtils/issues/82) remains the upstream defect for any
     program that unpickles one store in several processes at once;
     https://github.com/gseg-ethz/pc2img/issues/24 tracks it here.
+
+    The result is rebound on every call and collected, then every raster is *read*: a pooled
+    call hands the parent another entry object on each ``<tile>/<key>.dat``, and a released
+    call's garbage-collection finalizers must not unlink the files a later call's entries
+    read. A test that only checks the returned keys cannot see that, so every array is read
+    with ``np.asarray`` and every store entry is read at the end.
     """
     tiles = [
         PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
@@ -113,12 +134,68 @@ def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_p
         lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path),
     )
 
-    gen.generate(["range"], n_jobs=2)
-    gen.generate(["range", "gradient_x_range", "hillshade_range_315_45"], n_jobs=2)
-    result = gen.generate(["range"], n_jobs=2)
+    result = gen.generate(["range"], n_jobs=n_jobs)
+    result = gen.generate(_FEATURES, n_jobs=n_jobs)
+    gc.collect()
+    _read_every_raster(result)
 
-    for tile_id in ("tile_00", "tile_01"):
+    result = gen.generate(["range"], n_jobs=n_jobs)
+    gc.collect()
+    _read_every_raster(result)
+
+    for tile_id in _TILE_IDS:
         assert (tile_id, "range") in result, f"no range raster for {tile_id}: {list(result)}"
+        store = gen.image_generators[tile_id].feature_mgr.cache_store
+        for name in _FEATURES:
+            assert np.asarray(store[name]).shape == (8, 8), f"{tile_id}/{name}"
+        assert get_memmap_path(store.cache_dir, "range").exists()
+
+
+def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
+    """Entries a pooled ``generate()`` returns must not delete shared memmaps when collected.
+
+    A pooled run returns parent-side copies of entries that share one ``.dat`` path with the
+    copies every other call returns, so none of them may own garbage-collection deletion; the
+    sequential path hands out the store's own objects and is left as it was.
+    """
+
+    def _tiles() -> list[PointCloudTile]:
+        return [
+            PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
+            PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+        ]
+
+    def _purge_flags(gen, result) -> list[bool]:
+        flags = [entry.purge_disk_on_gc for entry in result.values()]
+        for image_gen in gen.image_generators.values():
+            flags.extend(
+                entry.purge_disk_on_gc
+                for entry in image_gen.feature_mgr.cache_store.store.values()
+                if entry is not None
+            )
+        return flags
+
+    pooled = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "pooled"),
+    )
+    pooled_flags = _purge_flags(pooled, pooled.generate(["range"], n_jobs=2))
+    assert pooled_flags, "no entries were inspected"
+    assert all(flag is False for flag in pooled_flags), pooled_flags
+
+    sequential = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "seq"),
+    )
+    sequential_flags = _purge_flags(sequential, sequential.generate(["range"], n_jobs=1))
+    assert sequential_flags, "no entries were inspected"
+    assert all(flag is True for flag in sequential_flags), sequential_flags
 
 
 def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
