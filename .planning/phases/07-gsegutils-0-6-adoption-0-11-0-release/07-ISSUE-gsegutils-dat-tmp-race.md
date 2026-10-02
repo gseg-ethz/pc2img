@@ -2,7 +2,7 @@
 
 ## Summary
 
-Unpickling the same `DiskBackedStore` in several processes at the same time fails on 0.6.0. Every process rebuilds each entry's `<key>.dat` through one fixed temporary name, `<key>.dat.tmp`, so concurrent rebuilds of the same entry delete or replace each other's temporary file. The losing processes raise `FileNotFoundError` on `<key>.dat.tmp`, and in some runs a process is killed outright by `SIGBUS`. On 0.5.3, where the memmap was written in place, the same scenario never fails.
+Unpickling the same `DiskBackedStore` in several processes at the same time fails on 0.6.0. Every process rebuilds each entry's `<key>.dat` through one fixed temporary name, `<key>.dat.tmp`, so concurrent rebuilds of the same entry delete or replace each other's temporary file. The losing processes raise `FileNotFoundError` on `<key>.dat.tmp`; in some runs a process also dies without reporting a result (an earlier measurement of the same script saw it killed by `SIGBUS`). On 0.5.3, where the memmap was written in place, the same scenario never fails.
 
 ## Versions
 
