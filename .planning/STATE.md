@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-14-PLAN.md (gap round 1; 07-07 still paused at its review checkpoint)
-last_updated: "2026-10-02T12:34:50.513Z"
+stopped_at: Completed 07-16-PLAN.md (gap round 2; 07-07 and 07-15 still paused; round diff awaits its own review)
+last_updated: "2026-10-02T14:09:32.080Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: b2bf8aaf1e5f20c8b08aa2e43fdd68d21dcee2d8
+state_head: 72b2cc99ff662f9bce46859b100a5887cf55c08a
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 73
-  completed_plans: 67
+  total_plans: 76
+  completed_plans: 68
 milestone_name: milestone
 ---
 
@@ -130,6 +130,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 07 P12 | 30 min | 2 tasks | 2 files |
 | Phase 07 P13 | 25min | 2 tasks | 2 files |
 | Phase 07 P14 | 25min | 2 tasks | 2 files |
+| Phase 07 P16 | 5min | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -249,6 +250,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-03: tiled re-generation race filed upstream (GSEGUtils#82) and tracked (pc2img#24); pinned by xfail raises=(RuntimeError, OSError) per O-1
 - [Phase 07]: BC-P2I-026..030 appended to the migration record; 030 (tiled re-generation race on GSEGUtils 0.6.0) classified dep-constraint/should-review with both exception families and both issue URLs; record counts derived from tables (20 should-review, 1 must-edit, 5 informational, 4 additive)
 - [Phase 07]: 07-12: tiled generate() dispatches module-level _process_tile per tile; twelve-round measurement 12/12 failing before, 0/12 after (CR-01 closed); worker-owned tile stores refusing parent purge documented and pinned (WR-01 tiled half)
+- [Phase 07]: 07-16: pooled generate() results and reassembled store entries are disarmed with the public LazyDiskCache.disable_purge() when n_jobs != 1; accepted cost (owner 2026-10-02): .dat files persist until purge() or directory removal, including the default mkdtemp directory
 
 ### Pending Todos
 
@@ -288,6 +290,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-02T12:34:50.299Z
-Stopped at: Completed 07-14-PLAN.md (gap round 1; 07-07 still paused at its review checkpoint)
+Last session: 2026-10-02T14:09:31.874Z
+Stopped at: Completed 07-16-PLAN.md (gap round 2; 07-07 and 07-15 still paused; round diff awaits its own review)
 Resume file: None
