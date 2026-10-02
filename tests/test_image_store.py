@@ -114,7 +114,8 @@ def test_offload_reload_round_trip(tmp_path: Path):
 # re-scans `*.npy` on construction -- it would re-adopt and serve the stale    #
 # pre-overwrite raster. The overwrite path therefore calls `purge`, the        #
 # upstream delete verb that removes the memmap and the codec pair, whenever    #
-# the key is tracked OR any of its derived files is on disk.                   #
+# the key is tracked OR its ``<key>.npy`` is on disk. A lone memmap or sidecar #
+# is offered to ``purge`` too, but another process's refusal is tolerated.     #
 # --------------------------------------------------------------------------- #
 def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
     a = _gray((6, 6))
@@ -178,7 +179,9 @@ def test_overwrite_after_a_drop_route_never_leaves_a_stale_raster_for_a_fresh_st
 def test_retained_reference_to_a_dropped_entry_does_not_delete_the_replacement_memmap_on_gc(tmp_path: Path):
     """The dropped entry's cleanup hook must have been detached by the overwrite's
     purge; otherwise it unlinks whatever now occupies its recorded path when the
-    caller's retained reference is collected."""
+    caller's retained reference is collected. The key's only file here is the
+    ``.dat``, so this also pins that the overwrite offers a lone memmap to ``purge``
+    in the constructing process (the detach is the point, not the unlink)."""
     a = _gray((6, 6))
     b = (a + 10.0).astype(np.float32)
 
@@ -204,7 +207,8 @@ def test_adding_a_new_key_from_another_process_is_not_refused(tmp_path: Path):
     """The tiled workers add new keys into stores they did not construct on every
     later ``generate()``, so the overwrite route must only ever reach ``purge``
     for a key that is tracked or has files on disk. An EXISTING key from another
-    process is still refused: upstream's owner-process rule on ``purge``."""
+    process is still refused: upstream's owner-process rule on ``purge``. Leftover
+    non-serving files are covered by the leftover tests below."""
     a = _gray((6, 6))
     b = (a + 10.0).astype(np.float32)
 

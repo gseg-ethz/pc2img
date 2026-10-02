@@ -83,8 +83,9 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     **Removal.** ``del store[key]``, ``pop`` and ``clear`` drop tracking only and
     leave every file in place (an offloaded key is re-adopted on the next read).
     :meth:`purge` is the delete verb: it drops tracking and removes the memmap and
-    the codec pair. The overwrite in :meth:`add_image_to_store` removes those files
-    whether or not the key is still tracked.
+    the codec pair. The overwrite in :meth:`add_image_to_store` removes the codec
+    pair whether or not the key is still tracked; a lone memmap or sidecar left by
+    another process does not block a re-add.
     """
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -131,13 +132,25 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            :class:`ValueError`) before anything else is touched;
         2. :func:`_assert_image_shape` raises :class:`AssertionError` for a bad
            raster shape;
-        3. an entry that is tracked, or whose key still has any of its six derived
-           files on disk (a key dropped with ``del`` / ``pop`` / ``clear`` and
-           left offloaded), is removed with :meth:`purge`. It validates before it
-           mutates, detaches every cleanup hook registered for the key (including
-           the one on an entry a caller dropped but still holds), and removes the
-           memmap and the codec pair, so a retained reference to the old entry
-           cannot delete the replacement's files when it is collected. A key that
+        3. a key that is tracked, or whose ``<key>.npy`` is on disk (the file a fresh
+           store adopts, left by a key dropped with ``del`` / ``pop`` / ``popitem`` /
+           ``clear`` while offloaded), is removed with :meth:`purge`, whose refusals
+           surface unwrapped. So a process that did not construct the store
+           cannot replace a key whose codec pair is still on disk. :meth:`purge`
+           validates before it mutates, detaches every cleanup hook
+           registered with this store for the key (including the one on an entry a
+           caller dropped but still holds), and removes the memmap and the codec
+           pair, so a reference retained from this store cannot delete the
+           replacement's files when it is collected. Copies of the store made by
+           pickling hold their own registrations; the tiled generator disarms the
+           copies it returns from a pooled run (see ``TiledPointCloudImageGenerator``).
+           A key whose only files are a ``.meta.json`` or a ``.dat`` (a killed
+           worker's residue, or a ``.dat`` kept by a ``purge_disk_on_gc=False``
+           session) is offered to :meth:`purge` as well, but a refusal on process
+           identity alone is tolerated: nothing servable is on disk, and the
+           replacement is written through a temporary name and an atomic rename.
+           Refusals for a foreign or aliased artefact still surface. Leftover
+           temporary names (``.dat.tmp`` and the like) are not consulted. A key that
            is neither tracked nor on disk is never handed to :meth:`purge`, so a
            worker process that did not construct the store can still add new keys;
         4. the replacement is built via :meth:`add_data_to_store`.
@@ -157,7 +170,9 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
           ``n_jobs >= 2`` is owned by a worker process, so after such a run the
           parent's overwrite of an existing key is refused (use ``n_jobs=1``, a
           fresh generator, or remove the tile sub-directory; see that class's
-          docstring);
+          docstring). A process that did not construct the store is refused only
+          for a key that is tracked or whose ``<key>.npy`` is on disk; a leftover
+          ``.dat``, ``.dat.tmp`` or ``.meta.json`` does not trigger the refusal;
         - ``StorePurgeForeignArtefactError``, when a built artefact, or a live
           entry's own ``cache_path``, resolves outside the cache directory. This
           includes an entry inserted through the mapping setter with an outside
@@ -176,6 +191,14 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         would need a build-then-adopt primitive in the cache layer that owns the
         ``<key>.dat`` derivation. This is not a claim that every input-driven
         failure is caught before the purge.
+
+        **Non-owner caveat.** In a process that did not construct the store an
+        overwrite cannot disarm a still-retained reference to a dropped entry: the
+        tolerated process-identity refusal of the leftover case leaves that entry's
+        cleanup hook armed, so collecting the retained reference later still
+        deletes the replacement's ``.dat``. The pc2img pipeline never drops entries
+        (it only adds and reads), so ``generate()`` cannot reach this; it concerns
+        callers of the exported store only.
 
         ``del`` / ``pop`` / ``clear`` drop tracking only; they are not part of an
         overwrite. Only :meth:`purge` removes files.
