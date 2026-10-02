@@ -21,7 +21,8 @@ the regression test that repeats ``generate()`` on one instance at ``n_jobs=1`` 
 spawns real loky processes); the flag test that pins purge-on-garbage-collection off for
 pooled results and on for sequential ones; the duplicate-id test; the shape test, which
 replaces the pool with a recorder and runs inline; and the pin test for worker-owned stores,
-which also spawns real loky processes.
+which also spawns real loky processes; and the sensor for the refusal trigger and the ``n_jobs=1``
+workaround, which runs a pooled call first and then a sequential one.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ import sys
 import numpy as np
 import pytest
 from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StorePurgeRefusedError, get_npy_path
-from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
+from GSEGUtils.lazy_disk_cache.paths import get_memmap_path, get_memmap_tmp_path
 
 import pc2img.tiled_generator as tiled_module
 from pc2img.core import ImgRes, PointCloudImageGenerator
@@ -341,3 +342,61 @@ def test_tile_stores_built_by_workers_refuse_purge_from_the_parent(tmp_path, syn
 
     own_store.purge("range")
     assert "range" not in own_store
+
+
+def test_regenerate_at_n_jobs_1_after_a_pooled_run_tolerates_a_leftover_temporary_but_refuses_a_dropped_codec_pair(
+    tmp_path, synthetic_pcd
+) -> None:
+    """Pins the two sentences of the class docstring that describe the remaining ownership limit.
+
+    After a pooled run every tile store belongs to the worker that built it, for good, so the
+    parent process is not the owner either and ``n_jobs=1`` does not help:
+
+    * a leftover temporary file for a requested feature (a killed worker, a failed rename) does
+      not trigger the refusal - the later call succeeds and every raster reads;
+    * a requested feature that is untracked but still has its codec pair in the tile directory
+      (dropped with ``del`` while offloaded) does: ``StorePurgeRefusedError``, deterministically
+      at ``n_jobs=1``.
+
+    The trigger sits in ``tile_00``, the first tile: at ``n_jobs=1`` with ``verbose=50`` joblib
+    masks an exception raised after the first tile as an ``AttributeError``.
+    """
+
+    def _tiles() -> list[PointCloudTile]:
+        return [
+            PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
+            PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+        ]
+
+    tolerant = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "tolerant"),
+    )
+    tolerant.generate(["range"], n_jobs=2)
+    tolerant_store = tolerant.image_generators["tile_00"].feature_mgr.cache_store
+    leftover = get_memmap_tmp_path(tolerant_store.cache_dir, "gradient_x_range")
+    leftover.write_bytes(b"\0" * 64)
+
+    result = tolerant.generate(["gradient_x_range"], n_jobs=1)
+    gc.collect()
+    _read_every_raster(result)
+    assert ("tile_00", "gradient_x_range") in result and ("tile_01", "gradient_x_range") in result
+
+    refused = TiledPointCloudImageGenerator(
+        _tiles(),
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "refused"),
+    )
+    refused.generate(["range"], n_jobs=2)
+    refused_store = refused.image_generators["tile_00"].feature_mgr.cache_store
+    del refused_store["range"]
+    assert "range" not in refused_store
+    assert get_npy_path(refused_store.cache_dir, "range").exists(), "the codec pair must stay on disk"
+
+    with pytest.raises(StorePurgeRefusedError):
+        refused.generate(["range"], n_jobs=1)
