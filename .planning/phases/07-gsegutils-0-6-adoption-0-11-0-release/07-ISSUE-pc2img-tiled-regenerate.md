@@ -32,7 +32,7 @@ Either of:
 
 ## Cause
 
-Each loky worker unpickles the whole generator, including every tile's disk-backed store, because the tile function is a bound method. On GSEGUtils 0.6.0 unpickling a store rebuilds every entry's `.dat` memmap through one fixed temporary name, `<key>.dat.tmp`, so concurrent workers race on it. This is an upstream defect, reported at UPSTREAM_ISSUE_URL, and reproduces with GSEGUtils alone (12 of 12 rounds on 0.6.0, 0 of 12 on 0.5.3).
+Each loky worker unpickles the whole generator, including every tile's disk-backed store, because the tile function is a bound method. On GSEGUtils 0.6.0 unpickling a store rebuilds every entry's `.dat` memmap through one fixed temporary name, `<key>.dat.tmp`, so concurrent workers race on it. This is an upstream defect, reported at https://github.com/gseg-ethz/GSEGUtils/issues/82, and reproduces with GSEGUtils alone (12 of 12 rounds on 0.6.0, 0 of 12 on 0.5.3).
 
 ## Regression test
 
