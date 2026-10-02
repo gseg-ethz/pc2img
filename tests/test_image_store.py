@@ -34,9 +34,9 @@ from GSEGUtils.lazy_disk_cache import (
     get_npy_path,
     is_valid_store_key,
 )
-from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
+from GSEGUtils.lazy_disk_cache.paths import STORE_PATH_BUILDERS, get_memmap_path, get_memmap_tmp_path
 
-from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
+from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore, disk_backed_image_store
 
 _rng = np.random.default_rng(20260711)
 
@@ -226,6 +226,123 @@ def test_adding_a_new_key_from_another_process_is_not_refused(tmp_path: Path):
 
     assert _run_in_child("fresh_key") == 0, "a brand-new key was refused in a non-owner process"
     assert _run_in_child("range") == 3, "an existing key was not refused in a non-owner process"
+
+
+# --------------------------------------------------------------------------- #
+# Leftovers that cannot be served must not turn into refusals                  #
+#                                                                              #
+# A fresh store adopts only a ``<key>.npy`` (measured against the base store's #
+# startup scan: a lone ``.npy`` is adopted, a lone ``.meta.json`` or ``.dat``  #
+# is not, the pair is served). Only that file can make a store serve a stale   #
+# raster, so only it must be removed -- and upstream lets only the constructing #
+# process remove it. A killed worker's ``.dat.tmp``, a lone ``.dat`` kept by a #
+# ``purge_disk_on_gc=False`` session, or a lone ``.meta.json`` is harmless to  #
+# a replacement and must not make a non-owner process fail.                    #
+# --------------------------------------------------------------------------- #
+def _plant_leftover(cache_dir: Path, kind: str) -> None:
+    """Leave the files of ``kind`` for key ``"k"`` in ``cache_dir`` with no store tracking them."""
+    if kind == "raw_dat":
+        get_memmap_path(cache_dir, "k").write_bytes(b"\0" * 64)
+    elif kind == "raw_dat_tmp":
+        get_memmap_tmp_path(cache_dir, "k").write_bytes(b"\0" * 64)
+    elif kind == "durable_lone_dat":
+        durable = DiskBackedImageStore(
+            config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+        )
+        durable.add_image_to_store("k", _gray((6, 6)))
+        del durable
+        gc.collect()
+    elif kind in ("lone_meta", "codec_pair"):
+        writer = DiskBackedImageStore(
+            config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+        )
+        writer.add_image_to_store("k", _gray((6, 6)))
+        writer.offload_image_data_to_disk("k")
+        del writer["k"]
+        if kind == "lone_meta":
+            get_npy_path(cache_dir, "k").unlink()
+        del writer
+        gc.collect()
+        get_memmap_path(cache_dir, "k").unlink(missing_ok=True)
+    else:  # pragma: no cover - test authoring error
+        raise AssertionError(kind)
+
+
+def _non_owner_adds_k(store: DiskBackedImageStore) -> int:
+    """Fork a child (a process that did not construct ``store``) that adds ``"k"`` and reads it back.
+
+    Exit codes: 0 added and read back 1.0, 3 ``StorePurgeRefusedError``, 4 any other
+    ``BaseException``, 5 wrong value read back.
+    """
+    pid = os.fork()
+    if pid == 0:  # pragma: no cover - runs in the forked child
+        try:
+            store.add_image_to_store("k", np.ones((6, 6), dtype=np.float32))
+            os._exit(0 if float(np.asarray(store["k"])[0, 0]) == 1.0 else 5)
+        except StorePurgeRefusedError:
+            os._exit(3)
+        except BaseException:
+            os._exit(4)
+    _, status = os.waitpid(pid, 0)
+    return os.waitstatus_to_exitcode(status)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+@pytest.mark.parametrize("kind", ["raw_dat", "raw_dat_tmp", "durable_lone_dat", "lone_meta"])
+def test_non_owner_add_over_a_leftover_is_not_refused(tmp_path: Path, kind: str):
+    """A process that did not construct the store can add a key whose only leftover
+    cannot be served (a raw or durable ``.dat``, a ``.dat.tmp``, a lone ``.meta.json``)."""
+    _plant_leftover(tmp_path, kind)
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    assert "k" not in store, "the leftover must not be adopted as a tracked key"
+
+    assert _non_owner_adds_k(store) == 0, f"a {kind} leftover made a non-owner add fail"
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+def test_non_owner_add_over_a_dropped_codec_pair_is_still_refused(tmp_path: Path):
+    """The converse, pinned: a key whose ``<key>.npy`` is on disk is refused in a non-owner process.
+
+    A fresh store would adopt that stale pair and serve it, so it must be removed;
+    upstream lets only the constructing process remove it. Documented, not a defect.
+    """
+    _plant_leftover(tmp_path, "codec_pair")
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.pop("k", None)  # the owner holds no tracking for the key; the pair stays on disk
+    assert get_npy_path(store.cache_dir, "k").exists()
+
+    assert _non_owner_adds_k(store) == 3
+    assert get_npy_path(store.cache_dir, "k").exists(), "a refused overwrite removed the stale pair"
+
+
+def test_owner_add_over_a_durable_lone_memmap_replaces_it(tmp_path: Path):
+    """A durable (``purge_disk_on_gc=False``) session leaves a lone ``.dat``; a fresh store
+    in the same process replaces it and serves the new raster."""
+    _plant_leftover(tmp_path, "durable_lone_dat")
+    assert get_memmap_path(tmp_path, "k").exists()
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+
+    store.add_image_to_store("k", np.ones((6, 6), dtype=np.float32))
+
+    assert float(np.asarray(store["k"])[0, 0]) == 1.0
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name != "_tmp") == ["k.dat"]
+
+
+def test_presence_gate_uses_only_upstream_builders_of_known_shape(tmp_path: Path):
+    """Drift guard for the hand copy of upstream's artefact set.
+
+    The gate names three upstream builders; their built names must keep the shape the
+    base store's adoption scan and ``purge`` use, and the module must not import any of
+    the temporary-name builders (writers overwrite those names; they carry no weight).
+    """
+    expected = {"get_npy_path": "k.npy", "get_meta_path": "k.meta.json", "get_memmap_path": "k.dat"}
+    for name, built in expected.items():
+        assert name in STORE_PATH_BUILDERS
+        assert STORE_PATH_BUILDERS[name](tmp_path, "k").name == built
+
+    src = Path(disk_backed_image_store.__file__).read_text(encoding="utf-8")
+    for tmp_builder in ("get_npy_tmp_path", "get_meta_tmp_path", "get_memmap_tmp_path"):
+        assert src.count(tmp_builder) == 0, f"the store module still names {tmp_builder}"
 
 
 def test_purge_removes_the_codec_pair_and_the_memmap(tmp_path: Path):
