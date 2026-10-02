@@ -175,7 +175,7 @@ def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
             assert func is tiled_module._process_tile
             assert not any(value is gen for value in values), "the tiled generator itself is in a task payload"
 
-            own = [tile_id for tile_id in tile_ids if tile_id in values]
+            own = [tile_id for tile_id in tile_ids if any(isinstance(v, str) and v == tile_id for v in values)]
             assert len(own) == 1, f"a task must name exactly one tile id, got {own}"
             (tile_id,) = own
             other = next(t for t in tile_ids if t != tile_id)
@@ -183,7 +183,8 @@ def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
             generators = [value for value in values if isinstance(value, PointCloudImageGenerator)]
             assert len(generators) <= 1, "a task carries at most one tile generator"
             if call_index == 1:
-                assert generators == [gen.image_generators[tile_id]], "second call must reuse the tile's own generator"
+                assert len(generators) == 1, "second call must hand the tile its existing generator"
+                assert generators[0] is gen.image_generators[tile_id], "second call must reuse the tile's own generator"
 
             payload = pickle.dumps((func, args, kwargs))
             assert other.encode() not in payload, f"{tile_id}'s task payload contains {other}'s state"

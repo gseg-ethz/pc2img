@@ -143,12 +143,31 @@ class TiledPointCloudImageGenerator:
         features: list[str],
         n_jobs: int = -1,
     ) -> dict[ImageKey, DiskBackedImageData]:
+        """Generate ``features`` for every tile, one worker task per tile.
+
+        Each task is the module-level ``_process_tile`` called with that tile's own generator
+        (``None`` on the first call) and picklable inputs; the tiled generator itself is never
+        part of a task.
+        """
 
         tasks = self.pcd_tiles
 
         with parallel_config(backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"):
             results = Parallel()(
-                delayed(self._process_tile)(task.tile_id, task.tile_pcd, task.tile_kwargs, features) for task in tasks
+                delayed(_process_tile)(
+                    self.image_generators.get(task.tile_id),
+                    task.tile_id,
+                    task.tile_pcd,
+                    task.tile_kwargs,
+                    features,
+                    self.proj_cls,
+                    self.interp_cls,
+                    dict(self._proj_kwargs),
+                    dict(self._interp_kwargs),
+                    self._lazy_disk_cache_config,
+                    self._img_res,
+                )
+                for task in tasks
             )
 
         result_dict: dict[ImageKey, DiskBackedImageData] = {}
@@ -162,30 +181,38 @@ class TiledPointCloudImageGenerator:
 
         return result_dict
 
-    def _process_tile(
-        self,
-        tile_id: str,
-        tile_pcd: PointCloudData,
-        tile_kwargs: Mapping[str, Any],
-        features: list[str],
-    ) -> tuple[str, PointCloudImageGenerator, dict[str, DiskBackedImageData]]:
 
-        interp_kwargs: dict[str, Any] = dict(self._interp_kwargs)
-        proj_kwargs: dict[str, Any] = dict(self._proj_kwargs)
+def _process_tile(
+    image_gen: PointCloudImageGenerator | None,
+    tile_id: str,
+    tile_pcd: PointCloudData,
+    tile_kwargs: Mapping[str, Any],
+    features: list[str],
+    proj_cls: type[ProjectionStrategy],
+    interp_cls: type[InterpolationStrategy],
+    proj_kwargs: dict[str, Any],
+    interp_kwargs: dict[str, Any],
+    lazy_disk_cache_config: LazyDiskCacheConfig,
+    img_res: ImgRes,
+) -> tuple[str, PointCloudImageGenerator, dict[str, DiskBackedImageData]]:
+    """Generate ``features`` for one tile; the unit of work of a worker task.
 
+    Module-level so that a task serialises this function by reference and carries only the
+    arguments below - the tile's own generator (``None`` when it has to be built here) and
+    plain inputs - never the tiled generator or any other tile's state.
+    """
+
+    if image_gen is None:
         if "lazy_disk_cache_config" in interp_kwargs:
+            interp_kwargs = dict(interp_kwargs)
             interp_kwargs["lazy_disk_cache_config"] = interp_kwargs["lazy_disk_cache_config"].extend_cache_path(tile_id)
 
-        image_gen = (
-            self.image_generators[tile_id]
-            if tile_id in self.image_generators
-            else PointCloudImageGenerator(
-                pcd=tile_pcd,
-                proj=self.proj_cls(**tile_kwargs, **proj_kwargs),
-                interp=self.interp_cls(**interp_kwargs),
-                lazy_disk_cache_config=self._lazy_disk_cache_config.extend_cache_path(tile_id),
-                img_res=self._img_res,
-            )
+        image_gen = PointCloudImageGenerator(
+            pcd=tile_pcd,
+            proj=proj_cls(**tile_kwargs, **proj_kwargs),
+            interp=interp_cls(**interp_kwargs),
+            lazy_disk_cache_config=lazy_disk_cache_config.extend_cache_path(tile_id),
+            img_res=img_res,
         )
-        tile_images = image_gen.generate(features)
-        return tile_id, image_gen, tile_images
+    tile_images = image_gen.generate(features)
+    return tile_id, image_gen, tile_images
