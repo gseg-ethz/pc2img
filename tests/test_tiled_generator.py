@@ -200,6 +200,36 @@ def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
     )
 
 
+def test_duplicate_tile_ids_are_rejected_at_construction(synthetic_pcd) -> None:
+    """A repeated tile id raises ``ValueError`` at construction and names the id.
+
+    With a repeated id, later calls hand both tasks one generator, so one tile is computed
+    from the other's points, one tile is missing from the results, and with a pool the
+    one-store-in-two-processes race returns.
+    """
+    args = ((4, 4), "spherical", "linear")
+
+    with pytest.raises(ValueError, match="dup"):
+        TiledPointCloudImageGenerator(
+            [
+                PointCloudTile("dup", synthetic_pcd(n=8, seed=1), {}),
+                PointCloudTile("dup", synthetic_pcd(n=8, seed=2), {}),
+            ],
+            *args,
+        )
+
+    with pytest.raises(ValueError, match="'a'"):
+        TiledPointCloudImageGenerator(
+            [PointCloudTile(tid, synthetic_pcd(n=8, seed=i), {}) for i, tid in enumerate(("a", "b", "a"))],
+            *args,
+        )
+
+    TiledPointCloudImageGenerator(
+        [PointCloudTile(tid, synthetic_pcd(n=8, seed=i), {}) for i, tid in enumerate(("a", "b"))],
+        *args,
+    )
+
+
 def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(
     tmp_path, synthetic_pcd, monkeypatch: pytest.MonkeyPatch
 ) -> None:
