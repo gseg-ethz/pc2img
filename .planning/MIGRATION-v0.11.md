@@ -4,7 +4,7 @@ spec_version: "1.0"
 repo: pc2img
 baseline_ref: "91b4ab6"
 target_ref: "v0.11.0"
-generated_at: "2026-10-02T09:55:05Z"
+generated_at: "2026-10-02T12:33:24Z"
 bc_id_prefix: BC-P2I
 milestone: v1.0
 ---
@@ -23,12 +23,12 @@ the GSEGUtils 0.6 adoption) reshape pc2img's public surface and on-disk behavior
 identified changes: twenty `should-review` behavior/semantic/signature/dependency changes
 (concentrated in the bug-fix pass — registry error unification, projection refusals, RRIM validation
 timing, the on-disk cache codec — and in the GSEGUtils 0.6 adoption: the pin change, `del` versus
-`purge`, store-key refusals, the read-only store mapping, and one known limitation of repeated tiled
-generation), one `must-edit` on-disk-format change (the pickle-to-npy cache codec, which requires
+`purge`, store-key refusals, the read-only store mapping, and the per-tile tiled fan-out change with
+its worker-owned tile stores), one `must-edit` on-disk-format change (the pickle-to-npy cache codec, which requires
 regenerating a persisted cache directory), five `informational` entries recording closed or
 historical decisions (two dead-code removals, a dependency-audit attestation, a closed
 dependency-bridge conversion, and the publication metadata replacement), and four purely `additive`
-opt-in capabilities. The dominant categories are `dep-constraint` (eight entries) and
+opt-in capabilities. The dominant categories are `dep-constraint` (seven entries) and
 `error-behavior`/`semantic-change` should-review entries.
 Unlike PCHandler's v1.0 record, pc2img has no "no breaking import paths" invariant to uphold — one
 on-disk-format `must-edit` entry and two `surface-removed` entries are expected and classified here,
@@ -73,10 +73,10 @@ origin commit sha rather than re-asserted here.
 | BC-P2I-020 | dep-constraint | should-review | package distribution channel | publication pass, this phase — lands with the first promotion, not yet executed as of this draft | pc2img becomes installable from PyPI. Depend on `pc2img ~= 0.11` and drop any git-URL pin (e.g. a commented-out `@v2.0.0a1`-style reference). |
 | BC-P2I-021 | additive-or-fixed | informational | `README.rst`, `CITATION.cff`, `[project.urls]` | `f7e565c`, `1556e2c` — publication pass, metadata and documentation | Real install/quickstart/feature documentation and citation metadata replace the prior placeholder content; no code-level change for callers. |
 | BC-P2I-026 | dep-constraint | should-review | (resolver-level; `GSEGUtils`, `pchandler`, `numpy` pins and the `cuda11`/`cuda12` extras) | `a69ca05` — GSEGUtils 0.6 adoption | Depend on `GSEGUtils ~= 0.6.0`, `pchandler >= 2.1.1, ~= 2.1` and `numpy >= 2.2, < 2.4`; drop any pin on `GSEGUtils` 0.5.x. `pc2img[cuda11]` / `[cuda12]` now install only `cudf`, `cuspatial` and `geopandas` via `pchandler` 2.1.1 (the `cuml`, `cuproj` and `dask-cudf` packages are gone from the resolved stack). The pin is the compatible-release `~= 0.6.0` rather than a range up to 1.0 because a pre-1.0 GSEGUtils minor can withdraw surface pc2img uses (0.6.0 withdrew the private path builders the 0.5.x store wrapper called, which broke pc2img on a plain install); each GSEGUtils minor therefore ships with a pc2img release that has been run against it. Resolver-level only — no source changes downstream. |
-| BC-P2I-027 | semantic-change | should-review | `pc2img.image_cache.DiskBackedImageStore` (`__delitem__`, `pop`, `popitem`, `clear`, `purge`, `add_image_to_store`) | `1d1f9f2` — store delegates deletion and containment to GSEGUtils 0.6 | `del store[k]`, `pop`, `popitem` and `clear` now drop tracking only: the key's on-disk codec pair (`<key>.npy`, `<key>.meta.json`) stays in place, and a key that was offloaded to it is re-adopted by the next read of that key and by any fresh store opened over the directory. Call `purge(key)` to remove a key together with all of its key-derived files (`.dat` memmap, `.npy`, `.meta.json`); it also detaches the entry's finalizer, so the re-add-after-delete hazard of the old route does not apply to it. `add_image_to_store` over an existing key now removes the previous entry's `.dat` memmap as well as its codec pair, and can raise `StorePurgeForeignArtefactError` (the adopted entry is a symlink whose target lies outside the cache directory) or `StorePurgeRefusedError` (called from a process that did not construct the store) — both `RuntimeError` — or `StorePurgeIncompleteError` (an `OSError`). A wrong-type cache override or an `OSError` during the replacement build still loses the old entry. pc2img's own pipeline never calls `del`, `pop`, `popitem` or `clear` on a store, so a default pipeline run sees no change; code that used `del` as a delete-the-cache-file verb should call `purge`. |
+| BC-P2I-027 | semantic-change | should-review | `pc2img.image_cache.DiskBackedImageStore` (`__delitem__`, `pop`, `popitem`, `clear`, `purge`, `add_image_to_store`) | `1d1f9f2` — store delegates deletion and containment to GSEGUtils 0.6; `e3f7f5c` — an overwrite purges whenever the key is tracked or still has files on disk | `del store[k]`, `pop`, `popitem` and `clear` now drop tracking only: the key's on-disk codec pair (`<key>.npy`, `<key>.meta.json`) stays in place, and a key that was offloaded to it is re-adopted by the next read of that key and by any fresh store opened over the directory. Call `purge(key)` to remove a key together with all of its key-derived files (`.dat` memmap, `.npy`, `.meta.json`); it also detaches the entry's finalizer, so the re-add-after-delete hazard of the old route does not apply to it. `add_image_to_store` over a key now purges first whenever the key is tracked OR any of its six derived files (the `.dat` memmap, the `.npy` and `.meta.json` codec pair and their temporary names) is on disk, so a re-add after `del`, `pop`, `popitem` or `clear` removes the stale codec pair (a fresh store no longer serves the pre-overwrite raster) and detaches the dropped entry's cleanup hook (a retained reference to the dropped entry can no longer delete the replacement's `.dat` memmap when it is garbage-collected). A key that is neither tracked nor on disk never reaches `purge`, so a process that did not construct the store can still add new keys. The purge an overwrite performs can be refused under three independent conditions, each a `StorePurgeRefusedError` (a `RuntimeError`): a wrong process, i.e. the call is made from a process that did not construct the store (`StorePurgeRefusedError` itself — this includes the tile stores a `TiledPointCloudImageGenerator` builds in its workers with `n_jobs >= 2`, see BC-P2I-030); `StorePurgeForeignArtefactError`, when a built artefact (for example a symlink whose target lies outside the cache directory) or a live entry's own `cache_path` resolves outside the cache directory, which includes an entry inserted through the mapping setter with an outside `cache_path` — such an entry can no longer be overwritten through `add_image_to_store` (the baseline did not refuse it): re-point it, or give it an in-cache `cache_path`, first; and `StorePurgeAliasedArtefactError`, when a built artefact is a link to another key's artefact inside the cache directory. A file that cannot be unlinked raises `StorePurgeIncompleteError` (an `OSError`). A wrong-type cache override or an `OSError` during the replacement build still loses the old entry. pc2img's own pipeline never calls `del`, `pop`, `popitem` or `clear` on a store, so a default pipeline run sees no change; code that used `del` as a delete-the-cache-file verb should call `purge`. |
 | BC-P2I-028 | error-behavior | should-review | `pc2img.image_cache.DiskBackedImageStore`, `pc2img.tiled_generator.TIGSettings.extend_cache_paths`, `pc2img.tiled_generator.PointCloudTile.tile_id`, `pc2img.features.manager.FeatureManager.request` (scalar-field names reached through `generate()`) | `1d1f9f2`, `8e6b0a5` — store delegates key validation to GSEGUtils 0.6 | Store keys and cache-path segments are validated by GSEGUtils on every route and refused with `StoreKeyError` (a `ValueError`) when they contain `/` or `\`, contain `:`, end in `.` or a space, are `''`, `.` or `..`, or are a Windows device name; a planted directory symlink that resolves outside the cache directory raises `StoreContainmentError` (a `StoreKeyError`). Names the pipeline itself produces (feature names such as `hillshade_range_315_45` or `z1e-05`-style RRIM names, tile ids such as `tile_03`, hex digests, names with spaces) stay legal. Scalar-field names are the visible change: `a/b`, `GPS:time` and `x.` were accepted on GSEGUtils 0.5.3 (added, offloaded and read) and now raise at `generate()`. Rename the field, or address it through a name without those characters. Tile ids and pcd stems passed to `extend_cache_path` / `extend_cache_paths` follow the same rule; iof3D passes a filename stem there, see its own store-key handoff — the rule itself is upstream BC-GSEG-006 and is not restated here. A cache directory persisted by an older pc2img that already holds such a key is expected to be left un-adopted rather than to crash; that was not measured. |
 | BC-P2I-029 | signature-shape | should-review | `pc2img.image_cache.DiskBackedImageStore.store`, `pc2img.image_cache.DiskBackedImageStore.image_data` | `1d1f9f2` — store delegates to GSEGUtils 0.6 | `store` and its `image_data` alias now return a read-only mapping (`types.MappingProxyType`; the annotation is `Mapping[...]`, not `dict[...]`): item assignment and deletion raise `TypeError`, and `.pop`, `.clear`, `.update` and `.setdefault` raise `AttributeError`. Reading is unchanged. Mutate through `add_image_to_store`, `purge` or the store's own mapping interface. The upstream record is BC-GSEG-007 and is not restated here. |
-| BC-P2I-030 | dep-constraint | should-review | `pc2img.tiled_generator.TiledPointCloudImageGenerator.generate` | `a7d593d` — GSEGUtils 0.6.0 re-generation race recorded as a known limitation | Known limitation on GSEGUtils 0.6.0 (the pinned release): calling `generate()` more than once on the same `TiledPointCloudImageGenerator` instance with `n_jobs >= 2` and at least two tiles can fail, either with a loky pool error (`BrokenProcessPool` / `TerminatedWorkerError`, both `RuntimeError`) or with the worker's own `FileNotFoundError` (an `OSError`) on `<key>.dat.tmp` re-raised by joblib — one bug surfacing on either of two paths depending on timing, which is why the suite's regression test expects exactly these two exception families. Cause: every worker unpickles every tile's store, and the 0.6.0 memmap rebuild races on one fixed temporary file name. Use a fresh `TiledPointCloudImageGenerator` per `generate()` call (iof3D's pattern, unaffected) or `n_jobs=1`. Upstream report: https://github.com/gseg-ethz/GSEGUtils/issues/82; tracking issue: https://github.com/gseg-ethz/pc2img/issues/24. The entry closes when the GSEGUtils pin moves past the fixing release and the suite's expected-failure marker flips. |
+| BC-P2I-030 | semantic-change | should-review | `pc2img.tiled_generator.TiledPointCloudImageGenerator.generate`, `pc2img.tiled_generator.TiledPointCloudImageGenerator.image_generators` | `a7d593d` — the GSEGUtils 0.6.0 re-generation race first recorded; `4fbd966` — per-tile dispatch removes the race on the pc2img side | `generate()` now dispatches one loky task per tile, each carrying only that tile's generator (built in the worker on the first call and reused afterwards) and picklable inputs; before this change the whole tiled generator — every tile's store and point cloud — was pickled into every task (the baseline `91b4ab6` did the same). Consequence: repeated `generate()` calls on one instance with `n_jobs >= 2` and two or more tiles work on GSEGUtils 0.6.0 — 0 of 12 rounds failing after the change against 12 of 12 before — so the earlier known-limitation wording and its workaround are withdrawn; the suite's `test_tiled_regenerate_on_one_instance_with_two_workers` is a plain passing test. GSEGUtils#82 (https://github.com/gseg-ethz/GSEGUtils/issues/82) remains open and valid for any program that unpickles one store in several processes at once; pc2img no longer does. Remaining limit: with `n_jobs >= 2` each tile's `DiskBackedImageStore` is constructed inside a worker and owned by that worker's process id, so after `generate()` returns, `purge` and `add_image_to_store` over an existing key, called from the parent, raise `StorePurgeRefusedError` (a `RuntimeError`); an overwrite attempted from any other process is refused the same way. Repeated `generate()` on one instance did not trigger it in the measured runs, including with fresh worker processes, because features the store already tracks are not recomputed. Routes: use `n_jobs=1` for an instance that will be purged from or overwritten; build a fresh generator for each `generate()` call; or drop the tile's entry from `image_generators` and remove its cache sub-directory `<cache_path>/<tile_id>`. A fix is planned after 0.11.0. Tracking issue: https://github.com/gseg-ethz/pc2img/issues/24. |
 
 ## Additive changes
 
@@ -109,6 +109,9 @@ origin commit sha rather than re-asserted here.
   its containment helper and its `__delitem__` override were deleted (private names, no public-surface
   change); key validation and containment now come from GSEGUtils, and the observable effects are
   recorded in BC-P2I-027 and BC-P2I-028.
+- [GSEGUtils 0.6 adoption]: the private per-tile method of `TiledPointCloudImageGenerator` became a
+  module-level function (private name, no public-surface change); the observable effects are
+  recorded in BC-P2I-030.
 - [GSEGUtils 0.6 adoption]: `DiskBackedImageStore.offload`'s `features=` keyword name is unchanged
   (GSEGUtils's own method calls it `keys`); pre-existing naming difference, no action.
 - **Aggregation rule:** one `BC-P2I` entry per observable downstream effect. Two notes that share
@@ -144,7 +147,7 @@ affected_symbols resolves (or, for surface-removed entries, does NOT resolve).
 Tier 2 runtime-checks the mechanical claims a static AST walk cannot see
 (raised exception types and subtypes, kwarg presence, on-disk behavior, the
 resolved GSEGUtils/pchandler/numpy versions, the read-only store mapping).
-BC-P2I-030 has no runtime probe here: its proof is the suite's expected-failure
+BC-P2I-030 has no runtime probe here: its proof is the suite's passing regression
 test over repeated tiled generation. Exits 0 on
 success, 1 on any failure — including an empty BC_ENTRIES list, which is
 always a verifier bug, never a vacuous pass.
@@ -382,9 +385,12 @@ BC_ENTRIES: list[dict[str, object]] = [
     },
     {
         "id": "BC-P2I-030",
-        "category": "dep-constraint",
+        "category": "semantic-change",
         "severity": "should-review",
-        "affected_symbols": ["pc2img.tiled_generator.TiledPointCloudImageGenerator.generate"],
+        "affected_symbols": [
+            "pc2img.tiled_generator.TiledPointCloudImageGenerator.generate",
+            "pc2img.tiled_generator.TiledPointCloudImageGenerator.image_generators",
+        ],
     },
 ]
 
@@ -662,6 +668,25 @@ def _tier2_bc_p2i_027() -> str | None:
             return "BC-P2I-027: purge left the codec pair on disk"
         if "range" in store:
             return "BC-P2I-027: purge left the key tracked"
+
+        # A re-add after del purges whenever the key still has files on disk: the
+        # stale codec pair is removed and a fresh store never serves the old raster.
+        store.add_image_to_store("range", np.zeros((4, 4), dtype=np.float32))
+        store.offload_image_data_to_disk("range")
+        if not npy.exists():
+            return "BC-P2I-027: offloading did not produce the codec pair the re-add probe needs"
+        del store["range"]
+        store.add_image_to_store("range", np.ones((4, 4), dtype=np.float32))
+        if npy.exists():
+            return "BC-P2I-027: a re-add after del left the stale codec pair on disk"
+        store.offload_image_data_to_disk("range")
+        fresh = DiskBackedImageStore(config=LazyDiskCacheConfig(cache_path=Path(td), enable_caching=True))
+        try:
+            served = float(np.asarray(fresh["range"])[0, 0])
+        except KeyError:
+            return None  # nothing served: the pre-overwrite raster cannot have been served either
+        if served != 1.0:
+            return "BC-P2I-027: a fresh store served the pre-overwrite raster after del and re-add"
     return None
 
 
@@ -790,8 +815,8 @@ def _general_store_config_none_sentinel() -> str | None:
     return None
 
 
-# BC-P2I-030 deliberately has no runtime probe: its proof is the suite's
-# expected-failure test over repeated tiled generation with n_jobs >= 2.
+# BC-P2I-030 deliberately has no runtime probe: its proof is the suite's passing
+# regression test over repeated tiled generation with n_jobs >= 2.
 # Tier-2 dict of runtime checks, keyed by BC-P2I id. Every surface-removed
 # and signature-shape row (BC-P2I-004, 005, 008, 015) has an entry here.
 TIER2_CHECKS: dict[str, object] = {
