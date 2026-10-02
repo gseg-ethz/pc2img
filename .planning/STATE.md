@@ -2,18 +2,18 @@
 gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 07
-current_phase_name: gsegutils-0-6-adoption-0-11-0-release
-status: "Phase 06 shipped — PR #23"
-stopped_at: Phase 7 context gathered
-last_updated: "2026-10-01T16:46:40.671Z"
-last_activity: 2026-10-01
-last_activity_desc: Phase 07 planning complete
-state_head: 9c60b385859157b955d2d419b40b9c4f330e76e9
+current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
+status: executing
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-10-02T09:25:09.163Z"
+last_activity: 2026-10-02
+last_activity_desc: Phase 07 execution started
+state_head: 89356f878fb9bec74f29f7612be268cbcb7bcb54
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 69
-  completed_plans: 58
+  completed_plans: 59
 milestone_name: milestone
 ---
 
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 06 — Publication Hardening & Downstream Migration Record
+**Current focus:** Phase 07 — GSEGUtils 0.6 Adoption & 0.11.0 Release
 
 ## Current Position
 
-Phase: 07 (gsegutils-0-6-adoption-0-11-0-release) — READY TO EXECUTE
-Plan: Not started
-Status: Phase 06 shipped — PR #23
-Last activity: 2026-10-01 — Phase 07 planning complete
+Phase: 07 (GSEGUtils 0.6 Adoption & 0.11.0 Release) — EXECUTING
+Plan: 2 of 11
+Status: Ready to execute
+Last activity: 2026-10-02 — Phase 07 execution started
 
 Progress: [████████████████████] 35/35 plans ([█████████░] 86%)
 
@@ -121,6 +121,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P11 | 20min | 3 tasks | 0 files |
 | Phase 06 P12 | 25min | 3 tasks | 1 files |
 | Phase 06 P13 | ~35min | 3 tasks | 3 files |
+| Phase 07 P04 | 30 min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -230,6 +231,9 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06 P13]: Closing sweep found a NEW regression — origin/main is no longer an ancestor of origin/develop-gsd (06-11's graft broken by 06-12's second promotion, PR #20, with no follow-up back-merge); confirmed via a manual scheduled-health.yml dispatch (run 36735321144, failure) which opened GitHub issue #21 (ancestry-drift); NOT fixed (no git ref pushed per plan instruction) — owner decision required before phase close; CICD-02/BC-01 deliberately left un-marked
 - [Phase 06]: [Phase 06 P13]: Ancestry drift repaired on owner decision (fix now): back-merge PR #22 merged as a true merge (develop-gsd 0ac9df5); scheduled-health run 36737255378 success with the OK line; issue #21 closed; WINDOWS entry 2 fixed; CICD-02 marked complete
 - [Phase 06]: [Phase 06 P13]: Todo bookkeeping reconciled — ruff-lint-CI + pchandler-security-floor todos closed; round-5 hygiene todo split (4 phase-6 items ticked, resolves_phase retargeted to 7); GSEGUtils 0.6 todo confirmed already phase-7-scoped
+- [Phase 07]: 07-04: publish_composite_actions returns (flagged, unreadable-action violations); unreadable composite action is a named violation, nested local composites followed to a fixpoint
+- [Phase 07]: 07-04: preflight counts pull_request and pull_request_target jobs only; schedule/push/workflow_dispatch workflows contribute no matchable contexts (AR-08 closed)
+- [Phase 07]: 07-04: RTD post_checkout = conditional unshallow + fetch --tags --force; post_install asserts non-0.0.* version and non-shallow clone; proven by 07-rtd-simulation.sh
 
 ### Pending Todos
 
@@ -269,6 +273,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-01T13:25:30.362Z
-Stopped at: Phase 7 context gathered
-Resume file: .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-CONTEXT.md
+Last session: 2026-10-02T09:25:08.963Z
+Stopped at: Completed 07-04-PLAN.md
+Resume file: None
