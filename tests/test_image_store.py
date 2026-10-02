@@ -109,11 +109,12 @@ def test_offload_reload_round_trip(tmp_path: Path):
 # --------------------------------------------------------------------------- #
 # Overwrite / purge must remove the on-disk codec pair                        #
 #                                                                              #
-# `del store[key]` (and `pop` / `clear`) drop only the in-memory entry, so the #
-# `<key>.npy` + `<key>.meta.json` pair stays and a fresh store re-scans        #
-# `*.npy` on construction -- it would re-adopt and serve the stale             #
+# `del store[key]` (and `pop` / `popitem` / `clear`) drop only the in-memory   #
+# entry, so the `<key>.npy` + `<key>.meta.json` pair stays and a fresh store   #
+# re-scans `*.npy` on construction -- it would re-adopt and serve the stale    #
 # pre-overwrite raster. The overwrite path therefore calls `purge`, the        #
-# upstream delete verb that removes the memmap and the codec pair.             #
+# upstream delete verb that removes the memmap and the codec pair, whenever    #
+# the key is tracked OR any of its derived files is on disk.                   #
 # --------------------------------------------------------------------------- #
 def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
     a = _gray((6, 6))
@@ -844,9 +845,11 @@ def test_symlinked_entry_with_inside_target_purge_removes_link_and_payload(tmp_p
 # file outside the cache directory was overwritten with raster bytes through   #
 # such a store-inserted entry. Enforcing containment on an entry's own path    #
 # is upstream's concern and is not extended here -- the class docstring states #
-# the limit -- so this test pins the enforced half: an entry inserted through  #
-# `add_image_to_store` always carries a `cache_path` under the cache directory #
-# (because that route derives it from the validated path builder).             #
+# the limit, including that `purge` and the overwrite in `add_image_to_store`  #
+# refuse such an entry -- so this test pins the enforced half: an entry        #
+# inserted through `add_image_to_store` always carries a `cache_path` under    #
+# the cache directory (because that route derives it from the validated path   #
+# builder).                                                                    #
 # --------------------------------------------------------------------------- #
 def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path: Path):
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))

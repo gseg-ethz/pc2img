@@ -64,8 +64,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     and, with the default ``pickle_container=False``, :meth:`offload` writes
     through that entry-owned path even when it lies outside the cache directory;
     only :meth:`add_image_to_store` derives its entry's ``cache_path`` from the
-    validated builders. Pickling a store de-links cache-internal symlinks
-    (upstream behaviour).
+    validated builders. The same entry is also refused by :meth:`purge` and by
+    the overwrite in :meth:`add_image_to_store` (a ``StorePurgeForeignArtefactError``),
+    so a setter-inserted entry whose ``cache_path`` lies outside the cache
+    directory can no longer be replaced through that method. Pickling a store
+    de-links cache-internal symlinks (upstream behaviour).
 
     **Threat model, stated once.** Scalar-field names come from PLY/E57 property
     names read off point-cloud files, which are untrusted metadata, and the
@@ -78,7 +81,8 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     **Removal.** ``del store[key]``, ``pop`` and ``clear`` drop tracking only and
     leave every file in place (an offloaded key is re-adopted on the next read).
     :meth:`purge` is the delete verb: it drops tracking and removes the memmap and
-    the codec pair.
+    the codec pair. The overwrite in :meth:`add_image_to_store` removes those files
+    whether or not the key is still tracked.
     """
 
     @validate_call(config=ConfigDict(arbitrary_types_allowed=True))
@@ -125,9 +129,15 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            :class:`ValueError`) before anything else is touched;
         2. :func:`_assert_image_shape` raises :class:`AssertionError` for a bad
            raster shape;
-        3. an existing entry is removed with :meth:`purge`, which validates before
-           it mutates, removes the memmap and the codec pair, and detaches the
-           old entry's cleanup hook so it cannot delete the replacement's files;
+        3. an entry that is tracked, or whose key still has any of its six derived
+           files on disk (a key dropped with ``del`` / ``pop`` / ``clear`` and
+           left offloaded), is removed with :meth:`purge`. It validates before it
+           mutates, detaches every cleanup hook registered for the key (including
+           the one on an entry a caller dropped but still holds), and removes the
+           memmap and the codec pair, so a retained reference to the old entry
+           cannot delete the replacement's files when it is collected. A key that
+           is neither tracked nor on disk is never handed to :meth:`purge`, so a
+           worker process that did not construct the store can still add new keys;
         4. the replacement is built via :meth:`add_data_to_store`.
 
         Because the key check runs first, a key that both escapes the cache
@@ -137,19 +147,33 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         on-disk files untouched.
 
         **Overwrite failures.** The ``purge`` an overwrite performs can raise
-        upstream's refusal family: ``StorePurgeRefusedError`` (a
-        :class:`RuntimeError`, including its foreign-artefact subclass) for a
-        symlinked adopted entry whose target lies outside the cache directory and
-        when the calling process is not the one that constructed the store, and
+        upstream's refusal family, each a ``StorePurgeRefusedError`` (a
+        :class:`RuntimeError`), under three independent conditions:
+
+        - the calling process is not the one that constructed the store. Every
+          tile store a ``TiledPointCloudImageGenerator`` builds with
+          ``n_jobs >= 2`` is owned by a worker process, so after such a run the
+          parent's overwrite of an existing key is refused (use ``n_jobs=1``, a
+          fresh generator, or remove the tile sub-directory; see that class's
+          docstring);
+        - ``StorePurgeForeignArtefactError``, when a built artefact, or a live
+          entry's own ``cache_path``, resolves outside the cache directory. This
+          includes an entry inserted through the mapping setter with an outside
+          ``cache_path``: such an entry can no longer be overwritten through this
+          method (it could in earlier releases); re-point it, or give it an
+          in-cache ``cache_path``, first;
+        - ``StorePurgeAliasedArtefactError``, when a built artefact is a link to
+          another key's artefact inside the cache directory.
+
         ``StorePurgeIncompleteError`` (an :class:`OSError`, outside that family)
-        when a file could not be unlinked. These surface unwrapped. Two failures
-        after the purge still lose the old entry: a wrong-type cache override,
-        which fails validation inside :meth:`add_data_to_store`, and an
-        :class:`OSError` while the replacement's memmap is being created (for
-        example a full disk). Recovering the latter would need a
-        build-then-adopt primitive in the cache layer that owns the ``<key>.dat``
-        derivation. This is not a claim that every input-driven failure is caught
-        before the purge.
+        is raised when a file could not be unlinked. All of these surface
+        unwrapped. Two failures after the purge still lose the old entry: a
+        wrong-type cache override, which fails validation inside
+        :meth:`add_data_to_store`, and an :class:`OSError` while the replacement's
+        memmap is being created (for example a full disk). Recovering the latter
+        would need a build-then-adopt primitive in the cache layer that owns the
+        ``<key>.dat`` derivation. This is not a claim that every input-driven
+        failure is caught before the purge.
 
         ``del`` / ``pop`` / ``clear`` drop tracking only; they are not part of an
         overwrite. Only :meth:`purge` removes files.
