@@ -14,14 +14,25 @@ Authored test-first: every sensor here is RED until
   unresolved).
 """
 
+import hashlib
+import os
 import pickle
 import re
 import tempfile
+import types
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 import pytest
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StorePurgeRefusedError, get_meta_path, get_npy_path
+from GSEGUtils.lazy_disk_cache import (
+    LazyDiskCacheConfig,
+    StoreKeyError,
+    StorePurgeRefusedError,
+    get_meta_path,
+    get_npy_path,
+    is_valid_store_key,
+)
 
 from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
 
@@ -248,6 +259,9 @@ def _escape_layout(tmp_path: Path) -> tuple[Path, LazyDiskCacheConfig]:
     """
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
+    # An embedded-traversal key (``a/../../victim``) can only resolve past the
+    # cache directory when its first segment exists, so create it.
+    (cache_dir / "a").mkdir()
     sentinel = tmp_path / "victim.npy"
     sentinel.write_bytes(_SENTINEL_BYTES)
     cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
@@ -255,11 +269,59 @@ def _escape_layout(tmp_path: Path) -> tuple[Path, LazyDiskCacheConfig]:
 
 
 def _escaping_keys(tmp_path: Path) -> dict[str, str]:
-    """Three spellings of the same escape, all resolving to ``tmp_path/victim.npy``."""
+    """Spellings a store key must never be allowed to take.
+
+    The first three resolve to ``tmp_path/victim.npy``, above the cache
+    directory. ``empty``, ``dot`` and ``dotdot`` resolve onto the cache
+    directory itself. ``nested`` stays inside the cache directory but carries a
+    path separator, and a legal store key is a single path segment.
+    """
     return {
         "parent_segment": "../victim",
         "absolute": str(tmp_path / "victim"),
         "embedded_traversal": "a/../../victim",
+        "nested": "sub/nested",
+        "empty": "",
+        "dot": ".",
+        "dotdot": "..",
+    }
+
+
+def _tree(root: Path) -> dict[str, object]:
+    """Snapshot every path under ``root`` without following any link.
+
+    A symlink is recorded by its target (``os.readlink``) and never opened, so a
+    dangling or escaping link cannot make the snapshot itself raise. Anything
+    under a top-level ``_tmp`` directory is skipped: that is where the test
+    session's ``tempfile`` default is redirected, and it is not part of the
+    cache directory or its surroundings.
+    """
+    snapshot: dict[str, object] = {}
+    for path in root.rglob("*"):
+        rel = path.relative_to(root)
+        if rel.parts[0] == "_tmp":
+            continue
+        key = rel.as_posix()
+        if path.is_symlink():
+            snapshot[key] = ("symlink", os.readlink(path))
+        elif path.is_dir():
+            snapshot[key] = None
+        else:
+            snapshot[key] = path.read_bytes()
+    return snapshot
+
+
+def test_tree_snapshot_records_links_by_target_and_survives_a_dangling_one(tmp_path: Path):
+    (tmp_path / "file.bin").write_bytes(b"abc")
+    (tmp_path / "dir").mkdir()
+    (tmp_path / "dangling").symlink_to(tmp_path / "does-not-exist")
+    (tmp_path / "_tmp").mkdir()
+    (tmp_path / "_tmp" / "litter").write_bytes(b"ignored")
+
+    assert _tree(tmp_path) == {
+        "file.bin": b"abc",
+        "dir": None,
+        "dangling": ("symlink", str(tmp_path / "does-not-exist")),
     }
 
 
@@ -313,6 +375,178 @@ def test_escaping_key_add_refuses_before_writing_outside_cache_dir(tmp_path: Pat
 
     assert sentinel.exists(), "escaping insert removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES, "escaping insert overwrote a file outside the cache directory"
+
+
+# The six ways a key reaches the disk. Each runs with a store built on the
+# escape layout, so a stray write anywhere under ``tmp_path`` shows up in the
+# snapshot taken before the call.
+def _route_add(store: DiskBackedImageStore, key: str) -> None:
+    store.add_image_to_store(key, _gray((4, 4)))
+
+
+def _route_setitem(store: DiskBackedImageStore, key: str) -> None:
+    store[key] = DiskBackedImageData(_gray((4, 4)))
+
+
+def _route_add_then_offload(store: DiskBackedImageStore, key: str) -> None:
+    store.add_image_to_store(key, _gray((4, 4)))
+    store.offload_image_data_to_disk(key)
+
+
+def _route_purge(store: DiskBackedImageStore, key: str) -> None:
+    store.purge(key)
+
+
+def _route_getitem(store: DiskBackedImageStore, key: str) -> None:
+    _ = store[key]
+
+
+def _route_add_data(store: DiskBackedImageStore, key: str) -> None:
+    store.add_data_to_store(key, _gray((4, 4)))
+
+
+_ROUTES: dict[str, Callable[[DiskBackedImageStore, str], None]] = {
+    "add": _route_add,
+    "setitem": _route_setitem,
+    "add_then_offload": _route_add_then_offload,
+    "purge": _route_purge,
+    "getitem": _route_getitem,
+    "add_data": _route_add_data,
+}
+
+
+@pytest.mark.parametrize("route", list(_ROUTES))
+@pytest.mark.parametrize("spelling", list(_escaping_keys(Path("/unused"))))
+def test_escaping_key_refused_on_every_route_and_nothing_written_anywhere(tmp_path: Path, spelling: str, route: str):
+    """Every refused spelling leaves the WHOLE temp tree bit-identical, on every route.
+
+    The snapshot covers the cache directory, the sentinel above it and anything
+    else under ``tmp_path``, so a stray file anywhere (not only the one path a
+    known exploit targeted) fails the comparison. The ``nested`` spelling pins
+    that nesting under the cache directory is no longer an accepted key.
+    """
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    key = _escaping_keys(tmp_path)[spelling]
+    before = _tree(tmp_path)
+
+    with pytest.raises(ValueError):
+        _ROUTES[route](store, key)
+
+    assert _tree(tmp_path) == before, "a refused key changed the temp tree"
+    assert key not in store, "a refused key was tracked"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+def test_escaping_key_with_bad_shape_is_refused_by_containment_not_shape(tmp_path: Path):
+    """An escaping key with a bad-shape raster raises the key error, not ``AssertionError``.
+
+    The key check precedes the shape check in ``add_image_to_store``. This is the
+    one test that pins the upstream subtype; everywhere else the asserted public
+    contract is ``ValueError``.
+    """
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+
+    with pytest.raises(ValueError) as excinfo:
+        store.add_image_to_store("../victim", np.ones(4, dtype=np.float32))
+
+    assert isinstance(excinfo.value, StoreKeyError)
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+def test_del_drops_tracking_only_and_an_offloaded_key_is_readopted(tmp_path: Path):
+    arr = _gray((6, 6))
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", arr)
+    store.offload_image_data_to_disk("range")
+
+    del store["range"]
+
+    assert get_npy_path(store.cache_dir, "range").exists()
+    assert get_meta_path(store.cache_dir, "range").exists()
+    np.testing.assert_array_equal(np.asarray(store["range"]), arr)  # re-adopted on read
+
+    fresh = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    assert "range" in fresh
+
+
+def test_store_mapping_is_read_only(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((4, 4)))
+
+    with pytest.raises(TypeError):
+        store.store["x"] = DiskBackedImageData(_gray((2, 2)))  # type: ignore[index]
+    with pytest.raises(TypeError):
+        del store.store["range"]  # type: ignore[attr-defined]
+
+    assert isinstance(store.image_data, types.MappingProxyType)
+    assert "x" not in store
+    assert "range" in store
+
+
+# --------------------------------------------------------------------------- #
+# The key rule is upstream's; these characterize it over the names pc2img     #
+# produces. No pc2img code checks any of this.                                 #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "name",
+    [
+        "range",
+        "aspect",
+        "slope_deg",
+        "hillshade_range_315_45",
+        "grad_range_px0.5",
+        "norm_(range,2,98)",
+        "rrim_pack_(range,r16,d8,z1.2345678)",
+        "rrim_pack_(range,r16,d8,z1e-05)",
+        "rrim_component_(structure,range,r16,d8)",
+        "scalar_field_intensity",
+        "scalar_field_Scalar field",
+        "tile_03",
+        "tile-3",
+        "0_0",
+        "x_-1_-1",
+        "0",
+        "1.5",
+        "tile 03",
+        hashlib.sha256(b"tile").hexdigest(),
+        "triangles",
+        "simplices",
+        "verts",
+        "bary",
+    ],
+)
+def test_realistic_keys_and_segments_are_legal_upstream(name: str):
+    assert is_valid_store_key(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        ".",
+        "..",
+        "CON",
+        "tile_03/range",
+        "tile_03.",
+        "scalar_field_a/b",
+        "scalar_field_a\\b",
+        "scalar_field_GPS:time",
+        "scalar_field_x.",
+    ],
+)
+def test_hostile_keys_and_segments_are_refused_upstream(name: str):
+    assert not is_valid_store_key(name)
+
+
+def test_empty_raster_overwrite_is_accepted(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((4, 4)))
+
+    store.add_image_to_store("range", np.empty((0, 0), dtype=np.float32))
+
+    assert np.asarray(store["range"]).shape == (0, 0)
 
 
 @pytest.mark.parametrize(
