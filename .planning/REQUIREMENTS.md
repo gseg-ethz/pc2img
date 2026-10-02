@@ -13,7 +13,7 @@ Milestone-1 scope: hardening + adaptation for publication readiness. Each maps t
 - [x] **DEP-02**: pc2img runs against the current GSEGUtils release (`lazy_disk_cache`, `config`, `base_types` usage), respecting the `gsegutils`/`GSEGUtils` casing gotcha
 - [x] **DEP-03**: `pyproject.toml` re-enables and correctly pins `pchandler` + `GSEGUtils`, and resolves the numpy pin conflict (numpy 2.x)
 - [x] **DEP-04**: The dev environment is reproducibly set up with `uv` (documented; lockfile committed)
-- [ ] **DEP-05**: pc2img runs against GSEGUtils >= 0.6 with its `DiskBackedImageStore` containment override removed (containment enforced upstream), every escape route re-pinned by a test
+- [x] **DEP-05**: pc2img runs against GSEGUtils >= 0.6 with its `DiskBackedImageStore` containment override removed (containment enforced upstream), every escape route re-pinned by a test
 
 ### Branch Untangling
 
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CICD-01 | Phase 3 | Complete |
 | CICD-02 | Phase 6 | Complete |
 | BC-01 | Phase 6 (draft), Phase 7 (finalise) | Pending |
-| DEP-05 | Phase 7 | Pending |
+| DEP-05 | Phase 7 | Complete |
 | PERF-02 | Phase 5 | Complete (v2 item pulled forward — D-03; `nanconv` float32 default + `compute_dtype` opt-in, 05-03) |
 | PERF-03 | Phase 5 | Complete (v2 item pulled forward — D-03; Delaunay culling-threshold kwargs, 05-05) |
 
