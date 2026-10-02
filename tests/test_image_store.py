@@ -14,6 +14,7 @@ Authored test-first: every sensor here is RED until
   unresolved).
 """
 
+import gc
 import hashlib
 import os
 import pickle
@@ -33,6 +34,7 @@ from GSEGUtils.lazy_disk_cache import (
     get_npy_path,
     is_valid_store_key,
 )
+from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
 
 from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
 
@@ -133,6 +135,96 @@ def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
         served = None  # cache miss: A purged, B never offloaded — acceptable
     if served is not None:
         assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
+
+
+@pytest.mark.parametrize("route", ["del", "pop", "popitem", "clear"])
+def test_overwrite_after_a_drop_route_never_leaves_a_stale_raster_for_a_fresh_store(tmp_path: Path, route: str):
+    """Every drop route leaves the codec pair on disk and untracks the key; the
+    overwrite must still remove that pair, otherwise a fresh store adopts it and
+    serves the pre-overwrite raster as a cache hit."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+    store.offload_image_data_to_disk("range")
+    assert get_npy_path(store.cache_dir, "range").exists()
+
+    if route == "del":
+        del store["range"]
+    elif route == "pop":
+        store.pop("range")
+    elif route == "popitem":
+        popped_key, _ = store.popitem()
+        assert popped_key == "range"
+    else:
+        store.clear()
+    assert "range" not in store  # tracking dropped, files still on disk
+    assert get_npy_path(store.cache_dir, "range").exists()
+
+    store.add_image_to_store("range", b)
+
+    assert not get_npy_path(store.cache_dir, "range").exists(), "stale .npy survived the overwrite"
+    assert not get_meta_path(store.cache_dir, "range").exists(), "stale .meta.json survived the overwrite"
+    np.testing.assert_array_equal(np.asarray(store["range"]), b)
+
+    fresh = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    if "range" in fresh:
+        served = np.asarray(fresh["range"])
+        assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
+
+
+def test_retained_reference_to_a_dropped_entry_does_not_delete_the_replacement_memmap_on_gc(tmp_path: Path):
+    """The dropped entry's cleanup hook must have been detached by the overwrite's
+    purge; otherwise it unlinks whatever now occupies its recorded path when the
+    caller's retained reference is collected."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+    old = store.store["range"]  # strong reference to the entry object
+    assert old is not None
+    del store["range"]
+
+    store.add_image_to_store("range", b)
+    dat = get_memmap_path(store.cache_dir, "range")
+    assert dat.exists()
+
+    del old
+    gc.collect()
+
+    assert dat.exists(), "collecting the dropped entry deleted the replacement's memmap"
+    np.testing.assert_array_equal(np.asarray(store["range"]), b)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+def test_adding_a_new_key_from_another_process_is_not_refused(tmp_path: Path):
+    """The tiled workers add new keys into stores they did not construct on every
+    later ``generate()``, so the overwrite route must only ever reach ``purge``
+    for a key that is tracked or has files on disk. An EXISTING key from another
+    process is still refused: upstream's owner-process rule on ``purge``."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+
+    def _run_in_child(key: str) -> int:
+        pid = os.fork()
+        if pid == 0:  # pragma: no cover - runs in the forked child
+            try:
+                store.add_image_to_store(key, b)
+                os._exit(0)
+            except StorePurgeRefusedError:
+                os._exit(3)
+            except BaseException:
+                os._exit(4)
+        _, status = os.waitpid(pid, 0)
+        return os.waitstatus_to_exitcode(status)
+
+    assert _run_in_child("fresh_key") == 0, "a brand-new key was refused in a non-owner process"
+    assert _run_in_child("range") == 3, "an existing key was not refused in a non-owner process"
 
 
 def test_purge_removes_the_codec_pair_and_the_memmap(tmp_path: Path):
