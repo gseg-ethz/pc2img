@@ -184,7 +184,7 @@ def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
     )
     pooled_flags = _purge_flags(pooled, pooled.generate(["range"], n_jobs=2))
     assert pooled_flags, "no entries were inspected"
-    assert all(flag is False for flag in pooled_flags), pooled_flags
+    assert all(flag is False for flag in pooled_flags), f"expected purge_disk_on_gc is False everywhere: {pooled_flags}"
 
     sequential = TiledPointCloudImageGenerator(
         _tiles(),
@@ -195,7 +195,9 @@ def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
     )
     sequential_flags = _purge_flags(sequential, sequential.generate(["range"], n_jobs=1))
     assert sequential_flags, "no entries were inspected"
-    assert all(flag is True for flag in sequential_flags), sequential_flags
+    assert all(flag is True for flag in sequential_flags), (
+        f"expected purge_disk_on_gc is True everywhere: {sequential_flags}"
+    )
 
 
 def test_generate_dispatches_one_tile_per_task_without_pickling_the_generator(

@@ -171,6 +171,14 @@ class TiledPointCloudImageGenerator:
         Each task is the module-level ``_process_tile`` called with that tile's own generator
         (``None`` on the first call) and picklable inputs; the tiled generator itself is never
         part of a task.
+
+        Entries returned by a pooled call (any ``n_jobs`` other than 1), and the entries of the
+        stores kept in ``image_generators``, no longer delete their ``.dat`` memmap on garbage
+        collection: each pickle round-trip gives the parent another entry object on the same
+        file, so one released call's results would otherwise unlink the files a later call's
+        results read. The tile directory keeps those files until ``purge`` is called or the
+        directory is removed. With ``n_jobs=1`` the results are the stores' own entries and
+        behave as before.
         """
 
         tasks = self.pcd_tiles
@@ -202,7 +210,29 @@ class TiledPointCloudImageGenerator:
             }
             result_dict.update(tile_dict)
 
+        if n_jobs != 1:
+            _release_gc_ownership(result_dict, self.image_generators)
+
         return result_dict
+
+
+def _release_gc_ownership(
+    result_dict: Mapping[ImageKey, DiskBackedImageData],
+    image_generators: Mapping[str, PointCloudImageGenerator],
+) -> None:
+    """Disable purge-on-garbage-collection on every pooled result and live store entry.
+
+    A pooled run returns parent-side copies of entries that share one ``<tile>/<key>.dat`` path
+    with the copies every other call returns. Each copy carries its own garbage-collection
+    finalizer, so whichever is collected first would unlink the file the others read. Only the
+    public ``disable_purge()`` is used.
+    """
+    for entry in result_dict.values():
+        entry.disable_purge()
+    for image_gen in image_generators.values():
+        for entry in image_gen.feature_mgr.cache_store.store.values():
+            if entry is not None:
+                entry.disable_purge()
 
 
 def _process_tile(
