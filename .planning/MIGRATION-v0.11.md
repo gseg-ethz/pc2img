@@ -142,7 +142,10 @@ Tier 1 AST-walks the four public __init__.py barrels' `__all__` list literals an
 asserts every non-dotted top-level symbol named in a BC-P2I entry's
 affected_symbols resolves (or, for surface-removed entries, does NOT resolve).
 Tier 2 runtime-checks the mechanical claims a static AST walk cannot see
-(raised exception types, kwarg presence, on-disk behavior). Exits 0 on
+(raised exception types and subtypes, kwarg presence, on-disk behavior, the
+resolved GSEGUtils/pchandler/numpy versions, the read-only store mapping).
+BC-P2I-030 has no runtime probe here: its proof is the suite's expected-failure
+test over repeated tiled generation. Exits 0 on
 success, 1 on any failure — including an empty BC_ENTRIES list, which is
 always a verifier bug, never a vacuous pass.
 """
@@ -345,6 +348,44 @@ BC_ENTRIES: list[dict[str, object]] = [
         "severity": "additive",
         "affected_symbols": ["pc2img.features.rrim"],
     },
+    {
+        "id": "BC-P2I-026",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": [],
+    },
+    {
+        "id": "BC-P2I-027",
+        "category": "semantic-change",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.image_cache.DiskBackedImageStore"],
+    },
+    {
+        "id": "BC-P2I-028",
+        "category": "error-behavior",
+        "severity": "should-review",
+        "affected_symbols": [
+            "pc2img.image_cache.DiskBackedImageStore",
+            "pc2img.tiled_generator.TIGSettings.extend_cache_paths",
+            "pc2img.tiled_generator.PointCloudTile.tile_id",
+            "pc2img.features.manager.FeatureManager.request",
+        ],
+    },
+    {
+        "id": "BC-P2I-029",
+        "category": "signature-shape",
+        "severity": "should-review",
+        "affected_symbols": [
+            "pc2img.image_cache.DiskBackedImageStore.store",
+            "pc2img.image_cache.DiskBackedImageStore.image_data",
+        ],
+    },
+    {
+        "id": "BC-P2I-030",
+        "category": "dep-constraint",
+        "severity": "should-review",
+        "affected_symbols": ["pc2img.tiled_generator.TiledPointCloudImageGenerator.generate"],
+    },
 ]
 
 
@@ -545,7 +586,7 @@ def _tier2_bc_p2i_017() -> str | None:
     from pathlib import Path
 
     import numpy as np
-    from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+    from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StoreKeyError
 
     from pc2img.image_cache.disk_backed_image_store import DiskBackedImageStore
 
@@ -555,12 +596,140 @@ def _tier2_bc_p2i_017() -> str | None:
         store = DiskBackedImageStore(config=LazyDiskCacheConfig(cache_path=cache_dir))
         try:
             store.add_image_to_store("../victim", np.zeros((2, 2), dtype=np.float32))
-        except ValueError:
+        except StoreKeyError:
+            # The upstream subtype of ValueError (pinned by running the call).
             pass
+        except ValueError as exc:
+            return f"BC-P2I-017: escaping key refused with a bare {type(exc).__name__}, expected StoreKeyError"
         except Exception as exc:
             return f"BC-P2I-017: expected ValueError for an escaping key, got {type(exc).__name__}"
         else:
             return "BC-P2I-017: an escaping store key was not refused"
+    return None
+
+
+def _tier2_bc_p2i_026() -> str | None:
+    # dep-constraint: the resolved environment is the one the pins describe —
+    # GSEGUtils 0.6.x (and not a stale 0.5.x: the private npy-path builder the
+    # 0.5 store wrapper called is gone), pchandler >= 2.1.1, numpy >= 2.2.
+    import importlib.metadata as md
+    import re
+
+    from GSEGUtils.lazy_disk_cache import DiskBackedStore
+
+    def _version_tuple(dist: str) -> tuple[int, ...]:
+        return tuple(int(n) for n in re.findall(r"\d+", md.version(dist))[:3])
+
+    gseg = md.version("GSEGUtils")
+    if not gseg.startswith("0.6."):
+        return f"BC-P2I-026: resolved GSEGUtils is {gseg}, expected 0.6.x"
+    if hasattr(DiskBackedStore, "_get_npy_path"):
+        return "BC-P2I-026: DiskBackedStore still has the 0.5.x private _get_npy_path (a stale GSEGUtils)"
+    if _version_tuple("pchandler") < (2, 1, 1):
+        return f"BC-P2I-026: resolved pchandler is {md.version('pchandler')}, expected >= 2.1.1"
+    if _version_tuple("numpy") < (2, 2):
+        return f"BC-P2I-026: resolved numpy is {md.version('numpy')}, expected >= 2.2"
+    return None
+
+
+def _tier2_bc_p2i_027() -> str | None:
+    # semantic-change: del drops tracking only (the codec pair stays and the key
+    # is re-adopted on the next read); purge removes the key and its files.
+    import tempfile
+    from pathlib import Path
+
+    import numpy as np
+    from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, get_npy_path
+
+    from pc2img.image_cache.disk_backed_image_store import DiskBackedImageStore
+
+    with tempfile.TemporaryDirectory() as td:
+        store = DiskBackedImageStore(config=LazyDiskCacheConfig(cache_path=Path(td), enable_caching=True))
+        store.add_image_to_store("range", np.zeros((4, 4), dtype=np.float32))
+        store.offload_image_data_to_disk("range")
+        npy = get_npy_path(store.cache_dir, "range")
+        if not npy.exists():
+            return "BC-P2I-027: offloading did not produce the codec pair the probe needs"
+        del store["range"]
+        if not npy.exists():
+            return "BC-P2I-027: del removed the codec pair (expected: tracking dropped only)"
+        try:
+            store["range"]
+        except KeyError:
+            return "BC-P2I-027: an offloaded key was not re-adopted by the next read after del"
+        store.purge("range")
+        if npy.exists():
+            return "BC-P2I-027: purge left the codec pair on disk"
+        if "range" in store:
+            return "BC-P2I-027: purge left the key tracked"
+    return None
+
+
+def _tier2_bc_p2i_028() -> str | None:
+    # error-behavior: nested / illegal keys and cache-path segments are refused
+    # with GSEGUtils' StoreKeyError, a ValueError subclass, on every route the
+    # entry names; kept small — no point clouds, temp dirs only.
+    import tempfile
+    from pathlib import Path
+
+    import numpy as np
+    from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig, StoreKeyError
+
+    from pc2img.core import ImgRes
+    from pc2img.image_cache.disk_backed_image_store import DiskBackedImageStore
+    from pc2img.tiled_generator import TIGSettings
+
+    with tempfile.TemporaryDirectory() as td:
+        store = DiskBackedImageStore(config=LazyDiskCacheConfig(cache_path=Path(td)))
+        for key in ("a/b", "GPS:time", "x."):
+            try:
+                store.add_image_to_store(key, np.zeros((2, 2), dtype=np.float32))
+            except StoreKeyError:
+                continue
+            except Exception as exc:
+                return f"BC-P2I-028: key {key!r} raised {type(exc).__name__}, expected StoreKeyError"
+            return f"BC-P2I-028: key {key!r} was not refused"
+        settings = TIGSettings(
+            img_res=ImgRes(4, 4),
+            proj_cls="spherical",
+            interp_cls="linear",
+            lazy_disk_cache_config=LazyDiskCacheConfig(),
+        )
+        try:
+            settings.extend_cache_paths("../x")
+        except ValueError:
+            pass
+        except Exception as exc:
+            return f"BC-P2I-028: extend_cache_paths('../x') raised {type(exc).__name__}, expected ValueError"
+        else:
+            return "BC-P2I-028: extend_cache_paths('../x') was not refused"
+    return None
+
+
+def _tier2_bc_p2i_029() -> str | None:
+    # signature-shape: store / image_data are read-only mappings.
+    import tempfile
+    import types
+    from pathlib import Path
+
+    from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+
+    from pc2img.image_cache.disk_backed_image_store import DiskBackedImageStore
+
+    with tempfile.TemporaryDirectory() as td:
+        store = DiskBackedImageStore(config=LazyDiskCacheConfig(cache_path=Path(td)))
+        if not isinstance(store.store, types.MappingProxyType):
+            return f"BC-P2I-029: store is {type(store.store).__name__}, expected a MappingProxyType"
+        if not isinstance(store.image_data, types.MappingProxyType):
+            return f"BC-P2I-029: image_data is {type(store.image_data).__name__}, expected a MappingProxyType"
+        try:
+            store.store["x"] = None  # type: ignore[index]
+        except TypeError:
+            pass
+        except Exception as exc:
+            return f"BC-P2I-029: store item assignment raised {type(exc).__name__}, expected TypeError"
+        else:
+            return "BC-P2I-029: store item assignment was accepted"
     return None
 
 
@@ -621,6 +790,8 @@ def _general_store_config_none_sentinel() -> str | None:
     return None
 
 
+# BC-P2I-030 deliberately has no runtime probe: its proof is the suite's
+# expected-failure test over repeated tiled generation with n_jobs >= 2.
 # Tier-2 dict of runtime checks, keyed by BC-P2I id. Every surface-removed
 # and signature-shape row (BC-P2I-004, 005, 008, 015) has an entry here.
 TIER2_CHECKS: dict[str, object] = {
@@ -636,6 +807,10 @@ TIER2_CHECKS: dict[str, object] = {
     "BC-P2I-017": _tier2_bc_p2i_017,
     "BC-P2I-022": _tier2_bc_p2i_022,
     "BC-P2I-024": _tier2_bc_p2i_024,
+    "BC-P2I-026": _tier2_bc_p2i_026,
+    "BC-P2I-027": _tier2_bc_p2i_027,
+    "BC-P2I-028": _tier2_bc_p2i_028,
+    "BC-P2I-029": _tier2_bc_p2i_029,
 }
 
 # Runtime probes not tied to a single BC-P2I id — they check Internal &
