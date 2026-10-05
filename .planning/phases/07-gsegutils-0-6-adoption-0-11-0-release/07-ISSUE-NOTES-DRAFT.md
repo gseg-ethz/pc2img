@@ -85,3 +85,26 @@ gh issue close 24 --repo gseg-ethz/pc2img --comment "<the owner's closing line>"
 | Decision | Date | Variant | Comment URLs |
 |----------|------|---------|--------------|
 | #82 note DROPPED by owner (upstream issue stays about the upstream defect; pc2img status belongs in #24). #24 comment ON HOLD: gap-round-1 review (07-REVIEW-GAP1.md CR-01) found the second pooled generate() returns unreadable rasters, so the drafted 'fix' text is not yet true; redraft after gap round 2 is reviewed. Nothing posted. | 2026-10-02 | — | — |
+
+## Posted (2026-10-05)
+
+- #82 note: DROPPED by owner (upstream issue stays about the upstream defect).
+- #24 comment: redrafted after gap rounds 1-6 (v1 variants above are superseded), owner-approved verbatim and posted:
+  https://github.com/gseg-ethz/pc2img/issues/24#issuecomment-5994949825 (read-back identical apart from GitHub's trailing newline).
+- #24 close point: at 0.11.0 on PyPI (variant B), executed in 07-11.
+
+### Posted text
+
+```
+Update: the cause was on the pc2img side as much as upstream, and a fix will ship in 0.11.0.
+
+Cause: `TiledPointCloudImageGenerator.generate()` handed joblib a bound method, so every loky task carried the whole generator, meaning every tile's store and point cloud. Every worker therefore unpickled every tile's store at once, which is what reached the GSEGUtils 0.6.0 race on the fixed `<key>.dat.tmp` name (GSEGUtils#82).
+
+Fix: `generate()` now dispatches a module-level per-tile function that receives only that tile's generator and picklable inputs, so a store is unpickled by one process per call. Measured on the scenario from this report (two tiles, `n_jobs=2`, three `generate()` calls on one instance, every raster read after each call): 12 of 12 rounds failed before, 0 of 12 after. Repeated calls on one instance, including calls that mix `n_jobs` values, return readable rasters. `tests/test_tiled_generator.py::test_tiled_regenerate_on_one_instance_with_two_workers` is now a plain passing test instead of an expected failure, so the workaround in the description is no longer needed from 0.11.0 on.
+
+What remains, documented in the 0.11.0 docstrings as known limitations until GSEGUtils#83 is fixed (planned for pc2img 0.11.1):
+- With caching enabled, results and generators of successful calls no longer delete their cache files when they are released; those files stay on disk until `purge()` or until you remove the directory (after a failed call, see the next point). Using a `cache_path` you clean up yourself is the simplest route.
+- After a tiled `generate()` call raises with caching enabled, a retry on the same generator may lose its files. Retry with a fresh `TiledPointCloudImageGenerator` over a fresh `cache_path`; in a script you can instead let the exception go out of scope and call `gc.collect()` before retrying.
+
+This issue will be closed when 0.11.0 is on PyPI.
+```
