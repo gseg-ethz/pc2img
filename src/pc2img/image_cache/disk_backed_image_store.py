@@ -66,7 +66,19 @@ def _refuse_linked_write_path(cache_dir: Path, key: str) -> None:
     :class:`~GSEGUtils.lazy_disk_cache.StorePurgeAliasedArtefactError`, one resolving
     outside raises :class:`~GSEGUtils.lazy_disk_cache.StorePurgeForeignArtefactError`;
     both are :class:`~GSEGUtils.lazy_disk_cache.StorePurgeRefusedError`. Nothing has
-    been written or removed when either is raised. Each path is built through the
+    been written or removed when either is raised.
+
+    The check classifies by WHERE the link resolves, not by the target's name as
+    upstream's purge does. A ``<key>.dat`` link to a regular file inside the cache
+    directory, such as an adopted entry's payload that upstream treats as legitimate, is
+    therefore refused with ``StorePurgeAliasedArtefactError`` as well, and so is a
+    dangling ``<key>.dat`` link whose missing target lies inside the cache directory. A
+    dangling link cannot be cleared through :meth:`purge`: an untracked key whose link
+    does not resolve counts as absent and ``purge`` raises ``KeyError``, so the link has
+    to be unlinked by hand. The temporary names are refused whatever their target, which
+    is the behaviour the check exists for. A symlink loop at any of the four paths raises
+    a bare ``RuntimeError`` from ``Path.resolve``, outside the refusal family (it is
+    still caught by ``except RuntimeError``). Each path is built through the
     upstream builder, so an invalid or escaping key raises the upstream
     ``StoreKeyError`` here exactly as it does for the first statement of
     :meth:`DiskBackedImageStore.add_image_to_store`.
@@ -112,7 +124,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     of scope upstream and were never covered here. Two limits are documented
     rather than guarded. For the key being added, a link at any path the write
     opens (``<key>.dat``, ``<key>.dat.tmp``, ``<key>.npy.tmp``,
-    ``<key>.meta.json.tmp``) is refused before the write; a link planted under an
+    ``<key>.meta.json.tmp``) is refused before the write, classified by where the
+    link resolves: an in-cache ``<key>.dat`` link to an adopted entry's payload and
+    a dangling one are refused as aliased too (the dangling one cannot be cleared
+    through :meth:`purge`), and a symlink loop raises a bare ``RuntimeError``
+    (see :func:`_refuse_linked_write_path`); a link planted under an
     already tracked key after its add is still followed by a later offload. An
     entry inserted through the mapping setter
     (``store[key] = value``) carries whatever ``cache_path`` its caller supplied
@@ -192,8 +208,13 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            inside the cache directory (another key's artefact),
            ``StorePurgeForeignArtefactError`` when it resolves outside. Nothing has
            been purged or written; both are ``StorePurgeRefusedError``, so the
-           ``except`` contract below is unchanged. Upstream's write containment alone
-           would follow a link to another key's file inside the cache directory;
+           ``except`` contract below is unchanged. The classification is by where the
+           link resolves, so an in-cache ``<key>.dat`` link to an adopted entry's payload
+           and a dangling ``<key>.dat`` link are refused as aliased too (the dangling one
+           cannot be cleared through :meth:`purge`: ``KeyError``), and a symlink loop
+           raises a bare ``RuntimeError`` outside that family. Upstream's write
+           containment alone would follow a link to another key's file inside the cache
+           directory;
         4. a key that is tracked, or whose ``<key>.npy`` is on disk (the file a fresh
            store adopts, left by a key dropped with ``del`` / ``pop`` / ``popitem`` /
            ``clear`` while offloaded), is removed with :meth:`purge`, whose refusals
@@ -248,7 +269,10 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         - ``StorePurgeAliasedArtefactError``, when a built artefact is a link to
           another key's artefact inside the cache directory. A link at a path the
           write opens is refused before the purge, in every process, with this class
-          or the foreign one by where it resolves.
+          or the foreign one by where it resolves; that includes an in-cache
+          ``<key>.dat`` link to an adopted entry's payload and a dangling one, which
+          ``purge`` cannot clear (``KeyError``). A symlink loop at a write path raises
+          a bare ``RuntimeError`` from ``Path.resolve`` instead.
 
         ``StorePurgeIncompleteError`` (an :class:`OSError`, outside that family)
         is raised when a file could not be unlinked. All of these surface
@@ -271,13 +295,23 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         never-offloaded entry for a key: after ``del store[key]`` and a re-add the
         replacement read back, and after the retained reference was collected the
         ``.dat`` was gone and an offload followed by a read raised
-        :class:`FileNotFoundError`. Results obtained through
-        ``TiledPointCloudImageGenerator.generate()`` do not reach it: every entry that
+        :class:`FileNotFoundError`. Results returned by a successful
+        ``TiledPointCloudImageGenerator.generate()`` stay clear of it: every entry that
         method returns has delete-on-collection disabled, and the route that did
         (a pooled call, a sequential call whose result is held, ``del`` on a tile
         store, a regenerate, releasing the held result) was measured to keep the
-        replacement ``.dat`` and to read back. The caveat concerns callers of the
-        exported store who hold entries of a store they did not construct.
+        replacement ``.dat`` and to read back. Entries a FAILED ``n_jobs=1`` call
+        added to kept tile stores, however, stay armed: holding such an entry taken
+        from ``image_generators[...].feature_mgr.cache_store``, dropping its key,
+        regenerating and releasing the held entry does delete the replacement's
+        ``.dat`` (measured: the held entry reported ``purge_disk_on_gc=True``, the
+        replacement ``.dat`` was gone afterwards and an offload followed by a read
+        raised :class:`FileNotFoundError`). The root cause is upstream: a released
+        entry's purge-on-garbage-collection deletes a ``<key>.dat`` that another live
+        copy of the entry uses (https://github.com/gseg-ethz/GSEGUtils/issues/83); the
+        behaviour fix follows in pc2img 0.11.1. The caveat concerns callers of the
+        exported store who hold entries of a store they did not construct, and
+        callers who hold entries a failed tiled call left armed.
 
         ``del`` / ``pop`` / ``clear`` drop tracking only; they are not part of an
         overwrite. Only :meth:`purge` removes files.
