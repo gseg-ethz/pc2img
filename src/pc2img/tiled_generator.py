@@ -199,13 +199,13 @@ class TiledPointCloudImageGenerator:
         (``None`` on the first call) and picklable inputs; the tiled generator itself is never
         part of a task.
 
-        Entries returned by a pooled call (any ``n_jobs`` other than 1), and the entries of the
-        stores kept in ``image_generators``, no longer delete their ``.dat`` memmap on garbage
-        collection: each pickle round-trip gives the parent another entry object on the same
-        file, so one released call's results would otherwise unlink the files a later call's
-        results read. The tile directory keeps those files until ``purge`` is called or the
-        directory is removed. With ``n_jobs=1`` the results are the stores' own entries and
-        behave as before.
+        Entries returned by any call (``n_jobs=1`` included), and the entries of the stores kept
+        in ``image_generators``, never delete their ``.dat`` memmap on garbage collection: each
+        pickle round-trip gives the parent another entry object on the same file, and an entry
+        created at ``n_jobs=1`` is still alive when a later pooled call rebuilds that file under
+        another object, so one released call's results would otherwise unlink the files a later
+        call's results read. The tile directory keeps those files until ``purge`` is called or
+        the directory is removed.
         """
 
         tasks = self.pcd_tiles
@@ -237,8 +237,7 @@ class TiledPointCloudImageGenerator:
             }
             result_dict.update(tile_dict)
 
-        if n_jobs != 1:
-            _release_gc_ownership(result_dict, self.image_generators)
+        _release_gc_ownership(result_dict, self.image_generators)
 
         return result_dict
 
@@ -247,10 +246,12 @@ def _release_gc_ownership(
     result_dict: Mapping[ImageKey, DiskBackedImageData],
     image_generators: Mapping[str, PointCloudImageGenerator],
 ) -> None:
-    """Disable purge-on-garbage-collection on every pooled result and live store entry.
+    """Disable purge-on-garbage-collection on every returned result and live store entry.
 
-    A pooled run returns parent-side copies of entries that share one ``<tile>/<key>.dat`` path
-    with the copies every other call returns. Each copy carries its own garbage-collection
+    Called after every ``generate()``, whatever ``n_jobs``. A pooled run returns parent-side
+    copies of entries that share one ``<tile>/<key>.dat`` path with the copies every other call
+    returns, and an entry created at ``n_jobs=1`` is still alive (and armed) when a later pooled
+    call rebuilds the same file under another object. Each copy carries its own garbage-collection
     finalizer, so whichever is collected first would unlink the file the others read. Only the
     public ``disable_purge()`` is used.
     """
