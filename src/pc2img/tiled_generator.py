@@ -197,7 +197,9 @@ class TiledPointCloudImageGenerator:
 
         Each call is the module-level ``_process_tile`` with that tile's own generator
         (``None`` on the first call) and picklable inputs; the tiled generator itself is never
-        part of a task.
+        part of a task. If a pooled call (any ``n_jobs`` other than 1) raises, the tile generators
+        are dropped before the exception propagates and the next call rebuilds them; at
+        ``n_jobs=1`` nothing is dropped.
 
         Entries returned by any call (``n_jobs=1`` included), and the entries of the stores kept
         in ``image_generators``, never delete their ``.dat`` memmap on garbage collection: each
@@ -210,23 +212,34 @@ class TiledPointCloudImageGenerator:
 
         tasks = self.pcd_tiles
 
-        with parallel_config(backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"):
-            results = Parallel()(
-                delayed(_process_tile)(
-                    self.image_generators.get(task.tile_id),
-                    task.tile_id,
-                    task.tile_pcd,
-                    task.tile_kwargs,
-                    features,
-                    self.proj_cls,
-                    self.interp_cls,
-                    dict(self._proj_kwargs),
-                    dict(self._interp_kwargs),
-                    self._lazy_disk_cache_config,
-                    self._img_res,
+        try:
+            with parallel_config(backend="loky", n_jobs=n_jobs, verbose=50, prefer="processes"):
+                results = Parallel()(
+                    delayed(_process_tile)(
+                        self.image_generators.get(task.tile_id),
+                        task.tile_id,
+                        task.tile_pcd,
+                        task.tile_kwargs,
+                        features,
+                        self.proj_cls,
+                        self.interp_cls,
+                        dict(self._proj_kwargs),
+                        dict(self._interp_kwargs),
+                        self._lazy_disk_cache_config,
+                        self._img_res,
+                    )
+                    for task in tasks
                 )
-                for task in tasks
-            )
+        except BaseException:
+            if n_jobs != 1:
+                # ``Parallel`` raises without the partial results, so the parent cannot know which
+                # tiles finished. Those that did have written codec pairs the parent's pre-call
+                # store copies do not track; the retry would hit the hard gate in a non-owner
+                # process. Dropping every generator makes the next call rebuild each store in a
+                # worker, whose construction scan adopts what is on disk and recomputes the rest.
+                # At ``n_jobs=1`` the stores were updated in place and stay the owners.
+                self.image_generators.clear()
+            raise
 
         result_dict: dict[ImageKey, DiskBackedImageData] = {}
         for tile_result in results:

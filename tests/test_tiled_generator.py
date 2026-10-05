@@ -282,6 +282,34 @@ def test_retry_after_a_pooled_call_with_one_failing_tile_succeeds(tmp_path, synt
         assert len(gen.image_generators) == 4
 
 
+def test_a_failing_sequential_call_keeps_the_tile_generators(tmp_path, synthetic_pcd) -> None:
+    """At ``n_jobs=1`` the stores were updated in place, so a failure drops nothing.
+
+    The parent's generators stay the owners; dropping them would only lose ownership.
+    """
+    fields = {"intensity": None}
+    tiles = [
+        PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1, with_scalar_fields=fields), {}),
+        PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+    ]
+    gen = TiledPointCloudImageGenerator(
+        tiles,
+        (8, 8),
+        "spherical",
+        "linear",
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path),
+    )
+    gen.generate(["range"], n_jobs=1)
+    before = dict(gen.image_generators)
+    assert set(before) == set(_TILE_IDS)
+
+    with pytest.raises(Exception):  # noqa: B017 - the type belongs to the point cloud, deliberately not pinned
+        gen.generate(["scalar_field_intensity"], n_jobs=1)
+
+    assert gen.image_generators == before
+    assert all(gen.image_generators[tid] is before[tid] for tid in before)
+
+
 def test_duplicate_tile_ids_are_rejected_at_construction(synthetic_pcd) -> None:
     """A repeated tile id raises ``ValueError`` at construction and names the id.
 
