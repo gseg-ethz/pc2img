@@ -238,6 +238,50 @@ def test_mixed_n_jobs_sequences_keep_every_raster_readable(tmp_path, synthetic_p
         assert get_memmap_path(store.cache_dir, "range").exists()
 
 
+def test_retry_after_a_pooled_call_with_one_failing_tile_succeeds(tmp_path, synthetic_pcd) -> None:
+    """A pooled call in which one tile fails must not poison the retry for the tiles that finished.
+
+    The tiles that finished wrote their codec pairs into their directories before another tile
+    failed, and ``Parallel`` raises without their results. The parent's pre-call store copies do
+    not track those keys, so the next call would reach the hard gate (``StorePurgeRefusedError``)
+    in a non-owner process. Dropping the generators makes the next call rebuild each store in a
+    worker, whose construction scan adopts the codec pairs as tracked keys. At ``n_jobs=1`` the
+    stores are updated in place and nothing is dropped.
+
+    The failing tile lacks the ``intensity`` scalar field; the exception type belongs to the
+    point cloud and is not pinned.
+    """
+
+    def _tiles() -> list[PointCloudTile]:
+        fields = {"intensity": None}
+        return [
+            PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1, with_scalar_fields=fields), {}),
+            PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2, with_scalar_fields=fields), {}),
+            PointCloudTile("tile_02", synthetic_pcd(n=64, seed=3, with_scalar_fields=fields), {}),
+            PointCloudTile("tile_03", synthetic_pcd(n=64, seed=4), {}),
+        ]
+
+    for label, retry_n_jobs in (("seq-retry", 1), ("pooled-retry", 2)):
+        gen = TiledPointCloudImageGenerator(
+            _tiles(),
+            (8, 8),
+            "spherical",
+            "linear",
+            lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / label),
+        )
+        gen.generate(["range"], n_jobs=2)
+        with pytest.raises(Exception):  # noqa: B017 - the type belongs to the point cloud, deliberately not pinned
+            gen.generate(["gradient_x_range", "scalar_field_intensity"], n_jobs=2)
+        assert gen.image_generators == {}, f"{label}: the parent kept stale tile generators"
+
+        result = gen.generate(["gradient_x_range"], n_jobs=retry_n_jobs)
+        gc.collect()
+        assert len(result) == 4
+        for key in result:
+            assert np.asarray(result[key]).shape == (8, 8), f"{label}: {key}"
+        assert len(gen.image_generators) == 4
+
+
 def test_duplicate_tile_ids_are_rejected_at_construction(synthetic_pcd) -> None:
     """A repeated tile id raises ``ValueError`` at construction and names the id.
 
