@@ -16,6 +16,7 @@ Authored test-first: every sensor here is RED until
 
 import gc
 import hashlib
+import inspect
 import os
 import pickle
 import re
@@ -432,18 +433,39 @@ def test_add_over_a_write_path_linked_outside_the_cache_is_refused_as_foreign(tm
 def test_presence_gate_uses_only_upstream_builders_of_known_shape(tmp_path: Path):
     """Drift guard for the hand copy of upstream's artefact set.
 
-    The gate names three upstream builders; their built names must keep the shape the
-    base store's adoption scan and ``purge`` use, and the module must not import any of
-    the temporary-name builders (writers overwrite those names; they carry no weight).
+    The two presence predicates name only the final-name builders (``get_npy_path``,
+    ``get_meta_path``, ``get_memmap_path``) and no temporary one: a leftover temporary
+    name carries no weight for what a fresh store serves. The write-path check names
+    exactly the four builders of the paths a write opens, and their built names keep
+    the shape upstream's writers use.
     """
     expected = {"get_npy_path": "k.npy", "get_meta_path": "k.meta.json", "get_memmap_path": "k.dat"}
     for name, built in expected.items():
         assert name in STORE_PATH_BUILDERS
         assert STORE_PATH_BUILDERS[name](tmp_path, "k").name == built
 
-    src = Path(disk_backed_image_store.__file__).read_text(encoding="utf-8")
-    for tmp_builder in ("get_npy_tmp_path", "get_meta_tmp_path", "get_memmap_tmp_path"):
-        assert src.count(tmp_builder) == 0, f"the store module still names {tmp_builder}"
+    predicates = {
+        "_adoptable_artefact_exists": {"get_npy_path"},
+        "_leftover_artefact_exists": {"get_meta_path", "get_memmap_path"},
+    }
+    all_builders = set(STORE_PATH_BUILDERS)
+    for fn_name, named in predicates.items():
+        source = inspect.getsource(getattr(disk_backed_image_store, fn_name))
+        assert {b for b in all_builders if re.search(rf"\b{b}\b", source)} == named, (
+            f"{fn_name} names a different builder set"
+        )
+
+    write_paths = {
+        "get_memmap_path": "k.dat",
+        "get_memmap_tmp_path": "k.dat.tmp",
+        "get_npy_tmp_path": "k.npy.tmp",
+        "get_meta_tmp_path": "k.meta.json.tmp",
+    }
+    check_source = inspect.getsource(disk_backed_image_store._refuse_linked_write_path)
+    assert {b for b in all_builders if re.search(rf"\b{b}\b", check_source)} == set(write_paths)
+    for name, built in write_paths.items():
+        assert name in STORE_PATH_BUILDERS
+        assert STORE_PATH_BUILDERS[name](tmp_path, "k").name == built
 
 
 def test_purge_removes_the_codec_pair_and_the_memmap(tmp_path: Path):

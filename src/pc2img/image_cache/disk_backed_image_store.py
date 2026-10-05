@@ -4,11 +4,18 @@ from pathlib import Path
 from GSEGUtils.lazy_disk_cache import (
     DiskBackedStore,
     LazyDiskCacheConfig,
+    StorePurgeAliasedArtefactError,
+    StorePurgeForeignArtefactError,
     StorePurgeRefusedError,
     get_meta_path,
     get_npy_path,
 )
-from GSEGUtils.lazy_disk_cache.paths import get_memmap_path
+from GSEGUtils.lazy_disk_cache.paths import (
+    get_memmap_path,
+    get_memmap_tmp_path,
+    get_meta_tmp_path,
+    get_npy_tmp_path,
+)
 from numpy.typing import NDArray
 from pydantic import ConfigDict, validate_call
 
@@ -38,6 +45,49 @@ def _leftover_artefact_exists(cache_dir: Path, key: str) -> bool:
     return get_meta_path(cache_dir, key).exists() or get_memmap_path(cache_dir, key).exists()
 
 
+def _leftover_is_linked(cache_dir: Path, key: str) -> bool:
+    """Return whether a ``<key>.meta.json`` or ``<key>.dat`` leftover is a symlink."""
+    return get_meta_path(cache_dir, key).is_symlink() or get_memmap_path(cache_dir, key).is_symlink()
+
+
+def _refuse_linked_write_path(cache_dir: Path, key: str) -> None:
+    """Raise before any write when a path the write opens for ``key`` is a symlink.
+
+    Adding ``key`` opens four names for writing: ``<key>.dat`` and ``<key>.dat.tmp``
+    (the memmap) and ``<key>.npy.tmp`` and ``<key>.meta.json.tmp`` (the codec pair).
+    Upstream's write containment refuses only a link that resolves OUTSIDE the cache
+    directory, so a link to another key's file inside it is followed and that file
+    is overwritten, by the owner as by any other process. The ``<key>.npy`` and
+    ``<key>.meta.json`` finals are not in this set: a write only ``os.replace`` s
+    onto them, which replaces the link itself and leaves its target untouched, and a
+    link there is the adopted-entry shape upstream's purge reconciliation handles.
+
+    A link resolving inside ``cache_dir`` raises
+    :class:`~GSEGUtils.lazy_disk_cache.StorePurgeAliasedArtefactError`, one resolving
+    outside raises :class:`~GSEGUtils.lazy_disk_cache.StorePurgeForeignArtefactError`;
+    both are :class:`~GSEGUtils.lazy_disk_cache.StorePurgeRefusedError`. Nothing has
+    been written or removed when either is raised. Each path is built through the
+    upstream builder, so an invalid or escaping key raises the upstream
+    ``StoreKeyError`` here exactly as it does for the first statement of
+    :meth:`DiskBackedImageStore.add_image_to_store`.
+    """
+    resolved_cache_dir = cache_dir.resolve()
+    for build in (get_memmap_path, get_memmap_tmp_path, get_npy_tmp_path, get_meta_tmp_path):
+        link = build(cache_dir, key)
+        if not link.is_symlink():
+            continue
+        target = link.resolve()
+        if target.is_relative_to(resolved_cache_dir):
+            raise StorePurgeAliasedArtefactError(
+                f"Refusing to add {key!r}: {link} is a symlink to {target}, another artefact inside the "
+                "cache directory, and the write would follow it and overwrite that file. Nothing was written."
+            )
+        raise StorePurgeForeignArtefactError(
+            f"Refusing to add {key!r}: {link} is a symlink to {target}, outside the cache directory "
+            f"{resolved_cache_dir}, and the write would follow it. Nothing was written."
+        )
+
+
 class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     """Named raster store backed by GSEGUtils' hardened ``DiskBackedStore``.
 
@@ -60,8 +110,11 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
     adds no pre-validation of its own. The guarantee is construction-time and
     non-adversarial: concurrent writers and racing symlinks or hardlinks are out
     of scope upstream and were never covered here. Two limits are documented
-    rather than guarded. A planted ``<key>.npy.tmp`` or ``<key>.meta.json.tmp``
-    symlink is followed on write. An entry inserted through the mapping setter
+    rather than guarded. For the key being added, a link at any path the write
+    opens (``<key>.dat``, ``<key>.dat.tmp``, ``<key>.npy.tmp``,
+    ``<key>.meta.json.tmp``) is refused before the write; a link planted under an
+    already tracked key after its add is still followed by a later offload. An
+    entry inserted through the mapping setter
     (``store[key] = value``) carries whatever ``cache_path`` its caller supplied
     and, with the default ``pickle_container=False``, :meth:`offload` writes
     through that entry-owned path even when it lies outside the cache directory;
@@ -125,14 +178,23 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         re-submits the same feature name. An existing key is therefore purged
         first, so the prior overwrite semantics are preserved.
 
-        **Ordering.** Four steps, in this order:
+        **Ordering.** Five steps, in this order:
 
         1. the upstream ``get_npy_path`` builder validates the key and its
            containment and raises the upstream ``StoreKeyError`` (a
            :class:`ValueError`) before anything else is touched;
         2. :func:`_assert_image_shape` raises :class:`AssertionError` for a bad
            raster shape;
-        3. a key that is tracked, or whose ``<key>.npy`` is on disk (the file a fresh
+        3. :func:`_refuse_linked_write_path` raises when any path the write opens for
+           the key (``<key>.dat``, ``<key>.dat.tmp``, ``<key>.npy.tmp``,
+           ``<key>.meta.json.tmp``) is a symlink, in every process, the constructing
+           one included: ``StorePurgeAliasedArtefactError`` when the link resolves
+           inside the cache directory (another key's artefact),
+           ``StorePurgeForeignArtefactError`` when it resolves outside. Nothing has
+           been purged or written; both are ``StorePurgeRefusedError``, so the
+           ``except`` contract below is unchanged. Upstream's write containment alone
+           would follow a link to another key's file inside the cache directory;
+        4. a key that is tracked, or whose ``<key>.npy`` is on disk (the file a fresh
            store adopts, left by a key dropped with ``del`` / ``pop`` / ``popitem`` /
            ``clear`` while offloaded), is removed with :meth:`purge`, whose refusals
            surface unwrapped. So a process that did not construct the store
@@ -149,15 +211,18 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            session) is offered to :meth:`purge` as well, but a refusal on process
            identity alone is tolerated: nothing servable is on disk, and the
            replacement is written through a temporary name and an atomic rename.
-           Refusals for a foreign or aliased artefact still surface. Leftover
-           temporary names (``.dat.tmp`` and the like) are not consulted. A key that
-           is neither tracked nor on disk is never handed to :meth:`purge`, so a
+           In a process that did not construct the store, upstream refuses on process
+           identity first, so its foreign and aliased checks never run there; a linked
+           ``.dat`` or ``.meta.json`` leftover is therefore re-raised as
+           ``StorePurgeRefusedError`` by this method rather than tolerated. Leftover
+           temporary names that are regular files are not consulted. A key that is
+           neither tracked nor on disk is never handed to :meth:`purge`, so a
            worker process that did not construct the store can still add new keys;
-        4. the replacement is built via :meth:`add_data_to_store`.
+        5. the replacement is built via :meth:`add_data_to_store`.
 
         Because the key check runs first, a key that both escapes the cache
         directory and carries a bad-shape raster raises ``StoreKeyError``, never
-        :class:`AssertionError`. Both input-driven checks run before the existing
+        :class:`AssertionError`. The key, shape and link checks run before the existing
         entry is purged, so a rejected overwrite leaves the old entry and its
         on-disk files untouched.
 
@@ -172,7 +237,8 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
           fresh generator, or remove the tile sub-directory; see that class's
           docstring). A process that did not construct the store is refused only
           for a key that is tracked or whose ``<key>.npy`` is on disk; a leftover
-          ``.dat``, ``.dat.tmp`` or ``.meta.json`` does not trigger the refusal;
+          regular-file ``.dat``, ``.dat.tmp`` or ``.meta.json`` does not trigger it
+          (a symlink at one of them is refused by the pre-write link check);
         - ``StorePurgeForeignArtefactError``, when a built artefact, or a live
           entry's own ``cache_path``, resolves outside the cache directory. This
           includes an entry inserted through the mapping setter with an outside
@@ -180,7 +246,9 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
           method (it could in earlier releases); re-point it, or give it an
           in-cache ``cache_path``, first;
         - ``StorePurgeAliasedArtefactError``, when a built artefact is a link to
-          another key's artefact inside the cache directory.
+          another key's artefact inside the cache directory. A link at a path the
+          write opens is refused before the purge, in every process, with this class
+          or the foreign one by where it resolves.
 
         ``StorePurgeIncompleteError`` (an :class:`OSError`, outside that family)
         is raised when a file could not be unlinked. All of these surface
@@ -205,13 +273,17 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         """
         get_npy_path(self.cache_dir, img_name)
         _assert_image_shape(img_data)
+        _refuse_linked_write_path(self.cache_dir, img_name)
         if img_name in self or _adoptable_artefact_exists(self.cache_dir, img_name):
             self.purge(img_name)
         elif _leftover_artefact_exists(self.cache_dir, img_name):
             try:
                 self.purge(img_name)
             except StorePurgeRefusedError as exc:
-                if type(exc) is not StorePurgeRefusedError:
+                # Only a refusal on process identity alone is tolerated; a linked
+                # leftover is refused here too, because in a non-owner process
+                # purge never reaches its foreign/aliased reconciliation.
+                if type(exc) is not StorePurgeRefusedError or _leftover_is_linked(self.cache_dir, img_name):
                     raise
         self.add_data_to_store(
             img_name,
