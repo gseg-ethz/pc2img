@@ -74,9 +74,10 @@ def _refuse_linked_write_path(cache_dir: Path, key: str) -> None:
     therefore refused with ``StorePurgeAliasedArtefactError`` as well, and so is a
     dangling ``<key>.dat`` link whose missing target lies inside the cache directory. The
     temporary names are refused whatever their target, which is the behaviour the check
-    exists for. This check is pc2img's own, not an upstream behaviour. A symlink loop at any of the four paths raises
-    a bare ``RuntimeError`` from ``Path.resolve``, outside the refusal family (it is
-    still caught by ``except RuntimeError``). Each path is built through the
+    exists for. If a dangling ``<key>.dat`` link blocks a key, remove the link by hand;
+    :meth:`purge` may not clear it. This check is pc2img's own, not an upstream behaviour. A
+    symlink loop at any of the four paths raises a bare ``RuntimeError`` from ``Path.resolve``,
+    outside the refusal family (it is still caught by ``except RuntimeError``). Each path is built through the
     upstream builder, so an invalid or escaping key raises the upstream
     ``StoreKeyError`` here exactly as it does for the first statement of
     :meth:`DiskBackedImageStore.add_image_to_store`.
@@ -301,12 +302,14 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         retry route. The root cause is upstream: a released entry's
         purge-on-garbage-collection deletes a ``<key>.dat`` that another live copy of the
         entry uses (https://github.com/gseg-ethz/GSEGUtils/issues/83); the behaviour fix
-        follows in pc2img 0.11.1. The caveat concerns callers of the exported store who
+        is planned for pc2img 0.11.1. The caveat concerns callers of the exported store who
         hold entries of a store they did not construct, and callers who hold entries
         taken from tile stores.
 
         ``del`` / ``pop`` / ``clear`` drop tracking only; they are not part of an
-        overwrite. Only :meth:`purge` removes files.
+        overwrite. Only :meth:`purge` removes files deliberately; an entry that still has
+        delete-on-collection armed removes its ``.dat`` when it is collected (see the non-owner
+        caveat above).
         """
         get_npy_path(self.cache_dir, img_name)
         _assert_image_shape(img_data)

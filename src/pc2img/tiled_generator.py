@@ -116,18 +116,20 @@ class TiledPointCloudImageGenerator:
     when one store is unpickled by several processes at once
     (https://github.com/gseg-ethz/GSEGUtils/issues/82); this dispatch no longer does that.
 
-    **Disk persistence.** Entries returned by any ``generate()`` call (``n_jobs=1`` included) and
-    the entries of the stores kept in ``image_generators`` have purge-on-garbage-collection
-    disabled, so releasing one call's results never deletes a ``.dat`` memmap that a later call's
-    results read. The price: released results and dropped generators no longer delete their cache
-    files at all, whatever ``n_jobs``. With the default ``enable_caching=False`` nothing is written
+    **Disk persistence.** Entries returned by a successful ``generate()`` call (``n_jobs=1``
+    included) and the entries of the stores kept in ``image_generators`` after a successful call
+    have purge-on-garbage-collection disabled, so releasing one call's results does not delete a
+    ``.dat`` memmap that a later call's results read. The price: after a successful call, released
+    results and dropped generators no longer delete their cache files, whatever ``n_jobs``. Entries
+    that a failed call added may still delete their ``.dat`` when they are collected (see Known
+    limitations below). With the default ``enable_caching=False`` nothing is written
     and only each store's empty temporary directory remains (as before this change). When caching
     is enabled without a ``cache_path``, each tile store writes into its own temporary directory
     (created with ``tempfile.mkdtemp``): ``<store dir>/<key>.dat``, plus the codec pair
     (``<key>.npy`` and ``<key>.meta.json``) that pickling in a pooled run writes, and nothing
     cleans that directory up. With a ``cache_path`` the files are
-    ``<cache_path>/<tile_id>/<key>.dat`` and the codec pair. All of them persist until ``purge()``
-    is called or the directory is removed. Routes: configure ``cache_path`` and remove that
+    ``<cache_path>/<tile_id>/<key>.dat`` and the codec pair. The files of successful calls persist
+    until ``purge()`` is called or the directory is removed. Routes: configure ``cache_path`` and remove that
     directory when the run is done; or ``purge()`` keys from the owning process (the calling
     process owns a tile's store if that store was built by an ``n_jobs=1`` call: a pooled call
     builds it in a worker, and after a pooled failure an ``n_jobs=1`` retry rebuilds it in the
@@ -187,12 +189,15 @@ class TiledPointCloudImageGenerator:
       ``<tile_id>/<key>.dat`` files, the failed call's old entries may unlink them when they are
       collected, and a later read of a retried raster may then raise ``FileNotFoundError``. Do
       not retry inside the ``except`` block, and do not rely on ``gc.collect()`` there: it
-      collects nothing while the exception is still referenced. Let the exception go out of
-      scope, call ``gc.collect()``, then retry; or retry with a fresh
-      ``TiledPointCloudImageGenerator`` over a fresh ``cache_path``.
-    * Do not hold entries taken from the tile stores (``image_generators[...].feature_mgr.
-      cache_store``) across a regenerate: a held entry may delete the replacement's ``.dat`` when
-      it is released.
+      cannot collect the failed call's objects while the exception is still referenced. The
+      recommended route is to retry with a fresh ``TiledPointCloudImageGenerator`` over a fresh
+      ``cache_path``. In a script, you may instead let the exception go out of scope (nothing
+      may keep a reference to it or its traceback), call ``gc.collect()``, then retry. That
+      second route is for scripts only: an interactive session, a notebook and a debugger keep
+      the last uncaught exception alive, so there only the fresh ``cache_path`` route applies.
+    * In general, do not hold entries taken from the tile stores (``image_generators[...].
+      feature_mgr.cache_store``) across a regenerate: a held entry may delete the replacement's
+      ``.dat`` when it is released.
 
     With the default ``enable_caching=False`` nothing is written to disk.
 
@@ -201,8 +206,9 @@ class TiledPointCloudImageGenerator:
     write: ``StorePurgeAliasedArtefactError`` when the link resolves inside the cache directory,
     ``StorePurgeForeignArtefactError`` when it resolves outside. The classification is by where
     the link resolves, so a ``<key>.dat`` link to a payload that upstream treats as a legitimate
-    adopted entry is refused as well, and so is a dangling link. A symlink loop at a write path
-    raises a bare ``RuntimeError`` from ``Path.resolve``, not a member of the
+    adopted entry is refused as well, and so is a dangling link. If a dangling ``<key>.dat`` link
+    blocks a key, remove the link by hand; ``purge`` may not clear it. A symlink loop at a write
+    path raises a bare ``RuntimeError`` from ``Path.resolve``, not a member of the
     ``StorePurgeRefusedError`` family.
     """
 
@@ -261,15 +267,16 @@ class TiledPointCloudImageGenerator:
         it (a first call has none to keep). Without a ``cache_path`` the rebuild writes every tile
         store into a new temporary directory and leaves the previous ones behind.
 
-        Entries returned by any call (``n_jobs=1`` included), and the entries of the stores kept
-        in ``image_generators``, never delete their ``.dat`` memmap on garbage collection: each
-        pickle round-trip gives the parent another entry object on the same file, and an entry
-        created at ``n_jobs=1`` is still alive when a later pooled call rebuilds that file under
-        another object, so one released call's results would otherwise unlink the files a later
-        call's results read. The tile directory keeps those files until ``purge`` is called or
-        the directory is removed. The disarm runs only after a call returns successfully: the
-        entries a call that raised added to kept stores stay armed, which may make a retry of
-        that call lose files (see the class docstring, Known limitations, for the recommended route).
+        Entries returned by a successful call (``n_jobs=1`` included), and the entries of the
+        stores kept in ``image_generators`` after a successful call, do not delete their ``.dat``
+        memmap on garbage collection: each pickle round-trip gives the parent another entry
+        object on the same file, and an entry created at ``n_jobs=1`` is still alive when a later
+        pooled call rebuilds that file under another object, so one released call's results would
+        otherwise unlink the files a later call's results read. The tile directory keeps the files
+        of successful calls until ``purge`` is called or the directory is removed. The disarm
+        runs only after a call returns successfully: the entries a call that raised added to
+        kept stores stay armed, which may make a retry of that call lose files (see the class
+        docstring, Known limitations, for the recommended route).
         """
 
         tasks = self.pcd_tiles
