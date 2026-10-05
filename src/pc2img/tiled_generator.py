@@ -129,7 +129,18 @@ class TiledPointCloudImageGenerator:
     ``<cache_path>/<tile_id>/<key>.dat`` and the codec pair. All of them persist until ``purge()``
     is called or the directory is removed. Routes: configure ``cache_path`` and remove that
     directory when the run is done; or ``purge()`` keys from the owning process (the calling
-    process owns the stores only if every call used ``n_jobs=1``).
+    process owns a tile's store if that store was built by an ``n_jobs=1`` call: a pooled call
+    builds it in a worker, and after a pooled failure an ``n_jobs=1`` retry rebuilds it in the
+    calling process).
+
+    The disarm is recorded on disk. When the codec pair of a key is written (by the pickling of
+    a pooled run) the key's ``.meta.json`` sidecar carries the entry's ``purge_disk_on_gc`` as it
+    is at that moment. Any store or generator opened later over those directories, tiled or not,
+    therefore loads those keys with ``purge_disk_on_gc=False`` whatever its own configuration
+    asks, and the result depends on call history: one pooled call leaves the flag as configured,
+    while a sequential call followed by a pooled one, or two pooled calls, leave it ``False``.
+    A durable-cache or warm-restart configuration that asks for ``purge_disk_on_gc=True`` is
+    silently overridden for those keys.
 
     Whenever the work runs in a worker pool, every tile's ``DiskBackedImageStore`` is constructed
     inside a worker and records that worker's process id as its owner, for good. GSEGUtils refuses
@@ -150,10 +161,48 @@ class TiledPointCloudImageGenerator:
     * drop the tile's generator and remove its cache sub-directory ``<cache_path>/<tile_id>``
       (for example with ``shutil.rmtree``).
 
-    If any tile fails in a pooled call, the parent drops its tile generators and re-raises: the
-    tiles that finished have already written codec pairs the parent's copies do not track. The
-    next call rebuilds each tile's generator in a worker and adopts those codec pairs, so a retry
-    is not refused. At ``n_jobs=1`` the stores were updated in place and nothing is dropped.
+    If any tile fails in a pooled call, the parent drops the tile generators that existed before
+    the call and re-raises: the tiles that finished have already written codec pairs the parent's
+    copies do not track. A failing first call has nothing to drop. With a ``cache_path`` the next
+    call rebuilds each tile's generator (in a worker, or in the calling process at ``n_jobs=1``)
+    and the construction scan adopts the codec pairs the finished tiles wrote, so a retry is not
+    refused. Without a ``cache_path`` the next call rebuilds every tile store in a new temporary
+    directory, recomputes every feature and leaves the previous directories and their files
+    behind. With the default ``enable_caching=False`` nothing is on disk, so the reset protects
+    nothing there and only discards the in-memory rasters. A failing ``n_jobs=1`` call keeps the
+    generators that existed before it, whose stores were updated in place; a generator it built
+    for the first time is not kept, so a failing first call leaves ``image_generators`` empty.
+    The entries a failed call added to the kept stores keep their delete-on-collection hook (see
+    Known limitations below).
+
+    **Known limitations.** The root cause is upstream: a released entry's purge-on-garbage-
+    collection deletes a ``<key>.dat`` that another live copy of the entry uses
+    (https://github.com/gseg-ethz/GSEGUtils/issues/83). Behaviour fixes follow in pc2img 0.11.1.
+    Until then:
+
+    * The disarm described above runs only after a ``generate()`` call returns. The entries a
+      failed call added to kept stores stay armed, and so do the entries of the generators a
+      failing first call built and did not keep. Measured: after a failing ``n_jobs=1`` call, hold an
+      entry it added to a kept store, drop its key, regenerate it at ``n_jobs=1``, then release the
+      held entry; the held entry deletes the replacement's ``.dat`` and a later read raises
+      ``FileNotFoundError``.
+    * With caching enabled and a ``cache_path``, a failing ``n_jobs=1`` call that is retried at
+      ``n_jobs=1`` can lose the retried rasters' files. The failed call's armed entries stay alive
+      until the garbage collector runs (its exception and traceback hold them), the retry rewrites
+      the same ``<tile_id>/<key>.dat`` files, and when the old entries are collected they unlink
+      those files; a later read of a retried raster raises ``FileNotFoundError``. Measured: this
+      happened on every run, whether the retry ran inside the ``except`` block or after it. Run
+      ``gc.collect()`` after the failure and before retrying, or retry with a fresh
+      ``TiledPointCloudImageGenerator`` over a fresh ``cache_path``; both kept every file in the
+      measurement. A pooled failure retried at ``n_jobs=-1`` and the default
+      ``enable_caching=False`` did not lose files.
+    * Before every write the store refuses a ``<key>.dat`` link that resolves inside the cache
+      directory with ``StorePurgeAliasedArtefactError``, by location rather than by the target's
+      name. A ``<key>.dat`` link to a payload that upstream treats as a legitimate adopted entry
+      is therefore refused as well, and so is a dangling one; a dangling link cannot be cleared
+      through ``purge`` (``KeyError``) and has to be unlinked by hand.
+    * A symlink loop at a write path raises a bare ``RuntimeError`` from ``Path.resolve``, not a
+      member of the ``StorePurgeRefusedError`` family.
     """
 
     @overload
@@ -206,8 +255,10 @@ class TiledPointCloudImageGenerator:
         Each call is the module-level ``_process_tile`` with that tile's own generator
         (``None`` on the first call) and picklable inputs; the tiled generator itself is never
         part of a task. If a pooled call (any ``n_jobs`` other than 1) raises, the tile generators
-        are dropped before the exception propagates and the next call rebuilds them; at
-        ``n_jobs=1`` nothing is dropped.
+        that existed before the call are dropped before the exception propagates and the next call
+        rebuilds them; a call that raises at ``n_jobs=1`` keeps the generators that existed before
+        it (a first call has none to keep). Without a ``cache_path`` the rebuild writes every tile
+        store into a new temporary directory and leaves the previous ones behind.
 
         Entries returned by any call (``n_jobs=1`` included), and the entries of the stores kept
         in ``image_generators``, never delete their ``.dat`` memmap on garbage collection: each
@@ -215,7 +266,8 @@ class TiledPointCloudImageGenerator:
         created at ``n_jobs=1`` is still alive when a later pooled call rebuilds that file under
         another object, so one released call's results would otherwise unlink the files a later
         call's results read. The tile directory keeps those files until ``purge`` is called or
-        the directory is removed.
+        the directory is removed. The disarm runs only after a call returns: the entries a call
+        that raised added to kept stores stay armed (see the class docstring, Known limitations).
         """
 
         tasks = self.pcd_tiles
@@ -244,8 +296,12 @@ class TiledPointCloudImageGenerator:
                 # tiles finished. Those that did have written codec pairs the parent's pre-call
                 # store copies do not track; the retry would hit the hard gate in a non-owner
                 # process. Dropping every generator makes the next call rebuild each store in a
-                # worker, whose construction scan adopts what is on disk and recomputes the rest.
-                # At ``n_jobs=1`` the stores were updated in place and stay the owners.
+                # worker (or here, at ``n_jobs=1``), whose construction scan adopts what is on
+                # disk and recomputes the rest. Only the generators that existed before the call
+                # are dropped. A call that raises at ``n_jobs=1`` keeps the generators that
+                # existed before it, because their stores were updated in place; the entries it
+                # added to them stay armed, since the disarm below runs only after a successful
+                # return.
                 self.image_generators.clear()
             raise
 
@@ -269,7 +325,8 @@ def _release_gc_ownership(
 ) -> None:
     """Disable purge-on-garbage-collection on every returned result and live store entry.
 
-    Called after every ``generate()``, whatever ``n_jobs``. A pooled run returns parent-side
+    Called after every successful ``generate()``, whatever ``n_jobs``; a call that raises
+    leaves what it added armed. A pooled run returns parent-side
     copies of entries that share one ``<tile>/<key>.dat`` path with the copies every other call
     returns, and an entry created at ``n_jobs=1`` is still alive (and armed) when a later pooled
     call rebuilds the same file under another object. Each copy carries its own garbage-collection
