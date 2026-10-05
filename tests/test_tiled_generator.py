@@ -114,7 +114,7 @@ def _read_every_raster(result) -> None:
 
 @pytest.mark.parametrize("n_jobs", [1, 2], ids=["n_jobs=1", "n_jobs=2"])
 def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_pcd, n_jobs) -> None:
-    """Repeated ``generate()`` on one instance returns rasters that can be read.
+    """Repeated ``generate()`` on one instance gives rasters that can be read.
 
     Each task carries only its own tile's generator, so a worker never unpickles another
     tile's disk-backed store. The earlier failure mode - every worker unpickling every tile's
@@ -161,10 +161,10 @@ def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_p
 
 
 def test_tiled_results_never_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
-    """Entries a ``generate()`` call returns never delete shared memmaps when collected, at any ``n_jobs``.
+    """Entries returned by a successful ``generate()`` call never delete shared memmaps when collected.
 
-    A pooled run returns parent-side copies of entries that share one ``.dat`` path with the
-    copies every other call returns. An entry armed at ``n_jobs=1`` is still alive when a later
+    A pooled run hands back parent-side copies of entries that share one ``.dat`` path with the
+    copies every other call hands back. An entry armed at ``n_jobs=1`` is still alive when a later
     pooled call rebuilds the same ``.dat`` under another object, and its finalizer would unlink
     the file that call's results and the stores read. So no entry owns garbage-collection
     deletion, whatever ``n_jobs``.
@@ -291,8 +291,8 @@ def test_a_failing_sequential_call_keeps_the_tile_generators(tmp_path, synthetic
     """A failing ``n_jobs=1`` call keeps the generators that existed before it.
 
     Their stores were updated in place and the parent's generators stay the owners; dropping them
-    would only lose ownership. The entries the call added to them stay armed (an upstream
-    limitation, GSEGUtils#83).
+    would only lose ownership. The entries the call added to them stay armed (the disarm runs
+    only after a successful call; the deletion that this allows is GSEGUtils#83).
     """
     fields = {"intensity": None}
     tiles = [
