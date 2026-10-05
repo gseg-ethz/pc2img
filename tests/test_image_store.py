@@ -29,6 +29,8 @@ import pytest
 from GSEGUtils.lazy_disk_cache import (
     LazyDiskCacheConfig,
     StoreKeyError,
+    StorePurgeAliasedArtefactError,
+    StorePurgeForeignArtefactError,
     StorePurgeRefusedError,
     get_meta_path,
     get_npy_path,
@@ -330,6 +332,101 @@ def test_owner_add_over_a_durable_lone_memmap_replaces_it(tmp_path: Path):
 
     assert float(np.asarray(store["k"])[0, 0]) == 1.0
     assert sorted(p.name for p in tmp_path.iterdir() if p.name != "_tmp") == ["k.dat"]
+
+
+# --------------------------------------------------------------------------- #
+# A linked write path must be refused before anything is written              #
+#                                                                              #
+# The write for key ``k`` opens ``k.dat``, ``k.dat.tmp``, ``k.npy.tmp`` and    #
+# ``k.meta.json.tmp``. Upstream's write containment refuses only targets       #
+# OUTSIDE the cache directory, so a link to ANOTHER key's file inside it is    #
+# followed: the owner and any other process overwrite that file silently.      #
+# --------------------------------------------------------------------------- #
+_LINK_KINDS: dict[str, tuple[str, str]] = {
+    "dat_tmp_link": ("k.dat.tmp", "other.dat"),
+    "npy_tmp_link": ("k.npy.tmp", "other.npy"),
+    "meta_tmp_link": ("k.meta.json.tmp", "other.meta.json"),
+    "dat_link": ("k.dat", "other.dat"),
+    "meta_link": ("k.meta.json", "other.meta.json"),
+}
+
+
+def _durable_other(cache_dir: Path) -> tuple[DiskBackedImageStore, dict[str, bytes]]:
+    """Build a store holding ``other`` (zeros) with ``.dat``, ``.npy`` and ``.meta.json`` all on disk.
+
+    ``purge_disk_on_gc=False`` is required: with the default flag the codec offload
+    drops the entry and its finalizer deletes ``other.dat``, leaving no link target.
+    Returns the store and the bytes of the three files.
+    """
+    store = DiskBackedImageStore(
+        config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+    )
+    store.add_image_to_store("other", np.zeros((8, 8), dtype=np.float32))
+    store.offload_image_data_to_disk("other")
+    snapshot: dict[str, bytes] = {}
+    for name in ("other.dat", "other.npy", "other.meta.json"):
+        target = store.cache_dir / name
+        assert target.is_file(), f"{name} must exist to be a link target"
+        snapshot[name] = target.read_bytes()
+    return store, snapshot
+
+
+def _plant_link(cache_dir: Path, kind: str) -> Path:
+    """Plant the symlink of ``kind`` for key ``"k"`` pointing at ``other``'s artefact; return the link."""
+    link_name, target_name = _LINK_KINDS[kind]
+    link = cache_dir / link_name
+    link.symlink_to(cache_dir / target_name)
+    return link
+
+
+@pytest.mark.parametrize(
+    "process",
+    ["owner", pytest.param("non_owner", marks=pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based"))],
+)
+@pytest.mark.parametrize("kind", list(_LINK_KINDS))
+def test_add_over_a_linked_write_path_is_refused_before_any_write(tmp_path: Path, kind: str, process: str):
+    """A link at any path the write opens for the key is refused before the write, in every process.
+
+    The target is another key's artefact inside the cache directory, so the refusal
+    is the aliased class. Nothing may reach the target, also once any pending write
+    is forced to disk by an entry-level offload.
+    """
+    store, snapshot = _durable_other(tmp_path)
+    link = _plant_link(store.cache_dir, kind)
+
+    if process == "owner":
+        with pytest.raises(StorePurgeAliasedArtefactError):
+            store.add_image_to_store("k", np.ones((4, 4), dtype=np.float32))
+    else:
+        assert _non_owner_adds_k(store) == 3, f"a {kind} was not refused as StorePurgeRefusedError in a non-owner"
+
+    assert link.is_symlink(), "the refusal must leave the planted link in place"
+    assert "k" not in store
+    dat = get_memmap_path(store.cache_dir, "k")
+    assert dat.is_symlink() or not dat.exists(), "a regular k.dat was written"
+    store.offload()  # entry-level, every tracked key: forces any pending write to disk
+    for name, before in snapshot.items():
+        assert (store.cache_dir / name).read_bytes() == before, f"{name} changed after a refused {kind} add"
+    np.testing.assert_array_equal(np.asarray(store["other"]), np.zeros((8, 8), dtype=np.float32))
+
+
+def test_add_over_a_write_path_linked_outside_the_cache_is_refused_as_foreign(tmp_path: Path):
+    """The same refusal for a link that resolves outside the cache directory is the foreign class."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    victim = tmp_path / "outside" / "victim.dat"
+    victim.parent.mkdir()
+    victim.write_bytes(_SENTINEL_BYTES)
+    store = DiskBackedImageStore(
+        config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+    )
+    get_memmap_tmp_path(store.cache_dir, "k").symlink_to(victim)
+
+    with pytest.raises(StorePurgeForeignArtefactError):
+        store.add_image_to_store("k", np.ones((4, 4), dtype=np.float32))
+
+    assert victim.read_bytes() == _SENTINEL_BYTES
+    assert "k" not in store
 
 
 def test_presence_gate_uses_only_upstream_builders_of_known_shape(tmp_path: Path):
