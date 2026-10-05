@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 17/23 plans executed
+**Plans**: 17/24 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -317,6 +317,7 @@ Plans:
 - [x] 07-21-PLAN.md — Gap round 3 (G2-WR-02, G2-IN-02): non-owner caveat from measurement; MIGRATION 027/030; detach-observing verifier probe [DEP-05, BC-01]
 - [x] 07-22-PLAN.md — Gap round 4 (docs-only): failed-batch, ownership and sidecar docs as measured; known limitations naming GSEGUtils#83 / 0.11.1; MIGRATION 027/030 [DEP-05, BC-01]
 - [x] 07-23-PLAN.md — Gap round 5 (docs-only): conservative known-limitations wording (no safe-case enumeration); pc2img link check separated from the upstream heading [DEP-05, BC-01]
+- [ ] 07-24-PLAN.md — Gap round 6 (docs-only): persistence qualified to successful calls, fresh-cache_path retry route first, dangling-link guidance, wording alignment [DEP-05, BC-01]
 
 ## Progress
 
@@ -331,4 +332,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 17/23 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 17/24 | In Progress|  |

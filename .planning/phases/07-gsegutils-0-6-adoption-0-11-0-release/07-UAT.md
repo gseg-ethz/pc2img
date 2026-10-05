@@ -3,7 +3,7 @@ status: diagnosed
 phase: 07-gsegutils-0-6-adoption-0-11-0-release
 source: [07-REVIEW.md]
 started: 2026-10-02T11:45:20Z
-updated: 2026-10-05T10:51:40Z
+updated: 2026-10-05T12:23:42Z
 gaps_source: "/gsd-code-review 7 (deep, gsd-code-reviewer/opus) over 9bb6b51..5ee3c80, 16 shipped files, plus /code-review origin/develop-gsd high over the same range, run as plan 07-07 Task 3. CR-01 (shipped 12/12 vs per-tile dispatch 0/12), CR-02 (fresh store reads stale 1.0 after clear+re-add of 7.0) and WR-01 (n_jobs=2 then submit -> StorePurgeRefusedError; n_jobs=1 OK) independently reproduced by the orchestrator. Owner dispositions 2026-10-02."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -652,3 +652,73 @@ blocked: 0
   missing: []
   debug_session: ""
   reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+<!-- ROUND 6 — imported 2026-10-05T12:23:42Z by /gsd-consolidate-findings from gsd-code-review-standard+code-review-high (file:.planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md+conversation), range c43d6f0..69f2264.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "G5-CR-02: Persistence sentences (class docstring, generate(), store 'Only purge removes files', BC-P2I-030) say unconditionally that kept-store entries and dropped generators never delete their files, whatever n_jobs; false after a failed call. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  status: failed
+  severity: blocker
+  reason: "G5-CR-02: Persistence sentences (class docstring, generate(), store 'Only purge removes files', BC-P2I-030) say unconditionally that kept-store entries and dropped generators never delete their files, whatever n_jobs; false after a failed call. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  test: review-r6-f4ed37a717fa
+  root_cause: "Successful first call, failing n_jobs=1 call, drop generators -> t0/gradient_x_range.dat and t0/scalar_field_intensity.dat deleted (reviewer-reproduced, sequential and pooled first call)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G5-CR-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 6 / /code-review c43d6f0 high"
+
+- truth: "G5-CR-01: Recommended retry route 'let the exception go out of scope, gc.collect(), retry' fails in interactive sessions/debuggers: sys.last_exc/last_value/last_traceback keep the failed call alive; fresh cache_path route works. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  status: failed
+  severity: blocker
+  reason: "G5-CR-01: Recommended retry route 'let the exception go out of scope, gc.collect(), retry' fails in interactive sessions/debuggers: sys.last_exc/last_value/last_traceback keep the failed call alive; fresh cache_path route works. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  test: review-r6-cead7cdb1c75
+  root_cause: "Interactive prompt: n_jobs=1 failure, gc route retry, later typo replaces sys.last_* -> retried raster deleted 3/3; pooled failure 4/6 (reviewer-reproduced); scripts 0/204 lost."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G5-CR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 6 / /code-review c43d6f0 high"
+
+- truth: "G5-WR-01: 07-23 removed the dangling-link recovery note everywhere; a refused write leaves the user no documented way out (purge raises KeyError on an untracked dangling <key>.dat link; must unlink by hand). [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  status: failed
+  severity: minor
+  reason: "G5-WR-01: 07-23 removed the dangling-link recovery note everywhere; a refused write leaves the user no documented way out (purge raises KeyError on an untracked dangling <key>.dat link; must unlink by hand). [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  test: review-r6-780173a7f690
+  root_cause: "Dangling k.dat link in cache dir: add_image_to_store -> StorePurgeAliasedArtefactError; purge('k') -> KeyError, link remains (/code-review reproduced)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G5-WR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 6 / /code-review c43d6f0 high"
+
+- truth: "G5-IN-01: Store docstring/BC-P2I-027 frame 'do not hold entries' generally and say the fix 'follows in 0.11.1'; class docstring/BC-P2I-030 put it under 'after a failed call' and say 'planned'. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  status: failed
+  severity: cosmetic
+  reason: "G5-IN-01: Store docstring/BC-P2I-027 frame 'do not hold entries' generally and say the fix 'follows in 0.11.1'; class docstring/BC-P2I-030 put it under 'after a failed call' and say 'planned'. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  test: review-r6-313259be96bf
+  root_cause: "Reader sees inconsistent scope and release status for the same limitation."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G5-IN-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 6 / /code-review c43d6f0 high"
+
+- truth: "G5-IN-02: 'gc.collect() there collects nothing' overstates: inside the handler it collects other garbage, just not the failed call's objects. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  status: failed
+  severity: cosmetic
+  reason: "G5-IN-02: 'gc.collect() there collects nothing' overstates: inside the handler it collects other garbage, just not the failed call's objects. [disposition: wording fix in 07-24 (owner 2026-10-05), final check scoped to that fix]"
+  test: review-r6-231bed78613d
+  root_cause: "Reader infers gc.collect() is a no-op inside except."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G5-IN-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP5.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 6 / /code-review c43d6f0 high"
