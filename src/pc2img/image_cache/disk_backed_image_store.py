@@ -205,7 +205,7 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
            pair, so a reference retained from this store cannot delete the
            replacement's files when it is collected. Copies of the store made by
            pickling hold their own registrations; the tiled generator disarms the
-           copies it returns from a pooled run (see ``TiledPointCloudImageGenerator``).
+           entries it returns on every call (see ``TiledPointCloudImageGenerator``).
            A key whose only files are a ``.meta.json`` or a ``.dat`` (a killed
            worker's residue, or a ``.dat`` kept by a ``purge_disk_on_gc=False``
            session) is offered to :meth:`purge` as well, but a refusal on process
@@ -260,13 +260,24 @@ class DiskBackedImageStore(DiskBackedStore[DiskBackedImageData]):
         ``<key>.dat`` derivation. This is not a claim that every input-driven
         failure is caught before the purge.
 
-        **Non-owner caveat.** In a process that did not construct the store an
-        overwrite cannot disarm a still-retained reference to a dropped entry: the
-        tolerated process-identity refusal of the leftover case leaves that entry's
-        cleanup hook armed, so collecting the retained reference later still
-        deletes the replacement's ``.dat``. The pc2img pipeline never drops entries
-        (it only adds and reads), so ``generate()`` cannot reach this; it concerns
-        callers of the exported store only.
+        **Non-owner caveat.** In a process that did not construct the store, an
+        overwrite over a key whose dropped entry is still retained cannot disarm
+        that entry's cleanup hook: the tolerated process-identity refusal of the
+        leftover case leaves it armed, so collecting the retained reference later
+        deletes the replacement's ``.dat``. This applies only while no ``<key>.npy``
+        exists for the key. With the codec pair on disk the overwrite takes the hard
+        path, a non-owner is refused with :class:`StorePurgeRefusedError`, and nothing
+        is replaced. Measured in a forked child that inherited the parent's live,
+        never-offloaded entry for a key: after ``del store[key]`` and a re-add the
+        replacement read back, and after the retained reference was collected the
+        ``.dat`` was gone and an offload followed by a read raised
+        :class:`FileNotFoundError`. Results obtained through
+        ``TiledPointCloudImageGenerator.generate()`` do not reach it: every entry that
+        method returns has delete-on-collection disabled, and the route that did
+        (a pooled call, a sequential call whose result is held, ``del`` on a tile
+        store, a regenerate, releasing the held result) was measured to keep the
+        replacement ``.dat`` and to read back. The caveat concerns callers of the
+        exported store who hold entries of a store they did not construct.
 
         ``del`` / ``pop`` / ``clear`` drop tracking only; they are not part of an
         overwrite. Only :meth:`purge` removes files.
