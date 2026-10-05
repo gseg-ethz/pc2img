@@ -3,7 +3,7 @@ status: diagnosed
 phase: 07-gsegutils-0-6-adoption-0-11-0-release
 source: [07-REVIEW.md]
 started: 2026-10-02T11:45:20Z
-updated: 2026-10-02T13:15:11Z
+updated: 2026-10-05T08:33:49Z
 gaps_source: "/gsd-code-review 7 (deep, gsd-code-reviewer/opus) over 9bb6b51..5ee3c80, 16 shipped files, plus /code-review origin/develop-gsd high over the same range, run as plan 07-07 Task 3. CR-01 (shipped 12/12 vs per-tile dispatch 0/12), CR-02 (fresh store reads stale 1.0 after clear+re-add of 7.0) and WR-01 (n_jobs=2 then submit -> StorePurgeRefusedError; n_jobs=1 OK) independently reproduced by the orchestrator. Owner dispositions 2026-10-02."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -329,6 +329,116 @@ blocked: 0
   artifacts:
     - path: "src/pc2img/tiled_generator.py"
       issue: "G1-IN-05 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP1.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+<!-- ROUND 3 — imported 2026-10-05T08:33:49Z by /gsd-consolidate-findings from gsd-code-review-deep+code-review-high (file:.planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md+conversation), range 7094dde..5382353.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "G2-CR-01: Entries created at n_jobs=1 keep their delete-on-GC hook (_release_gc_ownership runs only for n_jobs != 1); a later pooled call rebuilds <key>.dat under another object and releasing the earlier results deletes it, so pooled results are unreadable. Docstrings and MIGRATION 030 promise the opposite. [disposition: fix now (owner 2026-10-05, option A): disarm delete-on-GC on every call; cache files persist after sequential runs too (extends accepted cost); round-4 review follows]"
+  status: failed
+  severity: blocker
+  reason: "G2-CR-01: Entries created at n_jobs=1 keep their delete-on-GC hook (_release_gc_ownership runs only for n_jobs != 1); a later pooled call rebuilds <key>.dat under another object and releasing the earlier results deletes it, so pooled results are unreadable. Docstrings and MIGRATION 030 promise the opposite. [disposition: fix now (owner 2026-10-05, option A): disarm delete-on-GC on every call; cache files persist after sequential runs too (extends accepted cost); round-4 review follows]"
+  test: review-r3-ad4b33fc2971
+  root_cause: "07-16 disarm scoped to pooled calls; sequential results are the stores' own armed entries."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G2-CR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "BLOCKER (gsd-code-reviewer round 3) + high (/code-review 7094dde high); reproduced by orchestrator"
+
+- truth: "G2-WR-01: In a non-owner process the soft gate's tolerated StorePurgeRefusedError also swallows the aliased/foreign-artefact refusal (upstream checks process id first), so a planted symlinked leftover k.dat -> other.dat redirects the replacement write into key 'other'. Docstring claim that these refusals still surface is false there. [disposition: fix now (owner 2026-10-05): re-raise when a leftover artefact is a symlink]"
+  status: failed
+  severity: major
+  reason: "G2-WR-01: In a non-owner process the soft gate's tolerated StorePurgeRefusedError also swallows the aliased/foreign-artefact refusal (upstream checks process id first), so a planted symlinked leftover k.dat -> other.dat redirects the replacement write into key 'other'. Docstring claim that these refusals still surface is false there. [disposition: fix now (owner 2026-10-05): re-raise when a leftover artefact is a symlink]"
+  test: review-r3-d167e3df49b7
+  root_cause: "Exact-type tolerance cannot distinguish the pid refusal from a pid refusal that masks an aliased artefact."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G2-WR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING (regression vs 7094dde) + low (/code-review)"
+
+- truth: "G2-WR-02: The non-owner caveat (overwrite cannot disarm a retained dropped entry) is reachable through TiledPointCloudImageGenerator.generate(); docstring and MIGRATION 027 say generate() cannot reach it. [disposition: closed by the G2-CR-01 fix; docs and BC-P2I-027 corrected (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G2-WR-02: The non-owner caveat (overwrite cannot disarm a retained dropped entry) is reachable through TiledPointCloudImageGenerator.generate(); docstring and MIGRATION 027 say generate() cannot reach it. [disposition: closed by the G2-CR-01 fix; docs and BC-P2I-027 corrected (owner 2026-10-05)]"
+  test: review-r3-8200412f7dcf
+  root_cause: "Pooled call, n_jobs=1 add, del, regenerate, then the held result is collected -> replacement .dat deleted (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G2-WR-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G2-WR-03: When one tile fails in a pooled call, a retry is refused for every tile that succeeded: their codec pairs are on disk but untracked in the parent's store copies; not covered by the documented triggers or workaround. [disposition: fix now (owner 2026-10-05): reset image_generators when a pooled dispatch raises]"
+  status: failed
+  severity: major
+  reason: "G2-WR-03: When one tile fails in a pooled call, a retry is refused for every tile that succeeded: their codec pairs are on disk but untracked in the parent's store copies; not covered by the documented triggers or workaround. [disposition: fix now (owner 2026-10-05): reset image_generators when a pooled dispatch raises]"
+  test: review-r3-34def3522da0
+  root_cause: "Pooled generate() where one tile raises; retry generate() -> StorePurgeRefusedError at n_jobs=1 (2/2) and n_jobs=2 (1/1) (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G2-WR-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G2-WR-04: The popitem drop-route case survives the c2 mutation incidentally: popitem() reloads the entry (rewriting range.dat) and the test keeps it bound, sending the key down the lenient branch so the .npy check is never exercised. [disposition: fix the test (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G2-WR-04: The popitem drop-route case survives the c2 mutation incidentally: popitem() reloads the entry (rewriting range.dat) and the test keeps it bound, sending the key down the lenient branch so the .npy check is never exercised. [disposition: fix the test (owner 2026-10-05)]"
+  test: review-r3-c8543a96e80d
+  root_cause: "c2 mutant (no .npy hard check) with the popped value discarded serves the stale raster, yet the current popitem case passes (reviewer-reproduced)."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "G2-WR-04 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G2-IN-01: Class docstring overstates persistence: with default enable_caching=False no files are written (only empty mkdtemp dirs persist, as on baseline); without cache_path the path is <mkdtemp>/<key>.dat not <tile_id>/<key>.dat. MIGRATION 030 is correct, so they disagree. [disposition: fix (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G2-IN-01: Class docstring overstates persistence: with default enable_caching=False no files are written (only empty mkdtemp dirs persist, as on baseline); without cache_path the path is <mkdtemp>/<key>.dat not <tile_id>/<key>.dat. MIGRATION 030 is correct, so they disagree. [disposition: fix (owner 2026-10-05)]"
+  test: review-r3-f18d53318c02
+  root_cause: "Default-config user reads the docstring and expects leaked .dat files that are never written."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G2-IN-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "G2-IN-02: The lone-memmap re-add verifier probe (BC-P2I-027) passes with the lenient branch deleted and on 7094dde; 07-18's cited mutation flipped the expected value, not the code. [disposition: fix the probe (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G2-IN-02: The lone-memmap re-add verifier probe (BC-P2I-027) passes with the lenient branch deleted and on 7094dde; 07-18's cited mutation flipped the expected value, not the code. [disposition: fix the probe (owner 2026-10-05)]"
+  test: review-r3-ef792ab90c65
+  root_cause: "Lenient branch removed from the store -> verifier still prints [ok] verified 30 entries (reviewer-reproduced)."
+  artifacts:
+    - path: ".planning/MIGRATION-v0.11.md"
+      issue: "G2-IN-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "G2-IN-03: Tile ids compared as exact strings, so 'Tile' and 'tile' would share one directory on case-insensitive filesystems (macOS/NTFS); pcd_tiles is mutable after construction. Not reproduced here. [disposition: defer]"
+  status: deferred
+  deferred_to: "after 0.11.0 (owner disposition 2026-10-05: unreproduced here -> cosmetic + defer)"
+  severity: cosmetic
+  reason: "G2-IN-03: Tile ids compared as exact strings, so 'Tile' and 'tile' would share one directory on case-insensitive filesystems (macOS/NTFS); pcd_tiles is mutable after construction. Not reproduced here. [disposition: defer]"
+  test: review-r3-5697455e1d3b
+  root_cause: "On a case-insensitive filesystem, tiles 'Tile' and 'tile' collide in one cache directory."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G2-IN-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
   missing: []
   debug_session: ""
   reviewer_severity: "INFO"
