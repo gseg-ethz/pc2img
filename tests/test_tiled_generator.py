@@ -155,12 +155,14 @@ def test_tiled_regenerate_on_one_instance_with_two_workers(tmp_path, synthetic_p
         assert get_memmap_path(store.cache_dir, "range").exists()
 
 
-def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
-    """Entries a pooled ``generate()`` returns must not delete shared memmaps when collected.
+def test_tiled_results_never_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
+    """Entries a ``generate()`` call returns never delete shared memmaps when collected, at any ``n_jobs``.
 
     A pooled run returns parent-side copies of entries that share one ``.dat`` path with the
-    copies every other call returns, so none of them may own garbage-collection deletion; the
-    sequential path hands out the store's own objects and is left as it was.
+    copies every other call returns. An entry armed at ``n_jobs=1`` is still alive when a later
+    pooled call rebuilds the same ``.dat`` under another object, and its finalizer would unlink
+    the file that call's results and the stores read. So no entry owns garbage-collection
+    deletion, whatever ``n_jobs``.
     """
 
     def _tiles() -> list[PointCloudTile]:
@@ -179,29 +181,61 @@ def test_pooled_results_do_not_own_gc_deletion(tmp_path, synthetic_pcd) -> None:
             )
         return flags
 
-    pooled = TiledPointCloudImageGenerator(
-        _tiles(),
-        (8, 8),
-        "spherical",
-        "linear",
-        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "pooled"),
-    )
-    pooled_flags = _purge_flags(pooled, pooled.generate(["range"], n_jobs=2))
-    assert pooled_flags, "no entries were inspected"
-    assert all(flag is False for flag in pooled_flags), f"expected purge_disk_on_gc is False everywhere: {pooled_flags}"
+    for label, n_jobs in (("pooled", 2), ("seq", 1)):
+        gen = TiledPointCloudImageGenerator(
+            _tiles(),
+            (8, 8),
+            "spherical",
+            "linear",
+            lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / label),
+        )
+        flags = _purge_flags(gen, gen.generate(["range"], n_jobs=n_jobs))
+        assert flags, f"{label}: no entries were inspected"
+        assert all(flag is False for flag in flags), (
+            f"{label} (n_jobs={n_jobs}): expected purge_disk_on_gc is False everywhere: {flags}"
+        )
 
-    sequential = TiledPointCloudImageGenerator(
-        _tiles(),
+
+_MIXED_SEQUENCES = {
+    "1-then-2": [(1, ["range"]), (2, ["range"])],
+    "1-then-neg1": [(1, ["range"]), (-1, ["range"])],
+    "2-then-1-adding-then-2": [(2, ["range"]), (1, _FEATURES), (2, _FEATURES)],
+}
+
+
+@pytest.mark.parametrize("sequence", list(_MIXED_SEQUENCES.values()), ids=list(_MIXED_SEQUENCES))
+def test_mixed_n_jobs_sequences_keep_every_raster_readable(tmp_path, synthetic_pcd, sequence) -> None:
+    """Mixing ``n_jobs`` values on one instance never leaves an unreadable raster or store entry.
+
+    An entry created at ``n_jobs=1`` must not delete, when released, a ``.dat`` that a later
+    pooled call rebuilt under another object. After every call the previous result is released
+    and collected, every returned raster is read, and at the end every store entry is read after
+    an entry-level ``store.offload()``; an unlinked ``.dat`` raises ``FileNotFoundError`` there.
+    """
+    tiles = [
+        PointCloudTile("tile_00", synthetic_pcd(n=64, seed=1), {}),
+        PointCloudTile("tile_01", synthetic_pcd(n=64, seed=2), {}),
+    ]
+    gen = TiledPointCloudImageGenerator(
+        tiles,
         (8, 8),
         "spherical",
         "linear",
-        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path / "seq"),
+        lazy_disk_cache_config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path),
     )
-    sequential_flags = _purge_flags(sequential, sequential.generate(["range"], n_jobs=1))
-    assert sequential_flags, "no entries were inspected"
-    assert all(flag is True for flag in sequential_flags), (
-        f"expected purge_disk_on_gc is True everywhere: {sequential_flags}"
-    )
+
+    result = None
+    for n_jobs, features in sequence:
+        result = gen.generate(features, n_jobs=n_jobs)
+        gc.collect()
+        _read_every_raster(result)
+
+    for tile_id in _TILE_IDS:
+        store = gen.image_generators[tile_id].feature_mgr.cache_store
+        store.offload()
+        for name in list(store.keys()):
+            assert np.asarray(store[name]).shape == (8, 8), f"{tile_id}/{name}"
+        assert get_memmap_path(store.cache_dir, "range").exists()
 
 
 def test_duplicate_tile_ids_are_rejected_at_construction(synthetic_pcd) -> None:
