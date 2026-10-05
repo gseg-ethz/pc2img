@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-24-PLAN.md (docs-only gap round 6 complete; 07-07 and 07-15 still paused; owner-scoped final check of the four fixes awaits)
-last_updated: "2026-10-05T12:27:06.571Z"
+stopped_at: Completed 07-07-PLAN.md (gates + D-03 re-run on 2c818e2; review reviewed by owner); next 07-08 (07-15 on hold, redraft)
+last_updated: "2026-10-05T12:57:25.135Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: 1dcf8039b1d2d13b197e023ece9541698b632786
+state_head: 2c818e2a453f39792931db4e7e255c5fa9f0551b
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 82
-  completed_plans: 76
+  completed_plans: 77
 milestone_name: milestone
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-11)
 ## Current Position
 
 Phase: 07 (GSEGUtils 0.6 Adoption & 0.11.0 Release) — EXECUTING
-Plan: 7 of 11
+Plan: 8 of 11
 Status: Ready to execute
 Last activity: 2026-10-02 — Phase 07 execution started
 
@@ -139,6 +139,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 07 P22 | 25 min | 3 tasks | 4 files |
 | Phase 07 P23 | 8 min | 2 tasks | 4 files |
 | Phase 07 P24 | 6 min | 2 tasks | 3 files |
+| Phase 07 P07 | 25min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -264,6 +265,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-19: generate() disarms delete-on-GC on every call (n_jobs=1 included; owner option A, cache files persist after sequential runs, documented); a pooled dispatch that raises clears image_generators so the retry is not refused (n_jobs=1 failures drop nothing); persistence docstring as measured; mixed-n_jobs twelve rounds 12/12 failing before, 0/12 after (fix commits 4b4add3, d00cfdb)
 - [Phase 07]: 07-20: add_image_to_store refuses a symlink at <key>.dat, .dat.tmp, .npy.tmp or .meta.json.tmp before any purge or write, in every process (aliased vs foreign class by where the link resolves; soft branch also re-raises for a linked leftover); popitem drop-route case discards its value and all four routes assert no .dat before the overwrite, so the c2 mutation fails all four (fix commit e738cf4)
 - [Phase 07]: 07-21: non-owner caveat re-measured and kept with its precondition (applies only while no <key>.npy exists for the key; tiled generate() results do not reach it; the unpickled-copy route is refused); BC-P2I-027/030 amended to e738cf4 and 4b4add3/d00cfdb with the mixed-sequence counts (0 of 12 after, 12 of 12 before); the 027 lone-memmap probe replaced by a detach-observing probe that fails when the soft branch is deleted from the code (import proven first); verifier prints [ok] verified 30 entries (commits 3e91f7e, 5549f7c)
+- [Phase 07]: 07-07: D-03 unlocked-wheel check and gate record re-taken after gap rounds; latest D03_SHA is 2c818e2 (wheel passes 311 unlocked = 311 locked against GSEGUtils 0.6.0 / pchandler 2.1.1 / numpy 2.3.5); owner reviewed phase diff (36 resolved, 16 deferred, 0 open); stop fix-on-fix on GC-ownership mechanism, ship with conservative known-limitations docs, GSEGUtils#83 filed
 
 ### Pending Todos
 
@@ -303,6 +305,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-05T12:27:06.254Z
-Stopped at: Completed 07-24-PLAN.md (docs-only gap round 6 complete; 07-07 and 07-15 still paused; owner-scoped final check of the four fixes awaits)
+Last session: 2026-10-05T12:57:24.854Z
+Stopped at: Completed 07-07-PLAN.md (gates + D-03 re-run on 2c818e2; review reviewed by owner); next 07-08 (07-15 on hold, redraft)
 Resume file: None
