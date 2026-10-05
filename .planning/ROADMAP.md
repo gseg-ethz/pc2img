@@ -278,7 +278,7 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: 13/21 plans executed
+**Plans**: 14/21 plans executed
 
 **Wave 1** *(parallel; owner decision gate before the pins are written)*
 
@@ -313,7 +313,7 @@ Plans:
 - [x] 07-17-PLAN.md — Gap round 2 (G1-WR-01): overwrite gate narrowed (.npy hard, .dat/.meta.json soft); leftovers no longer refuse regeneration [DEP-05]
 - [x] 07-18-PLAN.md — Gap round 2: pyproject NOTE, tiled refusal docs + sensor, MIGRATION 027/028/030 to the final behaviour [DEP-05, BC-01]
 - [x] 07-19-PLAN.md — Gap round 3 (G2-CR-01, G2-WR-03, G2-IN-01): delete-on-GC disarmed on every call; pooled failure resets tile generators; persistence docs [DEP-05]
-- [ ] 07-20-PLAN.md — Gap round 3 (G2-WR-01, G2-WR-04): pre-write refusal of symlinked write paths in every process; popitem drop-route test tightened [DEP-05]
+- [x] 07-20-PLAN.md — Gap round 3 (G2-WR-01, G2-WR-04): pre-write refusal of symlinked write paths in every process; popitem drop-route test tightened [DEP-05]
 - [ ] 07-21-PLAN.md — Gap round 3 (G2-WR-02, G2-IN-02): non-owner caveat from measurement; MIGRATION 027/030; detach-observing verifier probe [DEP-05, BC-01]
 
 ## Progress
@@ -329,4 +329,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 13/21 | In Progress|  |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 14/21 | In Progress|  |
