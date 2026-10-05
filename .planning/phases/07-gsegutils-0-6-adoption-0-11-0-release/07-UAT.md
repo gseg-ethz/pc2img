@@ -3,7 +3,7 @@ status: diagnosed
 phase: 07-gsegutils-0-6-adoption-0-11-0-release
 source: [07-REVIEW.md]
 started: 2026-10-02T11:45:20Z
-updated: 2026-10-05T12:51:14Z
+updated: 2026-10-05T13:11:40Z
 gaps_source: "/gsd-code-review 7 (deep, gsd-code-reviewer/opus) over 9bb6b51..5ee3c80, 16 shipped files, plus /code-review origin/develop-gsd high over the same range, run as plan 07-07 Task 3. CR-01 (shipped 12/12 vs per-tile dispatch 0/12), CR-02 (fresh store reads stale 1.0 after clear+re-add of 7.0) and WR-01 (n_jobs=2 then submit -> StorePurgeRefusedError; n_jobs=1 OK) independently reproduced by the orchestrator. Owner dispositions 2026-10-02."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -789,3 +789,22 @@ blocked: 0
   missing: []
   debug_session: ""
   reviewer_severity: "gsd-code-reviewer scoped final check"
+
+<!-- ROUND 8 — imported 2026-10-05T13:11:40Z by /gsd-consolidate-findings from gsd-code-review-quick-scoped (file:.planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-RTD.md), range e0cd06f..598ab2b.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "G7-IN-01: The 'no single quotes' rule is commented only on the post_install command, but RTD wraps every job command; move it to one comment under jobs:. [disposition: cosmetic + defer (owner standing rule: non-breaking hardening -> defer)]"
+  status: deferred
+  deferred_to: "after 0.11.0 (cosmetic RTD comment placement; owner standing rule)"
+  severity: cosmetic
+  reason: "G7-IN-01: The 'no single quotes' rule is commented only on the post_install command, but RTD wraps every job command; move it to one comment under jobs:. [disposition: cosmetic + defer (owner standing rule: non-breaking hardening -> defer)]"
+  test: review-r8-62c3133f718c
+  root_cause: "Adding a job command with a single quote (e.g. git describe --match 'v*') to post_checkout would break the RTD build the same way; local builds do not catch it."
+  artifacts:
+    - path: ".readthedocs.yaml"
+      issue: "G7-IN-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-RTD.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO (scoped RTD review)"
