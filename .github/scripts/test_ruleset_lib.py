@@ -33,7 +33,10 @@ RULESET_NAME = "protect-main"
 RULESET_ID = 1234567
 
 
-def committed_payload(pull_request_parameters: dict | None = None) -> dict:
+def committed_payload(
+    pull_request_parameters: dict | None = None,
+    status_checks_parameters: dict | None = None,
+) -> dict:
     """Build a minimal committed ruleset payload in the committed files' shape.
 
     Parameters
@@ -41,6 +44,9 @@ def committed_payload(pull_request_parameters: dict | None = None) -> dict:
     pull_request_parameters
         Extra keys to merge into the ``pull_request`` rule's parameters, used to
         make the committed side non-silent about a read-filled key.
+    status_checks_parameters
+        Extra keys to merge into the ``required_status_checks`` rule's
+        parameters, used the same way.
 
     Returns
     -------
@@ -49,6 +55,14 @@ def committed_payload(pull_request_parameters: dict | None = None) -> dict:
     """
     parameters = {"required_approving_review_count": 0}
     parameters.update(pull_request_parameters or {})
+    status_checks = {
+        "strict_required_status_checks_policy": False,
+        "required_status_checks": [
+            {"context": "Tests (pytest)", "integration_id": None},
+            {"context": "Lint (pre-commit)", "integration_id": None},
+        ],
+    }
+    status_checks.update(status_checks_parameters or {})
     return {
         "name": RULESET_NAME,
         "target": "branch",
@@ -57,23 +71,24 @@ def committed_payload(pull_request_parameters: dict | None = None) -> dict:
         "bypass_actors": [],
         "rules": [
             {"type": "pull_request", "parameters": parameters},
-            {
-                "type": "required_status_checks",
-                "parameters": {
-                    "strict_required_status_checks_policy": False,
-                    "required_status_checks": [
-                        {"context": "Tests (pytest)", "integration_id": None},
-                        {"context": "Lint (pre-commit)", "integration_id": None},
-                    ],
-                },
-            },
+            {"type": "required_status_checks", "parameters": status_checks},
             {"type": "non_fast_forward"},
         ],
     }
 
 
-def live_payload(*, with_bypass_actors: bool = True, allowed_merge_methods: list | None = None) -> dict:
+def live_payload(
+    *,
+    with_bypass_actors: bool = True,
+    allowed_merge_methods: list | None = None,
+    ui_created: bool = False,
+) -> dict:
     """Build a live ruleset payload in the shape the API actually returns.
+
+    The default is the shape measured after a ruleset has been applied through
+    the API: ``dismissal_restriction`` reads back as
+    ``{"enabled": False, "allowed_actors": []}`` and the status-check entries
+    carry no ``integration_id``.
 
     Parameters
     ----------
@@ -82,6 +97,10 @@ def live_payload(*, with_bypass_actors: bool = True, allowed_merge_methods: list
         access to the ruleset receives.
     allowed_merge_methods
         Value for the read-filled ``allowed_merge_methods`` key.
+    ui_created
+        When True, build the shape a ruleset created in the web UI reads back:
+        every status-check entry carries ``integration_id: 15368`` (the GitHub
+        Actions app).
 
     Returns
     -------
@@ -114,7 +133,7 @@ def live_payload(*, with_bypass_actors: bool = True, allowed_merge_methods: list
                     "allowed_merge_methods": (
                         allowed_merge_methods if allowed_merge_methods is not None else ["merge", "squash", "rebase"]
                     ),
-                    "dismissal_restriction": {},
+                    "dismissal_restriction": {"enabled": False, "allowed_actors": []},
                     "required_reviewers": [],
                     "require_extra_approval_for_unattributed_changes": True,
                 },
@@ -125,13 +144,17 @@ def live_payload(*, with_bypass_actors: bool = True, allowed_merge_methods: list
                     "do_not_enforce_on_create": False,
                     "strict_required_status_checks_policy": False,
                     "required_status_checks": [
-                        {"context": "Lint (pre-commit)", "integration_id": 15368},
-                        {"context": "Tests (pytest)", "integration_id": 15368},
+                        {"context": "Lint (pre-commit)"},
+                        {"context": "Tests (pytest)"},
                     ],
                 },
             },
         ],
     }
+    if ui_created:
+        status_checks = payload["rules"][2]["parameters"]["required_status_checks"]
+        for entry in status_checks:
+            entry["integration_id"] = 15368
     if not with_bypass_actors:
         del payload["bypass_actors"]
     return payload
@@ -278,15 +301,74 @@ def test_unattributed_changes_approval_is_a_read_filled_key() -> None:
     assert not ruleset_lib.diff(norm_live, norm_committed)
 
 
-def test_read_filled_key_survives_when_the_committed_side_sets_it() -> None:
-    """Rule (d) compares a read-filled key the committed payload sets, and reports the difference."""
-    live = live_payload(allowed_merge_methods=["merge", "squash", "rebase"])
-    committed = committed_payload({"allowed_merge_methods": ["squash"]})
+@pytest.mark.parametrize(
+    ("rule_type", "key", "live_value", "committed_value"),
+    [
+        ("pull_request", "allowed_merge_methods", ["merge", "squash", "rebase"], ["squash"]),
+        ("required_status_checks", "do_not_enforce_on_create", False, True),
+    ],
+    ids=["pull_request-allowed_merge_methods", "required_status_checks-do_not_enforce_on_create"],
+)
+def test_read_filled_key_survives_when_the_committed_side_sets_it(
+    rule_type: str, key: str, live_value: object, committed_value: object
+) -> None:
+    """Rule (d) compares a read-filled key the committed payload sets, for both read-filled tuples.
+
+    Parameters
+    ----------
+    rule_type
+        The rule the key lives under.
+    key
+        The read-filled key, a member of the matching ``*_READ_FILLED_KEYS`` tuple.
+    live_value
+        The value the live fixture carries for the key.
+    committed_value
+        The differing value the committed side sets explicitly.
+    """
+    tuples = {
+        "pull_request": ruleset_lib.PULL_REQUEST_READ_FILLED_KEYS,
+        "required_status_checks": ruleset_lib.STATUS_CHECKS_READ_FILLED_KEYS,
+    }
+    assert key in tuples[rule_type], "the case must name a key from its rule's read-filled tuple"
+    live = live_payload()
+    live_parameters = next(rule for rule in live["rules"] if rule["type"] == rule_type)["parameters"]
+    live_parameters[key] = live_value
+    if rule_type == "pull_request":
+        committed = committed_payload(pull_request_parameters={key: committed_value})
+    else:
+        committed = committed_payload(status_checks_parameters={key: committed_value})
     norm_live, norm_committed, removed = ruleset_lib.normalize(live, committed)
-    assert norm_live["rules"]["pull_request"]["allowed_merge_methods"] == ["merge", "squash", "rebase"]
-    assert not any("allowed_merge_methods" in record for record in removed)
+    assert norm_live["rules"][rule_type][key] == live_value
+    assert norm_committed["rules"][rule_type][key] == committed_value
+    assert not any(f"`{key}`" in record for record in removed), removed
     differences = ruleset_lib.diff(norm_live, norm_committed)
-    assert any("allowed_merge_methods" in difference for difference in differences), differences
+    assert any(key in difference for difference in differences), differences
+
+
+def test_rule_c_records_the_integration_id_removal_for_a_ui_created_ruleset() -> None:
+    """A UI-created ruleset reads back ``integration_id: 15368``; rule (c) drops and records it on the live side."""
+    live = live_payload(ui_created=True)
+    assert all(
+        entry["integration_id"] == 15368 for entry in live["rules"][2]["parameters"]["required_status_checks"]
+    ), "fixture must carry the UI-created shape"
+    norm_live, norm_committed, removed = ruleset_lib.normalize(live, committed_payload())
+    live_removals = [record for record in removed if record.startswith("[live]") and "rule (c)" in record]
+    assert len(live_removals) == 2, live_removals
+    assert all(
+        "integration_id" not in entry
+        for entry in norm_live["rules"]["required_status_checks"]["required_status_checks"]
+    )
+    assert ruleset_lib.diff(norm_live, norm_committed) == []
+
+
+def test_apply_shaped_live_payload_normalises_with_no_live_rule_c_removal() -> None:
+    """The measured post-apply shape has no ``integration_id``; nothing is dropped on the live side for rule (c)."""
+    live = live_payload()
+    for entry in live["rules"][2]["parameters"]["required_status_checks"]:
+        assert "integration_id" not in entry, "fixture must carry the apply-shaped entries"
+    norm_live, norm_committed, removed = ruleset_lib.normalize(live, committed_payload())
+    assert not [record for record in removed if record.startswith("[live]") and "rule (c)" in record], removed
+    assert ruleset_lib.diff(norm_live, norm_committed) == []
 
 
 def test_every_removal_is_recorded_in_the_removal_list() -> None:

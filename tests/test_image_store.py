@@ -14,16 +14,32 @@ Authored test-first: every sensor here is RED until
   unresolved).
 """
 
+import gc
+import hashlib
+import inspect
+import os
 import pickle
 import re
 import tempfile
+import types
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 import pytest
-from GSEGUtils.lazy_disk_cache import LazyDiskCacheConfig
+from GSEGUtils.lazy_disk_cache import (
+    LazyDiskCacheConfig,
+    StoreKeyError,
+    StorePurgeAliasedArtefactError,
+    StorePurgeForeignArtefactError,
+    StorePurgeRefusedError,
+    get_meta_path,
+    get_npy_path,
+    is_valid_store_key,
+)
+from GSEGUtils.lazy_disk_cache.paths import STORE_PATH_BUILDERS, get_memmap_path, get_memmap_tmp_path
 
-from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore
+from pc2img.image_cache import DiskBackedImageData, DiskBackedImageStore, disk_backed_image_store
 
 _rng = np.random.default_rng(20260711)
 
@@ -94,12 +110,15 @@ def test_offload_reload_round_trip(tmp_path: Path):
 
 
 # --------------------------------------------------------------------------- #
-# Overwrite / delete must purge the on-disk codec pair                        #
+# Overwrite / purge must remove the on-disk codec pair                        #
 #                                                                              #
-# add_image_to_store's overwrite path does `del self[key]`, but the base       #
-# __delitem__ drops only the in-memory entry. The stale `<key>.npy` +          #
-# `<key>.meta.json` remain, and a fresh store re-scans `*.npy` on construction #
-# — so it re-adopts and serves the stale pre-overwrite raster.                 #
+# `del store[key]` (and `pop` / `popitem` / `clear`) drop only the in-memory   #
+# entry, so the `<key>.npy` + `<key>.meta.json` pair stays and a fresh store   #
+# re-scans `*.npy` on construction -- it would re-adopt and serve the stale    #
+# pre-overwrite raster. The overwrite path therefore calls `purge`, the        #
+# upstream delete verb that removes the memmap and the codec pair, whenever    #
+# the key is tracked OR its ``<key>.npy`` is on disk. A lone memmap or sidecar #
+# is offered to ``purge`` too, but another process's refusal is tolerated.     #
 # --------------------------------------------------------------------------- #
 def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
     a = _gray((6, 6))
@@ -108,9 +127,9 @@ def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
     store1 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store1.add_image_to_store("range", a)
     store1.offload_image_data_to_disk("range")
-    assert store1._get_npy_path("range").exists()
+    assert get_npy_path(store1.cache_dir, "range").exists()
 
-    # Overwrite the key in the SAME store — routes through `del self["range"]`.
+    # Overwrite the key in the SAME store -- the overwrite purges the old entry's files.
     store1.add_image_to_store("range", b)
 
     # A fresh store over the same cache_dir must NOT serve the stale pre-overwrite A.
@@ -123,75 +142,376 @@ def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
         assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
 
 
-def test_delete_purges_on_disk_codec_pair(tmp_path: Path):
+@pytest.mark.parametrize("route", ["del", "pop", "popitem", "clear"])
+def test_overwrite_after_a_drop_route_never_leaves_a_stale_raster_for_a_fresh_store(tmp_path: Path, route: str):
+    """Every drop route leaves the codec pair on disk and untracks the key; the
+    overwrite must still remove that pair, otherwise a fresh store adopts it and
+    serves the pre-overwrite raster as a cache hit.
+
+    Every route must reach the overwrite with the codec pair ALONE on disk (no
+    ``.dat``), so the ``<key>.npy`` hard check is what this test senses; a ``.dat``
+    would let the soft leftover leg catch the key and hide a missing hard check."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+    store.offload_image_data_to_disk("range")
+    assert get_npy_path(store.cache_dir, "range").exists()
+
+    if route == "del":
+        del store["range"]
+    elif route == "pop":
+        store.pop("range")
+    elif route == "popitem":
+        # popitem() reloads the entry; its value is discarded and collected so no
+        # memmap is left behind for the soft .dat leg of the gate to catch.
+        store.popitem()
+        gc.collect()
+    else:
+        store.clear()
+    assert "range" not in store  # tracking dropped, files still on disk
+    assert get_npy_path(store.cache_dir, "range").exists()
+    assert not get_memmap_path(store.cache_dir, "range").exists(), (
+        "a .dat before the overwrite would let the soft gate catch the key"
+    )
+
+    store.add_image_to_store("range", b)
+
+    assert not get_npy_path(store.cache_dir, "range").exists(), "stale .npy survived the overwrite"
+    assert not get_meta_path(store.cache_dir, "range").exists(), "stale .meta.json survived the overwrite"
+    np.testing.assert_array_equal(np.asarray(store["range"]), b)
+
+    fresh = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    if "range" in fresh:
+        served = np.asarray(fresh["range"])
+        assert not np.array_equal(served, a), "fresh store served the stale pre-overwrite raster"
+
+
+def test_retained_reference_to_a_dropped_entry_does_not_delete_the_replacement_memmap_on_gc(tmp_path: Path):
+    """The dropped entry's cleanup hook must have been detached by the overwrite's
+    purge; otherwise it unlinks whatever now occupies its recorded path when the
+    caller's retained reference is collected. The key's only file here is the
+    ``.dat``, so this also pins that the overwrite offers a lone memmap to ``purge``
+    in the constructing process (the detach is the point, not the unlink)."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+    old = store.store["range"]  # strong reference to the entry object
+    assert old is not None
+    del store["range"]
+
+    store.add_image_to_store("range", b)
+    dat = get_memmap_path(store.cache_dir, "range")
+    assert dat.exists()
+
+    del old
+    gc.collect()
+
+    assert dat.exists(), "collecting the dropped entry deleted the replacement's memmap"
+    np.testing.assert_array_equal(np.asarray(store["range"]), b)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+def test_adding_a_new_key_from_another_process_is_not_refused(tmp_path: Path):
+    """The tiled workers add new keys into stores they did not construct on every
+    later ``generate()``, so the overwrite route must only ever reach ``purge``
+    for a key that is tracked or has files on disk. An EXISTING key from another
+    process is still refused: upstream's owner-process rule on ``purge``. Leftover
+    non-serving files are covered by the leftover tests below."""
+    a = _gray((6, 6))
+    b = (a + 10.0).astype(np.float32)
+
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", a)
+
+    def _run_in_child(key: str) -> int:
+        pid = os.fork()
+        if pid == 0:  # pragma: no cover - runs in the forked child
+            try:
+                store.add_image_to_store(key, b)
+                os._exit(0)
+            except StorePurgeRefusedError:
+                os._exit(3)
+            except BaseException:
+                os._exit(4)
+        _, status = os.waitpid(pid, 0)
+        return os.waitstatus_to_exitcode(status)
+
+    assert _run_in_child("fresh_key") == 0, "a brand-new key was refused in a non-owner process"
+    assert _run_in_child("range") == 3, "an existing key was not refused in a non-owner process"
+
+
+# --------------------------------------------------------------------------- #
+# Leftovers that cannot be served must not turn into refusals                  #
+#                                                                              #
+# A fresh store adopts only a ``<key>.npy`` (measured against the base store's #
+# startup scan: a lone ``.npy`` is adopted, a lone ``.meta.json`` or ``.dat``  #
+# is not, the pair is served). Only that file can make a store serve a stale   #
+# raster, so only it must be removed -- and upstream lets only the constructing #
+# process remove it. A killed worker's ``.dat.tmp``, a lone ``.dat`` kept by a #
+# ``purge_disk_on_gc=False`` session, or a lone ``.meta.json`` is harmless to  #
+# a replacement and must not make a non-owner process fail.                    #
+# --------------------------------------------------------------------------- #
+def _plant_leftover(cache_dir: Path, kind: str) -> None:
+    """Leave the files of ``kind`` for key ``"k"`` in ``cache_dir`` with no store tracking them."""
+    if kind == "raw_dat":
+        get_memmap_path(cache_dir, "k").write_bytes(b"\0" * 64)
+    elif kind == "raw_dat_tmp":
+        get_memmap_tmp_path(cache_dir, "k").write_bytes(b"\0" * 64)
+    elif kind == "durable_lone_dat":
+        durable = DiskBackedImageStore(
+            config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+        )
+        durable.add_image_to_store("k", _gray((6, 6)))
+        del durable
+        gc.collect()
+    elif kind in ("lone_meta", "codec_pair"):
+        writer = DiskBackedImageStore(
+            config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+        )
+        writer.add_image_to_store("k", _gray((6, 6)))
+        writer.offload_image_data_to_disk("k")
+        del writer["k"]
+        if kind == "lone_meta":
+            get_npy_path(cache_dir, "k").unlink()
+        del writer
+        gc.collect()
+        get_memmap_path(cache_dir, "k").unlink(missing_ok=True)
+    else:  # pragma: no cover - test authoring error
+        raise AssertionError(kind)
+
+
+def _non_owner_adds_k(store: DiskBackedImageStore) -> int:
+    """Fork a child (a process that did not construct ``store``) that adds ``"k"`` and reads it back.
+
+    Exit codes: 0 added and read back 1.0, 3 ``StorePurgeRefusedError``, 4 any other
+    ``BaseException``, 5 wrong value read back.
+    """
+    pid = os.fork()
+    if pid == 0:  # pragma: no cover - runs in the forked child
+        try:
+            store.add_image_to_store("k", np.ones((6, 6), dtype=np.float32))
+            os._exit(0 if float(np.asarray(store["k"])[0, 0]) == 1.0 else 5)
+        except StorePurgeRefusedError:
+            os._exit(3)
+        except BaseException:
+            os._exit(4)
+    _, status = os.waitpid(pid, 0)
+    return os.waitstatus_to_exitcode(status)
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+@pytest.mark.parametrize("kind", ["raw_dat", "raw_dat_tmp", "durable_lone_dat", "lone_meta"])
+def test_non_owner_add_over_a_leftover_is_not_refused(tmp_path: Path, kind: str):
+    """A process that did not construct the store can add a key whose only leftover
+    cannot be served (a raw or durable ``.dat``, a ``.dat.tmp``, a lone ``.meta.json``)."""
+    _plant_leftover(tmp_path, kind)
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    assert "k" not in store, "the leftover must not be adopted as a tracked key"
+
+    assert _non_owner_adds_k(store) == 0, f"a {kind} leftover made a non-owner add fail"
+
+
+@pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based process-identity pin")
+def test_non_owner_add_over_a_dropped_codec_pair_is_still_refused(tmp_path: Path):
+    """The converse, pinned: a key whose ``<key>.npy`` is on disk is refused in a non-owner process.
+
+    A fresh store would adopt that stale pair and serve it, so it must be removed;
+    upstream lets only the constructing process remove it. Documented, not a defect.
+    """
+    _plant_leftover(tmp_path, "codec_pair")
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.pop("k", None)  # the owner holds no tracking for the key; the pair stays on disk
+    assert get_npy_path(store.cache_dir, "k").exists()
+
+    assert _non_owner_adds_k(store) == 3
+    assert get_npy_path(store.cache_dir, "k").exists(), "a refused overwrite removed the stale pair"
+
+
+def test_owner_add_over_a_durable_lone_memmap_replaces_it(tmp_path: Path):
+    """A durable (``purge_disk_on_gc=False``) session leaves a lone ``.dat``; a fresh store
+    in the same process replaces it and serves the new raster."""
+    _plant_leftover(tmp_path, "durable_lone_dat")
+    assert get_memmap_path(tmp_path, "k").exists()
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+
+    store.add_image_to_store("k", np.ones((6, 6), dtype=np.float32))
+
+    assert float(np.asarray(store["k"])[0, 0]) == 1.0
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name != "_tmp") == ["k.dat"]
+
+
+# --------------------------------------------------------------------------- #
+# A linked write path must be refused before anything is written              #
+#                                                                              #
+# The write for key ``k`` opens ``k.dat``, ``k.dat.tmp``, ``k.npy.tmp`` and    #
+# ``k.meta.json.tmp``. Upstream's write containment refuses only targets       #
+# OUTSIDE the cache directory, so a link to ANOTHER key's file inside it is    #
+# followed: the owner and any other process overwrite that file silently.      #
+# --------------------------------------------------------------------------- #
+_LINK_KINDS: dict[str, tuple[str, str]] = {
+    "dat_tmp_link": ("k.dat.tmp", "other.dat"),
+    "npy_tmp_link": ("k.npy.tmp", "other.npy"),
+    "meta_tmp_link": ("k.meta.json.tmp", "other.meta.json"),
+    "dat_link": ("k.dat", "other.dat"),
+    "meta_link": ("k.meta.json", "other.meta.json"),
+}
+
+
+def _durable_other(cache_dir: Path) -> tuple[DiskBackedImageStore, dict[str, bytes]]:
+    """Build a store holding ``other`` (zeros) with ``.dat``, ``.npy`` and ``.meta.json`` all on disk.
+
+    ``purge_disk_on_gc=False`` is required: with the default flag the codec offload
+    drops the entry and its finalizer deletes ``other.dat``, leaving no link target.
+    Returns the store and the bytes of the three files.
+    """
+    store = DiskBackedImageStore(
+        config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+    )
+    store.add_image_to_store("other", np.zeros((8, 8), dtype=np.float32))
+    store.offload_image_data_to_disk("other")
+    snapshot: dict[str, bytes] = {}
+    for name in ("other.dat", "other.npy", "other.meta.json"):
+        target = store.cache_dir / name
+        assert target.is_file(), f"{name} must exist to be a link target"
+        snapshot[name] = target.read_bytes()
+    return store, snapshot
+
+
+def _plant_link(cache_dir: Path, kind: str) -> Path:
+    """Plant the symlink of ``kind`` for key ``"k"`` pointing at ``other``'s artefact; return the link."""
+    link_name, target_name = _LINK_KINDS[kind]
+    link = cache_dir / link_name
+    link.symlink_to(cache_dir / target_name)
+    return link
+
+
+@pytest.mark.parametrize(
+    "process",
+    ["owner", pytest.param("non_owner", marks=pytest.mark.skipif(not hasattr(os, "fork"), reason="fork-based"))],
+)
+@pytest.mark.parametrize("kind", list(_LINK_KINDS))
+def test_add_over_a_linked_write_path_is_refused_before_any_write(tmp_path: Path, kind: str, process: str):
+    """A link at any path the write opens for the key is refused before the write, in every process.
+
+    The target is another key's artefact inside the cache directory, so the refusal
+    is the aliased class. Nothing may reach the target, also once any pending write
+    is forced to disk by an entry-level offload.
+    """
+    store, snapshot = _durable_other(tmp_path)
+    link = _plant_link(store.cache_dir, kind)
+
+    if process == "owner":
+        with pytest.raises(StorePurgeAliasedArtefactError):
+            store.add_image_to_store("k", np.ones((4, 4), dtype=np.float32))
+    else:
+        assert _non_owner_adds_k(store) == 3, f"a {kind} was not refused as StorePurgeRefusedError in a non-owner"
+
+    assert link.is_symlink(), "the refusal must leave the planted link in place"
+    assert "k" not in store
+    dat = get_memmap_path(store.cache_dir, "k")
+    assert dat.is_symlink() or not dat.exists(), "a regular k.dat was written"
+    store.offload()  # entry-level, every tracked key: forces any pending write to disk
+    for name, before in snapshot.items():
+        assert (store.cache_dir / name).read_bytes() == before, f"{name} changed after a refused {kind} add"
+    np.testing.assert_array_equal(np.asarray(store["other"]), np.zeros((8, 8), dtype=np.float32))
+
+
+def test_add_over_a_write_path_linked_outside_the_cache_is_refused_as_foreign(tmp_path: Path):
+    """The same refusal for a link that resolves outside the cache directory is the foreign class."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    victim = tmp_path / "outside" / "victim.dat"
+    victim.parent.mkdir()
+    victim.write_bytes(_SENTINEL_BYTES)
+    store = DiskBackedImageStore(
+        config=LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
+    )
+    get_memmap_tmp_path(store.cache_dir, "k").symlink_to(victim)
+
+    with pytest.raises(StorePurgeForeignArtefactError):
+        store.add_image_to_store("k", np.ones((4, 4), dtype=np.float32))
+
+    assert victim.read_bytes() == _SENTINEL_BYTES
+    assert "k" not in store
+
+
+def test_presence_gate_uses_only_upstream_builders_of_known_shape(tmp_path: Path):
+    """Drift guard for the hand copy of upstream's artefact set.
+
+    The two presence predicates name only the final-name builders (``get_npy_path``,
+    ``get_meta_path``, ``get_memmap_path``) and no temporary one: a leftover temporary
+    name carries no weight for what a fresh store serves. The write-path check names
+    exactly the four builders of the paths a write opens, and their built names keep
+    the shape upstream's writers use.
+    """
+    expected = {"get_npy_path": "k.npy", "get_meta_path": "k.meta.json", "get_memmap_path": "k.dat"}
+    for name, built in expected.items():
+        assert name in STORE_PATH_BUILDERS
+        assert STORE_PATH_BUILDERS[name](tmp_path, "k").name == built
+
+    predicates = {
+        "_adoptable_artefact_exists": {"get_npy_path"},
+        "_leftover_artefact_exists": {"get_meta_path", "get_memmap_path"},
+    }
+    all_builders = set(STORE_PATH_BUILDERS)
+    for fn_name, named in predicates.items():
+        source = inspect.getsource(getattr(disk_backed_image_store, fn_name))
+        assert {b for b in all_builders if re.search(rf"\b{b}\b", source)} == named, (
+            f"{fn_name} names a different builder set"
+        )
+
+    write_paths = {
+        "get_memmap_path": "k.dat",
+        "get_memmap_tmp_path": "k.dat.tmp",
+        "get_npy_tmp_path": "k.npy.tmp",
+        "get_meta_tmp_path": "k.meta.json.tmp",
+    }
+    check_source = inspect.getsource(disk_backed_image_store._refuse_linked_write_path)
+    assert {b for b in all_builders if re.search(rf"\b{b}\b", check_source)} == set(write_paths)
+    for name, built in write_paths.items():
+        assert name in STORE_PATH_BUILDERS
+        assert STORE_PATH_BUILDERS[name](tmp_path, "k").name == built
+
+
+def test_purge_removes_the_codec_pair_and_the_memmap(tmp_path: Path):
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", _gray((6, 6)))
     store.offload_image_data_to_disk("range")
-    assert store._get_npy_path("range").exists()
-    assert store._get_meta_path("range").exists()
+    assert get_npy_path(store.cache_dir, "range").exists()
+    assert get_meta_path(store.cache_dir, "range").exists()
 
-    del store["range"]
+    store.purge("range")
 
-    assert not store._get_npy_path("range").exists()
-    assert not store._get_meta_path("range").exists()
+    # ``_tmp`` is the test session's tempfile redirect, not part of the cache directory.
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name != "_tmp") == []
+    assert "range" not in store
 
 
 def test_delete_tracked_key_without_on_disk_pair_succeeds(tmp_path: Path):
     # A TRACKED key that was never offloaded (no on-disk codec pair) must delete
-    # cleanly: unlink(missing_ok=True) carries the safety, not a
-    # cache_dir-is-None guard. (Renamed from the prior
-    # test name, which misdescribed this body — the key IS tracked here, just
-    # never offloaded; the genuinely absent-key contract is pinned separately
-    # by test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op below.)
+    # cleanly: upstream `__delitem__` drops tracking only and touches no file, so
+    # an absent pair is irrelevant. (The key IS tracked here, just never
+    # offloaded; the absent-key contract is pinned by
+    # test_failed_delete_preserves_codec_pair_and_both_stores below.)
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     store.add_image_to_store("range", _gray((6, 6)))
     del store["range"]  # in memory only — no .npy on disk
     assert "range" not in store
 
 
-def test_delete_absent_key_raises_keyerror_and_is_a_disk_no_op(tmp_path: Path):
-    """A key that was NEVER added must raise KeyError and leave the cache dir untouched.
-
-    A codec pair for "never-added" sits on disk (planted by a peer store,
-    constructed AFTER this store so it is never adopted), which is what makes
-    the sensor decide something: under an unlink-first delete ordering the
-    KeyError still fires, but the codec pair is destroyed first. Distinguishes
-    from test_failed_delete_preserves_codec_pair_and_both_stores below: this
-    one pins the minimal statement (an absent key, a pair on disk, a single
-    non-owning store, no re-materialisation); the two-store sensor pins the
-    live-data-loss consequence across two owning stores.
-    """
-    store = DiskBackedImageStore(config=_two_store_config(tmp_path))
-
-    # Planted by a peer store constructed AFTER `store`, so `store` never
-    # adopts "never-added" -- the key is genuinely absent from `store`.
-    peer = DiskBackedImageStore(config=_two_store_config(tmp_path))
-    peer.add_image_to_store("never-added", _gray((4, 4)))
-    peer.offload_image_data_to_disk("never-added")
-    assert peer._get_npy_path("never-added").exists()
-    assert peer._get_meta_path("never-added").exists()
-    assert "never-added" not in store
-
-    before = sorted(p.name for p in tmp_path.iterdir())
-
-    with pytest.raises(KeyError):
-        del store["never-added"]
-
-    after = sorted(p.name for p in tmp_path.iterdir())
-    assert after == before
-    assert peer._get_npy_path("never-added").exists()
-    assert peer._get_meta_path("never-added").exists()
-
-
 # --------------------------------------------------------------------------- #
 # A KeyError-raising delete must be a genuine no-op                           #
 #                                                                              #
-# The fix above unlinked the codec pair BEFORE super() validated key           #
-# membership, inverting the base store's no-side-effect-on-KeyError contract   #
-# (its whole body is `del self._store[key]`). With two stores over one cache   #
-# directory, `del A["range"]` raises KeyError AND destroys the raster store B  #
-# owns — B cleared its in-memory reference on offload, so B itself can no      #
-# longer serve the key. That is live data loss, not a stale-cache concern.     #
+# Upstream's `__delitem__` has no side effect on a KeyError: it drops tracking #
+# only and never unlinks. With two stores over one cache directory,            #
+# `del A["range"]` raises KeyError and must leave the raster store B owns      #
+# untouched -- B cleared its in-memory reference on offload, so if the delete  #
+# destroyed the codec pair B itself could no longer serve the key. That would  #
+# be live data loss, not a stale-cache concern.                                #
 # --------------------------------------------------------------------------- #
 def _two_store_config(tmp_path: Path) -> LazyDiskCacheConfig:
     """Shared cache dir; purge_disk_on_gc=False keeps on-disk state deterministic."""
@@ -199,6 +519,7 @@ def _two_store_config(tmp_path: Path) -> LazyDiskCacheConfig:
 
 
 def test_failed_delete_preserves_codec_pair_and_both_stores(tmp_path: Path):
+    """Pins upstream's no-side-effect-on-KeyError contract; the single absent-key sensor."""
     arr = _gray((6, 6))
 
     store_a = DiskBackedImageStore(config=_two_store_config(tmp_path))
@@ -208,15 +529,15 @@ def test_failed_delete_preserves_codec_pair_and_both_stores(tmp_path: Path):
     # a plain offload() writes `<key>.dat` and does NOT set up the precondition.
     store_b.add_image_to_store("range", arr)
     store_b.offload_image_data_to_disk("range")
-    assert store_b._get_npy_path("range").exists()
-    assert store_b._get_meta_path("range").exists()
+    assert get_npy_path(store_b.cache_dir, "range").exists()
+    assert get_meta_path(store_b.cache_dir, "range").exists()
 
     with pytest.raises(KeyError):
         del store_a["range"]  # A never tracked the key
 
     # The failed delete must not have touched the shared cache directory.
-    assert store_b._get_npy_path("range").exists(), "failed delete destroyed the .npy"
-    assert store_b._get_meta_path("range").exists(), "failed delete destroyed the .meta.json"
+    assert get_npy_path(store_b.cache_dir, "range").exists(), "failed delete destroyed the .npy"
+    assert get_meta_path(store_b.cache_dir, "range").exists(), "failed delete destroyed the .meta.json"
 
     # A fresh store re-scanning the cache dir still recovers the raster ...
     store_c = DiskBackedImageStore(config=_two_store_config(tmp_path))
@@ -226,18 +547,19 @@ def test_failed_delete_preserves_codec_pair_and_both_stores(tmp_path: Path):
     np.testing.assert_array_equal(np.asarray(store_b["range"]), arr)
 
 
-def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
-    """A SUCCESSFUL delete purges the shared pair even via the adoption route.
+def test_adopted_key_purge_removes_shared_pair(tmp_path: Path):
+    """A SUCCESSFUL purge removes the shared pair even via the adoption route.
 
     Companion sensor to the test above, pinning the other construction order.
     The test above builds store_a BEFORE the offload, so store_a never tracks
     the key and the delete takes the KeyError branch. Built AFTER the offload,
-    `__init__` re-scans `*.npy` and store_a ADOPTS the key — the delete then
-    succeeds and does purge the pair, leaving the offloaded peer unable to
-    serve it. That is intended purge behaviour (a surviving pair would let a store
-    re-adopt and serve a stale raster), not the historical delete-ordering defect, and it is the
-    property the docstring now claims. Without this test, swapping two lines of
-    setup above would silently reduce the suite to the weaker assertion.
+    `__init__` re-scans `*.npy` and store_a ADOPTS the key -- `purge` then
+    succeeds and removes the pair, leaving the offloaded peer unable to serve
+    it. That is the intended purge semantics (a surviving pair would let a
+    store re-adopt and serve a stale raster) and a reason two stores must not
+    share one `cache_path` unless the caller wants exactly that aliasing.
+    Without this test, swapping two lines of setup above would silently reduce
+    the suite to the weaker assertion.
     """
     arr = _gray((6, 6))
 
@@ -248,10 +570,10 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
     store_a = DiskBackedImageStore(config=_two_store_config(tmp_path))
     assert "range" in store_a, "store built after the offload must adopt the key from disk"
 
-    del store_a["range"]  # succeeds — the key is genuinely store_a's to delete
+    store_a.purge("range")  # succeeds -- the key is genuinely store_a's to purge
 
-    assert not store_b._get_npy_path("range").exists()
-    assert not store_b._get_meta_path("range").exists()
+    assert not get_npy_path(store_b.cache_dir, "range").exists()
+    assert not get_meta_path(store_b.cache_dir, "range").exists()
     with pytest.raises(KeyError):
         _ = store_b["range"]  # documented consequence of sharing one cache_path
 
@@ -259,15 +581,14 @@ def test_adopted_key_delete_purges_shared_pair(tmp_path: Path):
 # --------------------------------------------------------------------------- #
 # A store key must never build a path outside the cache directory             #
 #                                                                              #
-# `_get_npy_path` / `_get_meta_path` join the raw key onto the cache dir with  #
-# no containment check, and an earlier fix turned `__delitem__` into an       #
-# unconditional `unlink`. Reproduced 2026-07-28 on HEAD with a sentinel one   #
-# level above the cache directory: `add_image_to_store("../victim", arr)` +   #
-# `offload_image_data_to_disk` OVERWROTE the sentinel with an NPY header, and  #
-# `del store["../victim"]` then DELETED it. Reachability corrected later:     #
-# see the store docstring's threat-posture paragraph and                      #
-# `FeatureRegistry.match`'s unanchored default fallback — the guard is        #
-# load-bearing, not defence-in-depth, on the installed GSEGUtils 0.5.x.       #
+# The key-derived path builders upstream validates the key and verifies        #
+# containment, and the mapping setter refuses an escaping key at set time.     #
+# Reproduced on the previous GSEGUtils release with a sentinel one level above #
+# the cache directory: `add_image_to_store("../victim", arr)` +                #
+# `offload_image_data_to_disk` OVERWROTE the sentinel with an NPY header.      #
+# Scalar-field names come from point-cloud file metadata and reach the store   #
+# verbatim through `FeatureRegistry.match`'s unanchored default fallback, so   #
+# the refusal is load-bearing, not defence-in-depth.                           #
 # --------------------------------------------------------------------------- #
 _SENTINEL_BYTES = b"pc2img round-3 containment sentinel -- must not be touched"
 
@@ -281,6 +602,9 @@ def _escape_layout(tmp_path: Path) -> tuple[Path, LazyDiskCacheConfig]:
     """
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
+    # An embedded-traversal key (``a/../../victim``) can only resolve past the
+    # cache directory when its first segment exists, so create it.
+    (cache_dir / "a").mkdir()
     sentinel = tmp_path / "victim.npy"
     sentinel.write_bytes(_SENTINEL_BYTES)
     cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache_dir, purge_disk_on_gc=False)
@@ -288,43 +612,82 @@ def _escape_layout(tmp_path: Path) -> tuple[Path, LazyDiskCacheConfig]:
 
 
 def _escaping_keys(tmp_path: Path) -> dict[str, str]:
-    """Three spellings of the same escape, all resolving to ``tmp_path/victim.npy``."""
+    """Spellings a store key must never be allowed to take.
+
+    The first three resolve to ``tmp_path/victim.npy``, above the cache
+    directory. ``empty``, ``dot`` and ``dotdot`` resolve onto the cache
+    directory itself. ``nested`` stays inside the cache directory but carries a
+    path separator, and a legal store key is a single path segment.
+    """
     return {
         "parent_segment": "../victim",
         "absolute": str(tmp_path / "victim"),
         "embedded_traversal": "a/../../victim",
+        "nested": "sub/nested",
+        "empty": "",
+        "dot": ".",
+        "dotdot": "..",
+    }
+
+
+def _tree(root: Path) -> dict[str, object]:
+    """Snapshot every path under ``root`` without following any link.
+
+    A symlink is recorded by its target (``os.readlink``) and never opened, so a
+    dangling or escaping link cannot make the snapshot itself raise. Anything
+    under a top-level ``_tmp`` directory is skipped: that is where the test
+    session's ``tempfile`` default is redirected, and it is not part of the
+    cache directory or its surroundings.
+    """
+    snapshot: dict[str, object] = {}
+    for path in root.rglob("*"):
+        rel = path.relative_to(root)
+        if rel.parts[0] == "_tmp":
+            continue
+        key = rel.as_posix()
+        if path.is_symlink():
+            snapshot[key] = ("symlink", os.readlink(path))
+        elif path.is_dir():
+            snapshot[key] = None
+        else:
+            snapshot[key] = path.read_bytes()
+    return snapshot
+
+
+def test_tree_snapshot_records_links_by_target_and_survives_a_dangling_one(tmp_path: Path):
+    (tmp_path / "file.bin").write_bytes(b"abc")
+    (tmp_path / "dir").mkdir()
+    (tmp_path / "dangling").symlink_to(tmp_path / "does-not-exist")
+    (tmp_path / "_tmp").mkdir(exist_ok=True)  # the session's tempfile redirect target
+    (tmp_path / "_tmp" / "litter").write_bytes(b"ignored")
+
+    assert _tree(tmp_path) == {
+        "file.bin": b"abc",
+        "dir": None,
+        "dangling": ("symlink", str(tmp_path / "does-not-exist")),
     }
 
 
 @pytest.mark.parametrize("spelling", ["parent_segment", "absolute", "embedded_traversal"])
-def test_escaping_key_delete_refuses_and_leaves_outside_file_intact(tmp_path: Path, spelling: str):
-    """`del store[escaping_key]` must refuse, and the outside file must survive.
+def test_escaping_key_setter_refuses_and_key_is_never_tracked(tmp_path: Path, spelling: str):
+    """`store[escaping_key] = value` must refuse at set time, and the outside file must survive.
 
-    The key is made tracked through the mapping setter (`store[key] = value`),
-    which bypasses `add_data_to_store` entirely — that is the route that makes
-    the unlink reachable even once insertion is guarded, so it is the route the
-    proving test has to use.
-
-    Carries the union of two contracts: the entry survives a refused delete
-    byte-identical to what was inserted (ValueError, membership, array
-    equality, sentinel existence + bytes), AND an untracked *ordinary* key
-    still raises `KeyError` with no disk side effect (the no-op-on-KeyError contract).
-    Parametrised over the same three escape spellings as the add proving test.
+    The mapping setter bypasses `add_data_to_store`, so it is its own insertion
+    route. Upstream validates the key there: the refusal is a `ValueError`, the
+    key is never tracked (so no later delete or offload can reach the outside
+    path), and the sentinel one level above the cache directory is untouched.
+    An untracked *ordinary* key still raises `KeyError` on delete with no disk
+    side effect.
     """
     sentinel, cfg = _escape_layout(tmp_path)
     store = DiskBackedImageStore(config=cfg)
 
     key = _escaping_keys(tmp_path)[spelling]
-    original = _gray((4, 4))
-    store[key] = DiskBackedImageData(original)
-    assert key in store
-
     with pytest.raises(ValueError):
-        del store[key]
+        store[key] = DiskBackedImageData(_gray((4, 4)))
 
-    assert key in store, "a refused delete dropped the key from the store"
-    np.testing.assert_array_equal(np.asarray(store[key]), original)
-    assert sentinel.exists(), "escaping delete removed a file outside the cache directory"
+    assert key not in store, "a refused setter insertion still tracked the key"
+    assert sentinel.exists(), "escaping insertion removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES
 
     # Unchanged contract: an untracked ordinary key still raises KeyError.
@@ -355,6 +718,178 @@ def test_escaping_key_add_refuses_before_writing_outside_cache_dir(tmp_path: Pat
 
     assert sentinel.exists(), "escaping insert removed a file outside the cache directory"
     assert sentinel.read_bytes() == _SENTINEL_BYTES, "escaping insert overwrote a file outside the cache directory"
+
+
+# The six ways a key reaches the disk. Each runs with a store built on the
+# escape layout, so a stray write anywhere under ``tmp_path`` shows up in the
+# snapshot taken before the call.
+def _route_add(store: DiskBackedImageStore, key: str) -> None:
+    store.add_image_to_store(key, _gray((4, 4)))
+
+
+def _route_setitem(store: DiskBackedImageStore, key: str) -> None:
+    store[key] = DiskBackedImageData(_gray((4, 4)))
+
+
+def _route_add_then_offload(store: DiskBackedImageStore, key: str) -> None:
+    store.add_image_to_store(key, _gray((4, 4)))
+    store.offload_image_data_to_disk(key)
+
+
+def _route_purge(store: DiskBackedImageStore, key: str) -> None:
+    store.purge(key)
+
+
+def _route_getitem(store: DiskBackedImageStore, key: str) -> None:
+    _ = store[key]
+
+
+def _route_add_data(store: DiskBackedImageStore, key: str) -> None:
+    store.add_data_to_store(key, _gray((4, 4)))
+
+
+_ROUTES: dict[str, Callable[[DiskBackedImageStore, str], None]] = {
+    "add": _route_add,
+    "setitem": _route_setitem,
+    "add_then_offload": _route_add_then_offload,
+    "purge": _route_purge,
+    "getitem": _route_getitem,
+    "add_data": _route_add_data,
+}
+
+
+@pytest.mark.parametrize("route", list(_ROUTES))
+@pytest.mark.parametrize("spelling", list(_escaping_keys(Path("/unused"))))
+def test_escaping_key_refused_on_every_route_and_nothing_written_anywhere(tmp_path: Path, spelling: str, route: str):
+    """Every refused spelling leaves the WHOLE temp tree bit-identical, on every route.
+
+    The snapshot covers the cache directory, the sentinel above it and anything
+    else under ``tmp_path``, so a stray file anywhere (not only the one path a
+    known exploit targeted) fails the comparison. The ``nested`` spelling pins
+    that nesting under the cache directory is no longer an accepted key.
+    """
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+    key = _escaping_keys(tmp_path)[spelling]
+    before = _tree(tmp_path)
+
+    with pytest.raises(ValueError):
+        _ROUTES[route](store, key)
+
+    assert _tree(tmp_path) == before, "a refused key changed the temp tree"
+    assert key not in store, "a refused key was tracked"
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+def test_escaping_key_with_bad_shape_is_refused_by_containment_not_shape(tmp_path: Path):
+    """An escaping key with a bad-shape raster raises the key error, not ``AssertionError``.
+
+    The key check precedes the shape check in ``add_image_to_store``. This is the
+    one test that pins the upstream subtype; everywhere else the asserted public
+    contract is ``ValueError``.
+    """
+    sentinel, cfg = _escape_layout(tmp_path)
+    store = DiskBackedImageStore(config=cfg)
+
+    with pytest.raises(ValueError) as excinfo:
+        store.add_image_to_store("../victim", np.ones(4, dtype=np.float32))
+
+    assert isinstance(excinfo.value, StoreKeyError)
+    assert sentinel.read_bytes() == _SENTINEL_BYTES
+
+
+def test_del_drops_tracking_only_and_an_offloaded_key_is_readopted(tmp_path: Path):
+    arr = _gray((6, 6))
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", arr)
+    store.offload_image_data_to_disk("range")
+
+    del store["range"]
+
+    assert get_npy_path(store.cache_dir, "range").exists()
+    assert get_meta_path(store.cache_dir, "range").exists()
+    np.testing.assert_array_equal(np.asarray(store["range"]), arr)  # re-adopted on read
+
+    fresh = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    assert "range" in fresh
+
+
+def test_store_mapping_is_read_only(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((4, 4)))
+
+    with pytest.raises(TypeError):
+        store.store["x"] = DiskBackedImageData(_gray((2, 2)))  # type: ignore[index]
+    with pytest.raises(TypeError):
+        del store.store["range"]  # type: ignore[attr-defined]
+
+    assert isinstance(store.image_data, types.MappingProxyType)
+    assert "x" not in store
+    assert "range" in store
+
+
+# --------------------------------------------------------------------------- #
+# The key rule is upstream's; these characterize it over the names pc2img     #
+# produces. No pc2img code checks any of this.                                 #
+# --------------------------------------------------------------------------- #
+@pytest.mark.parametrize(
+    "name",
+    [
+        "range",
+        "aspect",
+        "slope_deg",
+        "hillshade_range_315_45",
+        "grad_range_px0.5",
+        "norm_(range,2,98)",
+        "rrim_pack_(range,r16,d8,z1.2345678)",
+        "rrim_pack_(range,r16,d8,z1e-05)",
+        "rrim_component_(structure,range,r16,d8)",
+        "scalar_field_intensity",
+        "scalar_field_Scalar field",
+        "tile_03",
+        "tile-3",
+        "0_0",
+        "x_-1_-1",
+        "0",
+        "1.5",
+        "tile 03",
+        hashlib.sha256(b"tile").hexdigest(),
+        "triangles",
+        "simplices",
+        "verts",
+        "bary",
+    ],
+)
+def test_realistic_keys_and_segments_are_legal_upstream(name: str):
+    assert is_valid_store_key(name)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        ".",
+        "..",
+        "CON",
+        "tile_03/range",
+        "tile_03.",
+        "scalar_field_a/b",
+        "scalar_field_a\\b",
+        "scalar_field_GPS:time",
+        "scalar_field_x.",
+    ],
+)
+def test_hostile_keys_and_segments_are_refused_upstream(name: str):
+    assert not is_valid_store_key(name)
+
+
+def test_empty_raster_overwrite_is_accepted(tmp_path: Path):
+    store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
+    store.add_image_to_store("range", _gray((4, 4)))
+
+    store.add_image_to_store("range", np.empty((0, 0), dtype=np.float32))
+
+    assert np.asarray(store["range"]).shape == (0, 0)
 
 
 @pytest.mark.parametrize(
@@ -390,47 +925,14 @@ def test_containment_guard_accepts_realistic_feature_names(tmp_path: Path, featu
 
 
 # --------------------------------------------------------------------------- #
-# A refused delete must be a full no-op, in memory as well as on disk, on the #
-# OVERWRITE route too                                                        #
-#                                                                              #
-# The delete-side sensor for this contract lives in                          #
-# test_escaping_key_delete_refuses_and_leaves_outside_file_intact above (it   #
-# now carries the union of both predecessors' assertions). This block covers #
-# the remaining half: add_image_to_store's overwrite path must not drop the  #
-# existing entry before the replacement is validated.                        #
-# --------------------------------------------------------------------------- #
-
-
-def test_refused_overwrite_leaves_existing_entry_intact(tmp_path: Path):
-    """A refused overwrite (`add_image_to_store` on an escaping key) must not drop the old entry."""
-    sentinel, cfg = _escape_layout(tmp_path)
-    store = DiskBackedImageStore(config=cfg)
-    key = _escaping_keys(tmp_path)["parent_segment"]
-    original = _gray((4, 4))
-    replacement = (original + 10.0).astype(np.float32)
-    store[key] = DiskBackedImageData(original)
-
-    with pytest.raises(ValueError):
-        store.add_image_to_store(key, replacement)
-
-    assert key in store, "a refused overwrite dropped the existing entry"
-    np.testing.assert_array_equal(np.asarray(store[key]), original)
-    assert sentinel.exists(), "refused overwrite removed a file outside the cache directory"
-    assert sentinel.read_bytes() == _SENTINEL_BYTES
-
-
-# --------------------------------------------------------------------------- #
-# Validate-before-delete overwrite: a failed overwrite must leave the         #
+# Validate-before-purge overwrite: a failed overwrite must leave the          #
 # existing entry and its codec pair fully intact, in memory and on disk       #
 #                                                                              #
-# `add_image_to_store` used to drop the existing key (`del self[img_name]`)   #
-# before the replacement's raster shape was validated, so a bad-shape         #
-# overwrite destroyed the entry it was meant to replace. The safe fix is      #
-# validate (containment, then shape) -> delete -> build: building the         #
-# replacement on the shared `<key>.dat` path BEFORE the old entry is dropped  #
-# was also measured and rejected — it clobbers the old entry's live buffer at #
-# construction, and the old entry's path-bound finalizer later unlinks the    #
-# just-built replacement's `.dat` when the old object is collected.          #
+# `add_image_to_store` validates the key (containment) and then the raster    #
+# shape BEFORE it purges the existing entry, so a rejected overwrite destroys  #
+# nothing. The replacement is only built after the purge: building it on the  #
+# shared `<key>.dat` path while the old entry is still tracked would clobber   #
+# the old entry's live buffer at construction.                                 #
 # --------------------------------------------------------------------------- #
 @pytest.mark.parametrize("offloaded", [False, True], ids=["in_memory", "codec_offloaded"])
 def test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact(tmp_path: Path, offloaded: bool):
@@ -447,8 +949,8 @@ def test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact(tmp_path: 
     store.add_image_to_store("range", original)
     if offloaded:
         store.offload_image_data_to_disk("range")
-        assert store._get_npy_path("range").exists()
-        assert store._get_meta_path("range").exists()
+        assert get_npy_path(store.cache_dir, "range").exists()
+        assert get_meta_path(store.cache_dir, "range").exists()
 
     with pytest.raises(AssertionError):
         store.add_image_to_store("range", np.ones(4, dtype=np.float32))
@@ -456,8 +958,8 @@ def test_failed_overwrite_leaves_existing_entry_and_codec_pair_intact(tmp_path: 
     assert "range" in store
     np.testing.assert_array_equal(np.asarray(store["range"]), original)
     if offloaded:
-        assert store._get_npy_path("range").exists()
-        assert store._get_meta_path("range").exists()
+        assert get_npy_path(store.cache_dir, "range").exists()
+        assert get_meta_path(store.cache_dir, "range").exists()
 
 
 def test_successful_overwrite_serves_the_replacement_after_offload_and_reload(tmp_path: Path):
@@ -477,8 +979,8 @@ def test_successful_overwrite_serves_the_replacement_after_offload_and_reload(tm
     store1.offload_image_data_to_disk("range")
 
     np.testing.assert_array_equal(np.asarray(store1["range"]), b)
-    assert store1._get_npy_path("range").exists()
-    assert store1._get_meta_path("range").exists()
+    assert get_npy_path(store1.cache_dir, "range").exists()
+    assert get_meta_path(store1.cache_dir, "range").exists()
 
     store2 = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
     np.testing.assert_array_equal(np.asarray(store2["range"]), b)
@@ -488,21 +990,23 @@ def test_successful_overwrite_serves_the_replacement_after_offload_and_reload(tm
 # A legitimate symlinked cache entry must be served, not refused, while       #
 # every escaping key stays refused                                            #
 #                                                                              #
-# Before the fix, `_assert_within_cache_dir` resolved the FULL path, which    #
-# followed the final component's own symlink. A cache directory holding      #
-# `<key>.npy` + `<key>.meta.json` as symlinks to a real codec pair elsewhere  #
-# was adopted by `__init__` (the adoption scan uses `Path.is_file()`, which   #
-# follows symlinks) but then refused on read, delete and store-unpickling,    #
-# because the resolved candidate landed outside the cache directory even      #
-# though the LINK itself sat inside it. Reproduced 2026-09-24; this section   #
-# describes that pre-fix behaviour and the fix that replaced it.              #
+# A cache directory holding `<key>.npy` + `<key>.meta.json` as symlinks to a  #
+# real codec pair elsewhere is adopted by `__init__` (the adoption scan uses   #
+# `Path.is_file()`, which follows symlinks) and must be served and unpickled.  #
+# `purge` follows each link to its resolved target: it refuses an outside      #
+# target (a foreign artefact it may not touch) and, for a target inside the    #
+# cache directory, removes the link and the payload it points at.              #
 # --------------------------------------------------------------------------- #
-def _symlinked_entry_layout(tmp_path: Path) -> tuple[Path, Path, np.ndarray]:
-    """Real codec pair in ``shared/``; ``cache/`` holds only symlinks to it."""
-    shared = tmp_path / "shared"
-    shared.mkdir()
+def _symlinked_entry_layout(tmp_path: Path, *, shared_inside_cache: bool = False) -> tuple[Path, Path, np.ndarray]:
+    """Real codec pair in ``shared/``; ``cache/`` holds only symlinks to it.
+
+    ``shared/`` sits next to ``cache/`` by default (an OUTSIDE target) or, with
+    ``shared_inside_cache``, below it (an INSIDE target).
+    """
     cache = tmp_path / "cache"
     cache.mkdir()
+    shared = cache / "shared" if shared_inside_cache else tmp_path / "shared"
+    shared.mkdir()
 
     arr = _gray((4, 4))
     shared_store = DiskBackedImageStore(
@@ -528,16 +1032,7 @@ def test_symlinked_cache_entry_is_served_and_unpickles(tmp_path: Path):
     restored = pickle.loads(pickle.dumps(store))
     np.testing.assert_array_equal(np.asarray(restored["range"]), arr)
 
-    # A fresh store for the delete assertion: reading/pickling above may have
-    # offloaded the in-memory entry again, and delete must only remove the LINK.
-    store2 = DiskBackedImageStore(config=cfg)
-    del store2["range"]
-    assert not (cache / "range.npy").exists(), "delete must remove the link inside the cache dir"
-    assert not (cache / "range.meta.json").exists()
-    assert (shared / "range.npy").exists(), "delete of a symlinked entry must not remove its target"
-    assert (shared / "range.meta.json").exists()
-
-    # The three escape spellings must still be refused under the rewritten predicate.
+    # Every escape spelling is refused by the upstream key-derived path builder.
     # A fresh subdirectory avoids colliding with the "cache" / "shared" dirs above.
     escape_root = tmp_path / "escape_root"
     escape_root.mkdir()
@@ -545,31 +1040,65 @@ def test_symlinked_cache_entry_is_served_and_unpickles(tmp_path: Path):
     escape_store = DiskBackedImageStore(config=escape_cfg)
     for key in _escaping_keys(escape_root).values():
         with pytest.raises(ValueError):
-            escape_store._get_npy_path(key)
+            get_npy_path(escape_store.cache_dir, key)
     assert sentinel.exists()
     assert sentinel.read_bytes() == _SENTINEL_BYTES
 
-    # Nesting under the cache directory must still resolve inside.
-    nested = escape_store._get_npy_path("sub/nested")
-    assert nested.is_relative_to(escape_store.cache_dir.resolve())
+    # Nesting is refused too: a legal store key is a single path segment.
+    with pytest.raises(ValueError):
+        get_npy_path(escape_store.cache_dir, "sub/nested")
+
+
+def test_symlinked_entry_with_outside_target_purge_is_refused(tmp_path: Path):
+    """`purge` must not follow a cache-internal link to a target outside the cache directory."""
+    shared, cache, arr = _symlinked_entry_layout(tmp_path)
+    cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache, purge_disk_on_gc=False)
+    store = DiskBackedImageStore(config=cfg)
+    assert "range" in store
+
+    with pytest.raises(StorePurgeRefusedError):
+        store.purge("range")
+
+    # A refused purge touches nothing: both links, both payload files, and the entry survive.
+    assert (cache / "range.npy").is_symlink()
+    assert (cache / "range.meta.json").is_symlink()
+    assert (shared / "range.npy").exists(), "a refused purge removed the outside target"
+    assert (shared / "range.meta.json").exists(), "a refused purge removed the outside target"
+    np.testing.assert_array_equal(np.asarray(store["range"]), arr)
+
+
+def test_symlinked_entry_with_inside_target_purge_removes_link_and_payload(tmp_path: Path):
+    """`purge` of a link whose target is inside the cache directory removes the link AND its payload."""
+    shared, cache, _ = _symlinked_entry_layout(tmp_path, shared_inside_cache=True)
+    cfg = LazyDiskCacheConfig(enable_caching=True, cache_path=cache, purge_disk_on_gc=False)
+    store = DiskBackedImageStore(config=cfg)
+    assert "range" in store
+
+    store.purge("range")
+
+    assert not (cache / "range.npy").exists()
+    assert not (cache / "range.npy").is_symlink(), "purge left the link behind"
+    assert not (cache / "range.meta.json").is_symlink(), "purge left the link behind"
+    assert not (shared / "range.npy").exists(), "purge left the payload the link pointed at"
+    assert not (shared / "range.meta.json").exists(), "purge left the payload the link pointed at"
+    assert "range" not in store
 
 
 # --------------------------------------------------------------------------- #
-# The containment invariant is about key-derived paths, not entry-supplied    #
-# ones                                                                         #
+# The key-derived path builders and entry-supplied paths are different things  #
 #                                                                              #
 # An entry inserted through the mapping setter (`store[key] = value`) carries #
 # its own `cache_path`, chosen by the caller and never routed through the     #
-# guarded `_get_npy_path` / `_get_meta_path` builders. `offload()` with the   #
-# default `pickle_container=False` writes through the ENTRY's own            #
-# `_cache_path`. Reproduced 2026-09-24 via a STORE-INSERTED entry (not a      #
-# directly constructed one, whose offload is a no-op): a file outside the     #
-# cache directory was overwritten with raster bytes. This is NOT extended     #
-# into enforcement (owner decision) — the docstring is narrowed to what       #
-# the key builders actually enforce, and this test pins the enforced          #
-# half: an entry inserted through `add_image_to_store` always carries a       #
-# `cache_path` under the cache directory (because that route derives it from  #
-# the guarded `_get_npy_path`).                                               #
+# validated key-derived path builders. `offload()` with the default           #
+# `pickle_container=False` writes through the ENTRY's own `_cache_path`. A     #
+# file outside the cache directory was overwritten with raster bytes through   #
+# such a store-inserted entry. Enforcing containment on an entry's own path    #
+# is upstream's concern and is not extended here -- the class docstring states #
+# the limit, including that `purge` and the overwrite in `add_image_to_store`  #
+# refuse such an entry -- so this test pins the enforced half: an entry        #
+# inserted through `add_image_to_store` always carries a `cache_path` under    #
+# the cache directory (because that route derives it from the validated path   #
+# builder).                                                                    #
 # --------------------------------------------------------------------------- #
 def test_store_inserted_entries_carry_a_cache_path_under_the_cache_dir(tmp_path: Path):
     store = DiskBackedImageStore(config=LazyDiskCacheConfig(enable_caching=True, cache_path=tmp_path))
