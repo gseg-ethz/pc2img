@@ -5,7 +5,7 @@
      UAT.md + VERIFICATION.md — the files GSD actually reads. This file records only what
      those cannot: which reviewer ran, over which range, and when.
      A missing or corrupt ledger degrades coverage reporting to UNKNOWN, never to "covered".
-     Last updated: 2026-09-30T15:42:34Z -->
+     Last updated: 2026-10-05T13:11:40Z -->
 
 ```json
 [
@@ -88,6 +88,86 @@
     "findings": 8,
     "consolidated": true,
     "round": 4
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-deep+code-review-high",
+    "base": "9bb6b51",
+    "head": "5ee3c80",
+    "ran": "2026-10-02T11:45:57Z",
+    "findings": 12,
+    "consolidated": true,
+    "round": 1
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-deep+code-review-high",
+    "base": "271b208",
+    "head": "d689b6a",
+    "ran": "2026-10-02T13:15:11Z",
+    "findings": 10,
+    "consolidated": true,
+    "round": 2
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-deep+code-review-high",
+    "base": "7094dde",
+    "head": "5382353",
+    "ran": "2026-10-05T08:33:49Z",
+    "findings": 8,
+    "consolidated": true,
+    "round": 3
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-deep+code-review-high",
+    "base": "c1b813d",
+    "head": "08c8445",
+    "ran": "2026-10-05T09:56:11Z",
+    "findings": 8,
+    "consolidated": true,
+    "round": 4
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-standard+code-review-high",
+    "base": "cb85baa",
+    "head": "f3e2787",
+    "ran": "2026-10-05T10:51:40Z",
+    "findings": 7,
+    "consolidated": true,
+    "round": 5
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-standard+code-review-high",
+    "base": "c43d6f0",
+    "head": "69f2264",
+    "ran": "2026-10-05T12:23:42Z",
+    "findings": 5,
+    "consolidated": true,
+    "round": 6
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-quick-scoped",
+    "base": "8bb49c5",
+    "head": "f4fd4d4",
+    "ran": "2026-10-05T12:51:14Z",
+    "findings": 2,
+    "consolidated": true,
+    "round": 7
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-quick-scoped",
+    "base": "e0cd06f",
+    "head": "598ab2b",
+    "ran": "2026-10-05T13:11:40Z",
+    "findings": 1,
+    "consolidated": true,
+    "round": 8
   }
 ]
 ```

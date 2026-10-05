@@ -84,7 +84,103 @@ jobs:
 """
 
 
-def build_tree(root: pathlib.Path, workflows: dict[str, str]) -> pathlib.Path:
+# The `uv publish` spelling of the same rogue step: a different tool, the same
+# unreviewed publishing identity.
+UV_PUBLISH_WORKFLOW = """\
+name: rogue-uv
+
+on: push
+
+jobs:
+  ship:
+    runs-on: ubuntu-latest
+    steps:
+      - run: uv publish dist/*
+"""
+
+# A local composite action whose only step publishes. Nothing in a workflow that
+# merely references it spells a publish command, which is the blind spot.
+PUBLISHING_COMPOSITE_ACTION = """\
+name: ship
+description: publish the distribution
+runs:
+  using: composite
+  steps:
+    - run: twine upload dist/*
+      shell: bash
+"""
+
+# A composite with no publish step, so a "clean" verdict on a tree that carries
+# an action is reached by reading the action and finding nothing.
+INNOCENT_COMPOSITE_ACTION = """\
+name: setup
+description: install things
+runs:
+  using: composite
+  steps:
+    - run: echo setup
+      shell: bash
+"""
+
+# A ci.yml-shaped workflow whose job reaches the publish step only through a
+# local composite action.
+WORKFLOW_USING_LOCAL_ACTION = """\
+name: CI
+
+on: pull_request
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ./.github/actions/ship
+"""
+
+# The same reference from the allowed file, under its paired environment.
+ALLOWED_WORKFLOW_USING_LOCAL_ACTION = """\
+name: publish
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: ./.github/actions/ship
+"""
+
+# A two-level chain: the workflow uses `outer`, `outer` uses `inner`, and only
+# `inner` holds the publish command.
+OUTER_COMPOSITE_ACTION = """\
+name: outer
+description: wraps inner
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/inner
+"""
+
+INNER_COMPOSITE_ACTION = """\
+name: inner
+description: publishes
+runs:
+  using: composite
+  steps:
+    - run: twine upload dist/*
+      shell: bash
+"""
+
+WORKFLOW_USING_OUTER_ACTION = WORKFLOW_USING_LOCAL_ACTION.replace("/ship", "/outer")
+
+
+def build_tree(
+    root: pathlib.Path,
+    workflows: dict[str, str],
+    actions: dict[str, str] | None = None,
+) -> pathlib.Path:
     """Write a synthetic repository tree the gate can run against.
 
     Parameters
@@ -95,6 +191,10 @@ def build_tree(root: pathlib.Path, workflows: dict[str, str]) -> pathlib.Path:
         Mapping of workflow filename to file body, written under
         ``.github/workflows``. An empty mapping still creates the directory, so
         the empty-directory case is reachable.
+    actions
+        Optional mapping of local composite action name to ``action.yml`` body,
+        written under ``.github/actions/<name>/``. ``None`` creates no actions
+        directory at all, which is a legitimate tree.
 
     Returns
     -------
@@ -105,6 +205,10 @@ def build_tree(root: pathlib.Path, workflows: dict[str, str]) -> pathlib.Path:
     workflows_dir.mkdir(parents=True, exist_ok=True)
     for name, body in workflows.items():
         (workflows_dir / name).write_text(body, encoding="utf-8")
+    for name, body in (actions or {}).items():
+        action_dir = root / ".github" / "actions" / name
+        action_dir.mkdir(parents=True, exist_ok=True)
+        (action_dir / "action.yml").write_text(body, encoding="utf-8")
     return root
 
 
@@ -376,3 +480,206 @@ def test_an_undecodable_workflow_is_a_named_violation_not_a_traceback(tmp_path: 
     assert "UnicodeDecodeError" not in out, out
     assert "::error::bytes.yml" in out, out
     assert "cannot be assumed clean" in out, out
+
+
+# --------------------------------------------------------------------------
+# `uv publish` and publish steps reached through a local composite action
+# --------------------------------------------------------------------------
+
+
+def test_uv_publish_in_a_non_allowed_file_is_a_violation(tmp_path: pathlib.Path, capsys) -> None:  # noqa: ANN001
+    """A ``uv publish`` run step outside the allowlist is named like any other publish step."""
+    root = build_tree(tmp_path, {"publish-rogue.yml": UV_PUBLISH_WORKFLOW})
+    assert pg.main(root) == 1
+    out = capsys.readouterr().out
+    assert "publish-rogue.yml" in out, out
+    assert "non-allowed file" in out, out
+
+
+def test_a_composite_wrapped_publish_step_is_a_violation_naming_job_and_action(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """A job that only ``uses`` a publishing local action is refused, naming file, job and action."""
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": WORKFLOW_USING_LOCAL_ACTION},
+        actions={"ship": PUBLISHING_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 1
+    out = capsys.readouterr().out
+    assert "ci.yml" in out, out
+    assert "job=lint" in out, out
+    assert "./.github/actions/ship" in out, out
+
+
+def test_a_composite_wrapped_publish_step_in_the_allowed_file_and_environment_is_clean(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """The same composite is a legitimate publishing path from the allowed file under its environment."""
+    root = build_tree(
+        tmp_path,
+        {"publish-pypi.yml": ALLOWED_WORKFLOW_USING_LOCAL_ACTION},
+        actions={"ship": PUBLISHING_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out
+
+
+def test_a_composite_wrapped_publish_step_in_the_allowed_file_under_the_wrong_environment_is_a_violation(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """The composite route is held to the environment pairing exactly as a direct step is."""
+    wrong = ALLOWED_WORKFLOW_USING_LOCAL_ACTION.replace("environment: pypi", "environment: staging", 1)
+    root = build_tree(
+        tmp_path,
+        {"publish-pypi.yml": wrong},
+        actions={"ship": PUBLISHING_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 1
+    out = capsys.readouterr().out
+    assert "'pypi'" in out, out
+    assert "'staging'" in out, out
+    assert "./.github/actions/ship" in out, out
+
+
+def test_a_composite_with_no_publish_step_stays_clean(tmp_path: pathlib.Path, capsys) -> None:  # noqa: ANN001
+    """Referencing a composite that publishes nothing is not a violation."""
+    workflow = WORKFLOW_USING_LOCAL_ACTION.replace("/ship", "/setup")
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": workflow},
+        actions={"setup": INNOCENT_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out
+
+
+def test_a_publishing_composite_that_no_job_references_is_not_a_violation(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """The gate polices where a publish step is reached from, not that an action exists."""
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": INNOCENT_WORKFLOW},
+        actions={"ship": PUBLISHING_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out
+
+
+def test_a_two_level_composite_chain_is_followed_to_the_publish_step(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """``ci.yml`` -> ``outer`` -> ``inner`` -> ``twine upload`` is refused, naming ``outer``.
+
+    A single-level scan flags only ``inner`` and lets a job that references
+    ``outer`` through, so the flagged set is closed under local references.
+    """
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": WORKFLOW_USING_OUTER_ACTION},
+        actions={"outer": OUTER_COMPOSITE_ACTION, "inner": INNER_COMPOSITE_ACTION},
+    )
+    assert pg.main(root) == 1
+    out = capsys.readouterr().out
+    assert "ci.yml" in out, out
+    assert "job=lint" in out, out
+    assert "./.github/actions/outer" in out, out
+
+
+def test_composite_actions_that_reference_each_other_in_a_cycle_terminate(tmp_path: pathlib.Path) -> None:
+    """A reference cycle with no publish step ends the fixpoint and flags nothing."""
+    a = OUTER_COMPOSITE_ACTION.replace("name: outer", "name: a").replace("/inner", "/b")
+    b = OUTER_COMPOSITE_ACTION.replace("name: outer", "name: b").replace("/inner", "/a")
+    root = build_tree(tmp_path, {"ci.yml": INNOCENT_WORKFLOW}, actions={"a": a, "b": b})
+    flagged, problems = pg.publish_composite_actions(root)
+    assert flagged == set()
+    assert problems == []
+
+
+def test_an_action_yaml_spelling_is_read_like_action_yml(tmp_path: pathlib.Path, capsys) -> None:  # noqa: ANN001
+    """GitHub reads ``action.yaml`` as well, so a publishing composite spelled that way is found."""
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": WORKFLOW_USING_LOCAL_ACTION},
+        actions={"ship": PUBLISHING_COMPOSITE_ACTION},
+    )
+    action_dir = root / ".github" / "actions" / "ship"
+    (action_dir / "action.yml").rename(action_dir / "action.yaml")
+    assert pg.main(root) == 1
+    assert "./.github/actions/ship" in capsys.readouterr().out
+
+
+def test_an_unreadable_composite_action_is_a_named_violation(tmp_path: pathlib.Path, capsys) -> None:  # noqa: ANN001
+    """A composite action that cannot be parsed is a violation: it has not been checked.
+
+    This mirrors the workflow rule. Skipping it would let a publish step hide
+    behind a file the gate failed to read.
+    """
+    root = build_tree(
+        tmp_path,
+        {"ci.yml": INNOCENT_WORKFLOW},
+        actions={"broken": "name: [unclosed"},
+    )
+    assert pg.main(root) == 1
+    out = capsys.readouterr().out
+    assert "Traceback" not in out, out
+    assert "broken" in out, out
+    assert "cannot be assumed clean" in out, out
+
+
+def test_an_absent_actions_directory_is_a_clean_tree(tmp_path: pathlib.Path, capsys) -> None:  # noqa: ANN001
+    """No ``.github/actions`` at all is legitimate, unlike an empty workflows directory."""
+    root = build_tree(tmp_path, {"ci.yml": INNOCENT_WORKFLOW})
+    assert not (root / ".github" / "actions").exists()
+    assert pg.main(root) == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out
+
+
+def test_is_local_action_reference_accepts_only_local_actions_directory_paths() -> None:
+    """Only ``./.github/actions/<name>`` resolves; remote and other local paths do not."""
+    assert pg.is_local_action_reference("./.github/actions/ship") == "ship"
+    assert pg.is_local_action_reference("./.github/actions/ship/") == "ship"
+    assert pg.is_local_action_reference("actions/checkout@v4") is None
+    assert pg.is_local_action_reference("./other/ship") is None
+    assert pg.is_local_action_reference("") is None
+
+
+def test_a_yaml_comment_mentioning_a_publish_command_does_not_trigger(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """A ``# uv publish`` comment outside any step text is dropped by the YAML loader."""
+    commented = INNOCENT_WORKFLOW.replace("jobs:\n", "jobs:\n  # uv publish and twine upload live elsewhere\n")
+    root = build_tree(tmp_path, {"ci.yml": commented})
+    assert "# uv publish" in (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert pg.main(root) == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out
+
+
+def test_a_shell_comment_inside_a_run_body_is_flagged_fail_closed(
+    tmp_path: pathlib.Path,
+    capsys,  # noqa: ANN001
+) -> None:
+    """A ``run:`` body whose only mention is a shell comment is matched as written.
+
+    Step text is not parsed as shell, so a commented-out publish command is
+    indistinguishable from a live one. Refusing it is the deliberate fail-closed
+    reading, pinned here so it cannot drift silently.
+    """
+    shell_comment = "      - run: |\n          echo lint\n          # uv publish dist/*\n"
+    body = INNOCENT_WORKFLOW.replace("      - run: echo lint\n", shell_comment)
+    root = build_tree(tmp_path, {"ci.yml": body})
+    assert pg.main(root) == 1
+    assert "non-allowed file" in capsys.readouterr().out
+
+
+def test_the_real_repository_tree_is_clean(capsys) -> None:  # noqa: ANN001
+    """The shipped workflows and local actions pass the hardened gate unchanged."""
+    assert pg.main() == 0
+    assert "check_publish_gate: OK" in capsys.readouterr().out

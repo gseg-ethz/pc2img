@@ -278,7 +278,46 @@ Plans:
   4. `MIGRATION-v0.11.md` is finalised: GSEGUtils 0.6 entries appended, target re-stamped to `v0.11.0`, inline verifier green.
   5. The rework reaches `main` via a second filtered promotion; merging the release PR publishes 0.11.0 to PyPI with attestations; the back-merge lands as a merge commit and the nightly ancestry assertion stays green.
 
-**Plans**: TBD
+**Plans**: 20/24 plans executed
+
+**Wave 1** *(parallel; owner decision gate before the pins are written)*
+
+- [x] 07-01-PLAN.md — Tracer: confirm the one-way pins (D-01/D-02/D-21), re-lock + in-process provenance, delete the store overrides and adopt purge (D-07..D-10, D-22), rewrite the 12 store tests; D-11/D-12 triage table [DEP-05]
+- [x] 07-04-PLAN.md — AR-07 publish gate (uv publish + composite actions), AR-08 preflight PR-trigger filter (D-14), RTD tag-fetch hardening with scratch-clone simulation (D-13) [DEP-05]
+- [x] 07-05-PLAN.md — Ruleset-comparator polish: measured fixture shapes, parametrised read-filled test, rule (c)/(d) docstrings, RULESETS.md ungoverned fields (D-15) [DEP-05]
+
+**Wave 2** *(blocked on 07-01)*
+
+- [x] 07-02-PLAN.md — Whole-tree snapshot escape corpus (6 spellings x 6 routes), containment-before-shape pin, del/purge/read-only sensors, key-rule characterization, autouse tempfile isolation, tiled docstrings (D-09..D-12, D-22) [DEP-05]
+- [x] 07-03-PLAN.md — Tiled re-generation race (D-20): reproduce, draft + owner-approve two public issues, file upstream then tracking, xfail regression test with real URLs, extend_cache_paths refusal pin [DEP-05, BC-01]
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [x] 07-06-PLAN.md — Finalise MIGRATION-v0.11.md: amend 002/012/017, append 026-030, target_ref v0.11.0, verifier Tier-2 checks, `[ok] verified 30 entries` (D-18, D-19, D-21) [BC-01]
+
+**Wave 4** *(phase gate)*
+
+- [x] 07-07-PLAN.md — Full gate re-run, D-03 unlocked-wheel check, blocking checkpoint: /gsd-code-review 7 + /gsd-consolidate-findings before any merge [DEP-05, BC-01]
+
+**Waves 5-8** *(remote sequence, one plan per wave, owner checkpoints at point of need)*
+
+- [ ] 07-08-PLAN.md — Phase PR into develop-gsd (merge commit); build + verify the single filtered promotion commit with a public BREAKING CHANGE footer; go/no-go gate (D-16) [DEP-05, BC-01]
+- [ ] 07-09-PLAN.md — Promotion PR into main (squash with the recorded message), release PR #15 refreshed, RTD live proof; back-merge as a merge commit; nightly ancestry assertion green (D-16) [DEP-05, BC-01]
+- [ ] 07-10-PLAN.md — `pypi` environment with required reviewer; owner: PyPI trusted publisher (D-17); go/no-go on merging release PR #15 with D-03/D-18/RTD preconditions [DEP-05, BC-01]
+- [ ] 07-11-PLAN.md — Release evidence (tag, publish run, attestations, fresh-install), post-release back-merge + nightly, verifier against v0.11.0, todo closures and security follow-up annotations (D-14) [DEP-05, BC-01]
+- [x] 07-12-PLAN.md — Gap round 1 (CR-01): per-tile module-level tiled dispatch; race xfail becomes a passing regression test; WR-01 documented + pinned [DEP-05]
+- [x] 07-13-PLAN.md — Gap round 1 (CR-02, WR-05): overwrite purges tracked-or-on-disk keys, GC variant covered; overwrite docstring corrected; WR-01 store docstring [DEP-05]
+- [x] 07-14-PLAN.md — Gap round 1 (WR-04 + record): nvidia-index comment corrected; MIGRATION BC-P2I-030/027 amended to the fixes [DEP-05, BC-01]
+- [x] 07-15-PLAN.md — Gap round 1: draft #82/#24 issue notes; owner approves exact text before posting (blocking-human) [DEP-05]
+- [x] 07-16-PLAN.md — Gap round 2 (G1-CR-01, G1-WR-04): pooled results disarmed from delete-on-GC so rasters stay readable; duplicate tile ids rejected [DEP-05]
+- [x] 07-17-PLAN.md — Gap round 2 (G1-WR-01): overwrite gate narrowed (.npy hard, .dat/.meta.json soft); leftovers no longer refuse regeneration [DEP-05]
+- [x] 07-18-PLAN.md — Gap round 2: pyproject NOTE, tiled refusal docs + sensor, MIGRATION 027/028/030 to the final behaviour [DEP-05, BC-01]
+- [x] 07-19-PLAN.md — Gap round 3 (G2-CR-01, G2-WR-03, G2-IN-01): delete-on-GC disarmed on every call; pooled failure resets tile generators; persistence docs [DEP-05]
+- [x] 07-20-PLAN.md — Gap round 3 (G2-WR-01, G2-WR-04): pre-write refusal of symlinked write paths in every process; popitem drop-route test tightened [DEP-05]
+- [x] 07-21-PLAN.md — Gap round 3 (G2-WR-02, G2-IN-02): non-owner caveat from measurement; MIGRATION 027/030; detach-observing verifier probe [DEP-05, BC-01]
+- [x] 07-22-PLAN.md — Gap round 4 (docs-only): failed-batch, ownership and sidecar docs as measured; known limitations naming GSEGUtils#83 / 0.11.1; MIGRATION 027/030 [DEP-05, BC-01]
+- [x] 07-23-PLAN.md — Gap round 5 (docs-only): conservative known-limitations wording (no safe-case enumeration); pc2img link check separated from the upstream heading [DEP-05, BC-01]
+- [x] 07-24-PLAN.md — Gap round 6 (docs-only): persistence qualified to successful calls, fresh-cache_path retry route first, dangling-link guidance, wording alignment [DEP-05, BC-01]
 
 ## Progress
 
@@ -293,4 +332,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | 4. Code Quality & Algorithmic Soundness Review | 7/7 | Complete   | 2026-07-10 |
 | 5. Bug Fixes & Module Test Coverage | 19/19 | Complete    | 2026-09-25 |
 | 6. Publication Hardening & Downstream Migration Record | 19/19 | Complete    | 2026-09-30 |
-| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 0/TBD | Not started | - |
+| 7. GSEGUtils 0.6 Adoption & 0.11.0 Release | 20/24 | In Progress|  |

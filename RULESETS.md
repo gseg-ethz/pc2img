@@ -29,6 +29,10 @@ Run the same checks locally: see CONTRIBUTING.md.
   ruleset only; creating one is a single `gh api --method POST
   repos/gseg-ethz/pc2img/rulesets --input <payload>`. Never edit rulesets in
   the web UI.
+- **Five fields are not governed by the apply:** `allowed_merge_methods`,
+  `dismissal_restriction`, `required_reviewers`,
+  `require_extra_approval_for_unattributed_changes` and `do_not_enforce_on_create`.
+  GitHub fills them on read; the drift check ignores them unless a payload sets one.
 - **Inspect a live ruleset:** `gh api repos/gseg-ethz/pc2img/rulesets/<id>`
   with a token that has repository administration access. Without one, the
   bypass-actor list is missing from the response entirely; only an explicit

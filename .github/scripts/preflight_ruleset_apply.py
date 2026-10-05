@@ -19,7 +19,10 @@ accumulated and annotated before the single exit, so one run reports the whole
 set rather than the first item.
 
 The check is a containment test -- the payload's required contexts must all be
-job names on the target tip -- which is why it refuses in **both** directions
+job names of pull-request-triggered workflows on the target tip. A job of a
+scheduled, push-only or manually dispatched workflow never reports a check run on
+the pull request a ruleset gates, so its name does not count -- requiring it would
+leave the branch unmergeable just as a missing job would. That containment is why it refuses in **both** directions
 with one assertion: a payload that adds a context nothing produces, and a target
 tip from which a job was removed while a payload still requires it. That is what
 makes the same-commit constraint — decompose or rename a check and update the
@@ -47,6 +50,14 @@ from typing import Any
 
 import ruleset_lib
 import yaml  # available on ubuntu-latest runner by default
+
+# The events whose workflows report a check run on a pull request. Both, because a
+# check run on a pull request is produced by either: `pull_request` runs the head
+# commit's workflow, `pull_request_target` runs the base repository's (the trigger
+# a continuous-enforcement integrity workflow uses). Anything else -- push,
+# schedule, workflow_dispatch, release -- never reports on the pull request the
+# ruleset gates, so a context only such a workflow produces can never be satisfied.
+PR_TRIGGER_EVENTS: tuple[str, ...] = ("pull_request", "pull_request_target")
 
 USAGE = "usage: preflight_ruleset_apply.py COMMITTED_PAYLOAD.json TARGET_WORKFLOW_DIR SEND_PAYLOAD.json"
 
@@ -142,10 +153,37 @@ def target_branch(payload: dict[str, Any]) -> str:
     return "<no included ref>"
 
 
-def matchable_job_names(workflow_dir: pathlib.Path) -> tuple[set[str], list[str]]:
-    """Build the set of check-run names the target tip's workflows can produce.
+def trigger_events(block: Any) -> set[str]:
+    """Normalise a workflow's trigger block to the set of event names it lists.
 
-    The set is the union of every job's declared ``name:``, falling back to the
+    Parameters
+    ----------
+    block
+        The value under the workflow's ``on:`` key: a string (``on: push``), a
+        list (``on: [push, pull_request]``) or a mapping (``on: {push: ...}``).
+
+    Returns
+    -------
+    set of str
+        The event names; empty for any other shape, including ``None``.
+    """
+    if isinstance(block, str):
+        return {block}
+    if isinstance(block, list):
+        return {item for item in block if isinstance(item, str)}
+    if isinstance(block, dict):
+        return {str(key) for key in block}
+    return set()
+
+
+def matchable_job_names(workflow_dir: pathlib.Path) -> tuple[set[str], list[str]]:
+    """Build the set of check-run names pull-request workflows on the target tip produce.
+
+    The set is every job name of every pull-request-triggered workflow on the
+    target tip (see :data:`PR_TRIGGER_EVENTS`); a workflow whose trigger events
+    are all outside that set is reported on stderr and contributes nothing,
+    because its jobs never report a check run on a pull request. Each job's
+    name is its declared ``name:``, falling back to the
     bare job id -- which is exactly what GitHub reports as the check-run name for
     an unnamed job, so the fallback is the honest reading rather than a
     convenience.
@@ -191,11 +229,18 @@ def matchable_job_names(workflow_dir: pathlib.Path) -> tuple[set[str], list[str]
                 f"has not been checked, so it cannot be assumed clean."
             )
             continue
-        _, form = ruleset_lib.trigger_block(document)
+        block, form = ruleset_lib.trigger_block(document)
         if form is None:
             violations.append(
                 f"{path.name}: no resolvable trigger block under either the quoted or the bare "
                 f"`on:` key — this workflow has not been checked, so it cannot be assumed clean."
+            )
+            continue
+        events = trigger_events(block)
+        if events.isdisjoint(PR_TRIGGER_EVENTS):
+            print(
+                f"{path.name}: skipped — triggers {sorted(events)} produce no pull-request check run",
+                file=sys.stderr,
             )
             continue
         names.update(ruleset_lib.job_names(document))

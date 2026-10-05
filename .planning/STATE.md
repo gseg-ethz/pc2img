@@ -3,17 +3,17 @@ gsd_state_version: "1.0"
 milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
-status: "Phase 06 shipped — PR #23"
-stopped_at: Phase 06 complete, ready to plan Phase 07
-last_updated: "2026-10-01T11:59:27.996Z"
-last_activity: 2026-10-01
-state_head: 996c454cfa085e57c0030d0f6f0c457e208af34e
+status: executing
+stopped_at: Completed 07-07-PLAN.md (gates + D-03 re-run on 2c818e2; review reviewed by owner); next 07-08 (07-15 on hold, redraft)
+last_updated: "2026-10-05T12:57:25.135Z"
+last_activity: 2026-10-02
+last_activity_desc: Phase 07 execution started
+state_head: 2c818e2a453f39792931db4e7e255c5fa9f0551b
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 58
-  completed_plans: 58
-  percent: 86
+  total_plans: 82
+  completed_plans: 77
 milestone_name: milestone
 ---
 
@@ -24,14 +24,14 @@ milestone_name: milestone
 See: .planning/PROJECT.md (updated 2026-07-11)
 
 **Core value:** Reliably turn 3D point clouds into correct, reproducible 2D feature rasters — sound in code and math, running against current PCHandler 2.x + GSEGUtils releases.
-**Current focus:** Phase 06 — Publication Hardening & Downstream Migration Record
+**Current focus:** Phase 07 — GSEGUtils 0.6 Adoption & 0.11.0 Release
 
 ## Current Position
 
-Phase: 07 — GSEGUtils 0.6 Adoption & 0.11.0 Release
-Plan: Not started
-Status: Phase 06 shipped — PR #23
-Last activity: 2026-10-01
+Phase: 07 (GSEGUtils 0.6 Adoption & 0.11.0 Release) — EXECUTING
+Plan: 8 of 11
+Status: Ready to execute
+Last activity: 2026-10-02 — Phase 07 execution started
 
 Progress: [████████████████████] 35/35 plans ([█████████░] 86%)
 
@@ -121,6 +121,25 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 06 P11 | 20min | 3 tasks | 0 files |
 | Phase 06 P12 | 25min | 3 tasks | 1 files |
 | Phase 06 P13 | ~35min | 3 tasks | 3 files |
+| Phase 07 P04 | 30 min | 3 tasks | 6 files |
+| Phase 07 P01 | 4 min | 3 tasks | 4 files |
+| Phase 07 P05 | 20 min | 2 tasks | 4 files |
+| Phase 07 P02 | 10min | 2 tasks | 3 files |
+| Phase 07 P03 | n/a (split across two executors) | 3 tasks | 3 files |
+| Phase 07 P06 | 12 min | 2 tasks | 1 files |
+| Phase 07 P12 | 30 min | 2 tasks | 2 files |
+| Phase 07 P13 | 25min | 2 tasks | 2 files |
+| Phase 07 P14 | 25min | 2 tasks | 2 files |
+| Phase 07 P16 | 5min | 3 tasks | 2 files |
+| Phase 07 P17 | 5min | 2 tasks | 2 files |
+| Phase 07 P18 | 7min | 3 tasks | 4 files |
+| Phase 07 P19 | ~65min | 3 tasks | 2 files |
+| Phase 07 P20 | ~20min | 2 tasks | 2 files |
+| Phase 07 P21 | 6min | 2 tasks | 2 files |
+| Phase 07 P22 | 25 min | 3 tasks | 4 files |
+| Phase 07 P23 | 8 min | 2 tasks | 4 files |
+| Phase 07 P24 | 6 min | 2 tasks | 3 files |
+| Phase 07 P07 | 25min | 3 tasks | 0 files |
 
 ## Accumulated Context
 
@@ -230,6 +249,23 @@ Recent decisions affecting current work:
 - [Phase 06]: [Phase 06 P13]: Closing sweep found a NEW regression — origin/main is no longer an ancestor of origin/develop-gsd (06-11's graft broken by 06-12's second promotion, PR #20, with no follow-up back-merge); confirmed via a manual scheduled-health.yml dispatch (run 36735321144, failure) which opened GitHub issue #21 (ancestry-drift); NOT fixed (no git ref pushed per plan instruction) — owner decision required before phase close; CICD-02/BC-01 deliberately left un-marked
 - [Phase 06]: [Phase 06 P13]: Ancestry drift repaired on owner decision (fix now): back-merge PR #22 merged as a true merge (develop-gsd 0ac9df5); scheduled-health run 36737255378 success with the OK line; issue #21 closed; WINDOWS entry 2 fixed; CICD-02 marked complete
 - [Phase 06]: [Phase 06 P13]: Todo bookkeeping reconciled — ruff-lint-CI + pchandler-security-floor todos closed; round-5 hygiene todo split (4 phase-6 items ticked, resolves_phase retargeted to 7); GSEGUtils 0.6 todo confirmed already phase-7-scoped
+- [Phase 07]: 07-04: publish_composite_actions returns (flagged, unreadable-action violations); unreadable composite action is a named violation, nested local composites followed to a fixpoint
+- [Phase 07]: 07-04: preflight counts pull_request and pull_request_target jobs only; schedule/push/workflow_dispatch workflows contribute no matchable contexts (AR-08 closed)
+- [Phase 07]: 07-04: RTD post_checkout = conditional unshallow + fetch --tags --force; post_install asserts non-0.0.* version and non-shallow clone; proven by 07-rtd-simulation.sh
+- [Phase 07]: 07-01: pins written as pchandler >= 2.1.1, ~= 2.1 / GSEGUtils ~= 0.6.0 / numpy >= 2.2, < 2.4 (owner 'proceed' on the one-way-door gate); GSEGUtils 0.6.0 and pchandler 2.1.1 accepted as first-party
+- [Phase 07]: 07-01: add_image_to_store keeps one containment-first get_npy_path statement, then shape check, then purge-on-overwrite (D-22); six stale RAPIDS [tool.uv.sources] bindings deleted, proven inert by a from-scratch resolve with/without them
+- [Phase 07]: RULESETS.md read-filled-fields bullet omits 'change them in the web UI' (contradicts 'Never edit rulesets in the web UI'); names the five fields and the comparator-ignores-unless-set fact
+- [Phase 07]: 07-02: leak check counts tmp* entries (uv run leaves its own uv-*.lock in TMPDIR); tempfile redirect stays at tmp_path/_tmp and tests enumerating tmp_path ignore it
+- [Phase 07]: 07-03: tiled re-generation race filed upstream (GSEGUtils#82) and tracked (pc2img#24); pinned by xfail raises=(RuntimeError, OSError) per O-1
+- [Phase 07]: BC-P2I-026..030 appended to the migration record; 030 (tiled re-generation race on GSEGUtils 0.6.0) classified dep-constraint/should-review with both exception families and both issue URLs; record counts derived from tables (20 should-review, 1 must-edit, 5 informational, 4 additive)
+- [Phase 07]: 07-12: tiled generate() dispatches module-level _process_tile per tile; twelve-round measurement 12/12 failing before, 0/12 after (CR-01 closed); worker-owned tile stores refusing parent purge documented and pinned (WR-01 tiled half)
+- [Phase 07]: 07-16: pooled generate() results and reassembled store entries are disarmed with the public LazyDiskCache.disable_purge() when n_jobs != 1; accepted cost (owner 2026-10-02): .dat files persist until purge() or directory removal, including the default mkdtemp directory
+- [Phase 07]: 07-17: overwrite gate is hard for a tracked key or an on-disk <key>.npy (refusals propagate) and soft for a lone .meta.json/.dat (only the exact StorePurgeRefusedError tolerated; subclasses propagate); temporary names not consulted; three upstream builders pinned against STORE_PATH_BUILDERS (fix b2a3baa)
+- [Phase 07]: 07-18: sources NOTE no longer gives the inert bindings a purpose; tiled docstring and BC-P2I-030 state the reproduced refusal trigger (untracked key with its codec pair on disk; pool-random, deterministic at n_jobs=1 after a pooled run; leftovers tolerated) and the corrected workaround; BC-P2I-027/028 amended to shas b2a3baa/3d0b43d; verifier prints [ok] verified 30 entries with two new probes
+- [Phase 07]: 07-19: generate() disarms delete-on-GC on every call (n_jobs=1 included; owner option A, cache files persist after sequential runs, documented); a pooled dispatch that raises clears image_generators so the retry is not refused (n_jobs=1 failures drop nothing); persistence docstring as measured; mixed-n_jobs twelve rounds 12/12 failing before, 0/12 after (fix commits 4b4add3, d00cfdb)
+- [Phase 07]: 07-20: add_image_to_store refuses a symlink at <key>.dat, .dat.tmp, .npy.tmp or .meta.json.tmp before any purge or write, in every process (aliased vs foreign class by where the link resolves; soft branch also re-raises for a linked leftover); popitem drop-route case discards its value and all four routes assert no .dat before the overwrite, so the c2 mutation fails all four (fix commit e738cf4)
+- [Phase 07]: 07-21: non-owner caveat re-measured and kept with its precondition (applies only while no <key>.npy exists for the key; tiled generate() results do not reach it; the unpickled-copy route is refused); BC-P2I-027/030 amended to e738cf4 and 4b4add3/d00cfdb with the mixed-sequence counts (0 of 12 after, 12 of 12 before); the 027 lone-memmap probe replaced by a detach-observing probe that fails when the soft branch is deleted from the code (import proven first); verifier prints [ok] verified 30 entries (commits 3e91f7e, 5549f7c)
+- [Phase 07]: 07-07: D-03 unlocked-wheel check and gate record re-taken after gap rounds; latest D03_SHA is 2c818e2 (wheel passes 311 unlocked = 311 locked against GSEGUtils 0.6.0 / pchandler 2.1.1 / numpy 2.3.5); owner reviewed phase diff (36 resolved, 16 deferred, 0 open); stop fix-on-fix on GC-ownership mechanism, ship with conservative known-limitations docs, GSEGUtils#83 filed
 
 ### Pending Todos
 
@@ -269,6 +305,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-09-30T15:25:17.048Z
-Stopped at: Phase 06 complete, ready to plan Phase 07
+Last session: 2026-10-05T12:57:24.854Z
+Stopped at: Completed 07-07-PLAN.md (gates + D-03 re-run on 2c818e2; review reviewed by owner); next 07-08 (07-15 on hold, redraft)
 Resume file: None

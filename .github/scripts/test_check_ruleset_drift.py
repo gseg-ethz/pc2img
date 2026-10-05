@@ -104,7 +104,7 @@ def live_payload() -> dict:
                 "parameters": {
                     "required_approving_review_count": 0,
                     "allowed_merge_methods": ["merge", "squash", "rebase"],
-                    "dismissal_restriction": {},
+                    "dismissal_restriction": {"enabled": False, "allowed_actors": []},
                     "required_reviewers": [],
                 },
             },
@@ -114,8 +114,8 @@ def live_payload() -> dict:
                     "do_not_enforce_on_create": False,
                     "strict_required_status_checks_policy": False,
                     "required_status_checks": [
-                        {"context": "lint", "integration_id": 15368},
-                        {"context": "unit-tests", "integration_id": 15368},
+                        {"context": "lint"},
+                        {"context": "unit-tests"},
                     ],
                 },
             },
