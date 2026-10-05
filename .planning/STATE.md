@@ -4,16 +4,16 @@ milestone: v1.0
 current_phase: 07
 current_phase_name: GSEGUtils 0.6 Adoption & 0.11.0 Release
 status: executing
-stopped_at: Completed 07-20-PLAN.md (gap round 3 plan 20 complete; 07-07 and 07-15 still paused; round diff awaits its own review)
-last_updated: "2026-10-05T09:14:41.705Z"
+stopped_at: Completed 07-21-PLAN.md (gap round 3 plan 21 complete; 07-07 and 07-15 still paused; round-3 diff awaits its own review)
+last_updated: "2026-10-05T09:21:38.647Z"
 last_activity: 2026-10-02
 last_activity_desc: Phase 07 execution started
-state_head: 1cf7d1e87d3cb6a8d2252ec7dca68006775ba25c
+state_head: 9e5549ad53664d496f2a0aa7ba5ab8c4046fc4ac
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 79
-  completed_plans: 72
+  completed_plans: 73
 milestone_name: milestone
 ---
 
@@ -135,6 +135,7 @@ Phase 5 re-verified and PR #12 merged to `develop-gsd` (e9eb3c4, 2026-09-28); Ph
 | Phase 07 P18 | 7min | 3 tasks | 4 files |
 | Phase 07 P19 | ~65min | 3 tasks | 2 files |
 | Phase 07 P20 | ~20min | 2 tasks | 2 files |
+| Phase 07 P21 | 6min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -259,6 +260,7 @@ Recent decisions affecting current work:
 - [Phase 07]: 07-18: sources NOTE no longer gives the inert bindings a purpose; tiled docstring and BC-P2I-030 state the reproduced refusal trigger (untracked key with its codec pair on disk; pool-random, deterministic at n_jobs=1 after a pooled run; leftovers tolerated) and the corrected workaround; BC-P2I-027/028 amended to shas b2a3baa/3d0b43d; verifier prints [ok] verified 30 entries with two new probes
 - [Phase 07]: 07-19: generate() disarms delete-on-GC on every call (n_jobs=1 included; owner option A, cache files persist after sequential runs, documented); a pooled dispatch that raises clears image_generators so the retry is not refused (n_jobs=1 failures drop nothing); persistence docstring as measured; mixed-n_jobs twelve rounds 12/12 failing before, 0/12 after (fix commits 4b4add3, d00cfdb)
 - [Phase 07]: 07-20: add_image_to_store refuses a symlink at <key>.dat, .dat.tmp, .npy.tmp or .meta.json.tmp before any purge or write, in every process (aliased vs foreign class by where the link resolves; soft branch also re-raises for a linked leftover); popitem drop-route case discards its value and all four routes assert no .dat before the overwrite, so the c2 mutation fails all four (fix commit e738cf4)
+- [Phase 07]: 07-21: non-owner caveat re-measured and kept with its precondition (applies only while no <key>.npy exists for the key; tiled generate() results do not reach it; the unpickled-copy route is refused); BC-P2I-027/030 amended to e738cf4 and 4b4add3/d00cfdb with the mixed-sequence counts (0 of 12 after, 12 of 12 before); the 027 lone-memmap probe replaced by a detach-observing probe that fails when the soft branch is deleted from the code (import proven first); verifier prints [ok] verified 30 entries (commits 3e91f7e, 5549f7c)
 
 ### Pending Todos
 
@@ -298,6 +300,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-10-05T09:14:41.454Z
-Stopped at: Completed 07-20-PLAN.md (gap round 3 plan 20 complete; 07-07 and 07-15 still paused; round diff awaits its own review)
+Last session: 2026-10-05T09:21:38.413Z
+Stopped at: Completed 07-21-PLAN.md (gap round 3 plan 21 complete; 07-07 and 07-15 still paused; round-3 diff awaits its own review)
 Resume file: None
