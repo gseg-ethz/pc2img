@@ -17,6 +17,6 @@ plus the codec pair stays in each tile directory (18 files vs the pair before). 
 
 ## Next
 
-Upstream (GSEGUtils, backlog with #82): make the purge-on-GC finalizer delete only a file its own
+Upstream (GSEGUtils#83, filed 2026-10-05; also #82): make the purge-on-GC finalizer delete only a file its own
 entry created (or a per-entry `.dat` name). Then drop the pc2img disarm and re-enable cleanup;
 meanwhile consider the tiled generator removing its own default temp directory on GC.

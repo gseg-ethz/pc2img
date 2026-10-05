@@ -3,7 +3,7 @@ phase: 07-gsegutils-0-6-adoption-0-11-0-release
 status: gaps_found
 scaffolded: 2026-10-02T11:45:20Z
 scaffold_note: "PRE-VERIFICATION SCAFFOLD. Phase 7 is mid-execution (plans 07-01..07-06 complete, 07-07 paused at its Task 3 phase-diff review checkpoint). No goal-backward verification has run yet. This file exists only so the phase code review (07-REVIEW.md + /code-review origin/develop-gsd high, 2026-10-02) can be landed where the ship gate reads it (global Review Discipline rule) and so /gsd-plan-phase 7 --gaps can see the findings. The gsd-verifier run at phase end replaces this with a real verification in re-verification mode."
-gaps_open: "8 (round 3)"
+gaps_open: "8 (round 4)"
 next_action: "/gsd-plan-phase --gaps — then execute, re-review the fix diff, and re-verify before /gsd-ship"
 ---
 
@@ -42,6 +42,17 @@ Full detail, root causes and required fixes are in the phase UAT file, section `
 ## Round-3 findings (consolidated 2026-10-05T08:33:49Z)
 
 8 finding(s) imported from `gsd-code-review-deep+code-review-high` over `7094dde..5382353`.
+
+The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
+
+Full detail, root causes and required fixes are in the phase UAT file, section `## Gaps`.
+
+
+---
+
+## Round-4 findings (consolidated 2026-10-05T09:56:11Z)
+
+8 finding(s) imported from `gsd-code-review-deep+code-review-high` over `c1b813d..08c8445`.
 
 The prior verdict above is preserved, not deleted: it was correct for what it examined. What it did not examine is this range.
 

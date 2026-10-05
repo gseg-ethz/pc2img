@@ -3,7 +3,7 @@ status: diagnosed
 phase: 07-gsegutils-0-6-adoption-0-11-0-release
 source: [07-REVIEW.md]
 started: 2026-10-02T11:45:20Z
-updated: 2026-10-05T08:33:49Z
+updated: 2026-10-05T09:56:11Z
 gaps_source: "/gsd-code-review 7 (deep, gsd-code-reviewer/opus) over 9bb6b51..5ee3c80, 16 shipped files, plus /code-review origin/develop-gsd high over the same range, run as plan 07-07 Task 3. CR-01 (shipped 12/12 vs per-tile dispatch 0/12), CR-02 (fresh store reads stale 1.0 after clear+re-add of 7.0) and WR-01 (n_jobs=2 then submit -> StorePurgeRefusedError; n_jobs=1 OK) independently reproduced by the orchestrator. Owner dispositions 2026-10-02."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -439,6 +439,120 @@ blocked: 0
   artifacts:
     - path: "src/pc2img/tiled_generator.py"
       issue: "G2-IN-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP2.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+<!-- ROUND 4 — imported 2026-10-05T09:56:11Z by /gsd-consolidate-findings from gsd-code-review-deep+code-review-high (file:.planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md+conversation), range c1b813d..08c8445.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "G3-WR-05: With caching on, retrying a failed tiled generate() inside the except block loses the retried <tile>/<key>.dat once the exception is released: entries created during the failed call stay armed (pooled: results joblib received; sequential: generators never stored) and the traceback keeps them alive. [disposition: defer + document as known limitation in the docs-only round (owner 2026-10-05)]"
+  status: deferred
+  deferred_to: "GSEGUtils#83 (GC hook deletes a shared <key>.dat) fix, then pc2img 0.11.1 (owner 2026-10-05: stop downstream fix-on-fix; create-time purge_disk_on_gc=False is the fallback, todo 2026-10-02-tiled-pooled-runs-leave-cache-files)"
+  severity: major
+  reason: "G3-WR-05: With caching on, retrying a failed tiled generate() inside the except block loses the retried <tile>/<key>.dat once the exception is released: entries created during the failed call stay armed (pooled: results joblib received; sequential: generators never stored) and the traceback keeps them alive. [disposition: defer + document as known limitation in the docs-only round (owner 2026-10-05)]"
+  test: review-r4-5bb0fc0848a4
+  root_cause: "enable_caching=True, cache_path set; generate() raises for one tile; retry generate() inside the except block; release the exception and gc.collect(); offload + read -> FileNotFoundError .../t0/range.dat (orchestrator reproduced; default config unaffected)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G3-WR-05 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "high (/code-review c1b813d high)"
+
+- truth: "G3-WR-01: _release_gc_ownership runs only on success, so after a failed n_jobs=1 call the kept stores hold armed entries; releasing one held across a pooled call deletes the .dat that call reads; also reaches the non-owner caveat via the tiled generator. Docstring says this cannot happen. [disposition: defer; false docstring sentence fixed in the docs-only round (owner 2026-10-05)]"
+  status: deferred
+  deferred_to: "GSEGUtils#83 (GC hook deletes a shared <key>.dat) fix, then pc2img 0.11.1 (owner 2026-10-05: stop downstream fix-on-fix; create-time purge_disk_on_gc=False is the fallback, todo 2026-10-02-tiled-pooled-runs-leave-cache-files)"
+  severity: major
+  reason: "G3-WR-01: _release_gc_ownership runs only on success, so after a failed n_jobs=1 call the kept stores hold armed entries; releasing one held across a pooled call deletes the .dat that call reads; also reaches the non-owner caveat via the tiled generator. Docstring says this cannot happen. [disposition: defer; false docstring sentence fixed in the docs-only round (owner 2026-10-05)]"
+  test: review-r4-a6997211a4d8
+  root_cause: "Failed n_jobs=1 generate(), caller holds an entry from image_generators across a pooled call, releases it -> offload+read FileNotFoundError 2/2 (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G3-WR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING (gsd-code-reviewer round 4)"
+
+- truth: "G3-WR-02: _refuse_linked_write_path judges aliasing by link location, upstream by target name: an adopted <key>.dat -> payload.bin (upstream-legitimate) and a dangling <key>.dat link are refused; the dangling case cannot be cleared through the API. c1b813d accepted both. [disposition: defer; documented (owner 2026-10-05)]"
+  status: deferred
+  deferred_to: "GSEGUtils#83 (GC hook deletes a shared <key>.dat) fix, then pc2img 0.11.1 (owner 2026-10-05: stop downstream fix-on-fix; create-time purge_disk_on_gc=False is the fallback, todo 2026-10-02-tiled-pooled-runs-leave-cache-files)"
+  severity: minor
+  reason: "G3-WR-02: _refuse_linked_write_path judges aliasing by link location, upstream by target name: an adopted <key>.dat -> payload.bin (upstream-legitimate) and a dangling <key>.dat link are refused; the dangling case cannot be cleared through the API. c1b813d accepted both. [disposition: defer; documented (owner 2026-10-05)]"
+  test: review-r4-82b83c54e85a
+  root_cause: "Adopted entry k.dat -> payload.bin in the cache dir: add_image_to_store('k', ...) raises StorePurgeAliasedArtefactError (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G3-WR-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G3-WR-03: Failed-batch claim 'adopts those codec pairs' is false without cache_path: the retry rebuilds every tile store in a new temp dir, recomputes everything and leaves one old directory per tile; with enable_caching=False the reset protects nothing. [disposition: docs fix now (behaviour deferred) (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G3-WR-03: Failed-batch claim 'adopts those codec pairs' is false without cache_path: the retry rebuilds every tile store in a new temp dir, recomputes everything and leaves one old directory per tile; with enable_caching=False the reset protects nothing. [disposition: docs fix now (behaviour deferred) (owner 2026-10-05)]"
+  test: review-r4-ec85539fdd58
+  root_cause: "enable_caching=True, no cache_path, pooled failure then retry -> all features recomputed, old temp dirs remain (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G3-WR-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G3-WR-04: The disarm is persisted into .meta.json sidecars, so a later DiskBackedImageStore/PointCloudImageGenerator over the same directory inherits purge_disk_on_gc=False (history-dependent; silently overrides a caller's setting, e.g. iof3D). [disposition: docs fix now; behaviour goes away with the upstream fix (owner 2026-10-05)]"
+  status: failed
+  severity: minor
+  reason: "G3-WR-04: The disarm is persisted into .meta.json sidecars, so a later DiskBackedImageStore/PointCloudImageGenerator over the same directory inherits purge_disk_on_gc=False (history-dependent; silently overrides a caller's setting, e.g. iof3D). [disposition: docs fix now; behaviour goes away with the upstream fix (owner 2026-10-05)]"
+  test: review-r4-b8a25d8373eb
+  root_cause: "Sequential then pooled call with caching on; open a new store over the tile directory -> entries report purge_disk_on_gc False (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G3-WR-04 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "WARNING"
+
+- truth: "G3-IN-01: A symlink loop at a write path raises a bare RuntimeError from Path.resolve(), not the documented StorePurgeRefusedError family (not a regression). [disposition: defer (owner 2026-10-05)]"
+  status: deferred
+  deferred_to: "GSEGUtils#83 (GC hook deletes a shared <key>.dat) fix, then pc2img 0.11.1 (owner 2026-10-05: stop downstream fix-on-fix; create-time purge_disk_on_gc=False is the fallback, todo 2026-10-02-tiled-pooled-runs-leave-cache-files)"
+  severity: cosmetic
+  reason: "G3-IN-01: A symlink loop at a write path raises a bare RuntimeError from Path.resolve(), not the documented StorePurgeRefusedError family (not a regression). [disposition: defer (owner 2026-10-05)]"
+  test: review-r4-f7b4125c2e42
+  root_cause: "a.dat.tmp -> a.dat.tmp; add_image_to_store('a', ...) -> RuntimeError 'Symlink loop' (orchestrator reproduced)."
+  artifacts:
+    - path: "src/pc2img/image_cache/disk_backed_image_store.py"
+      issue: "G3-IN-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO + low/medium (/code-review)"
+
+- truth: "G3-IN-02: Three inaccurate failed-batch/ownership docstring sentences: a failing first n_jobs=1 call keeps no generators; the parent owns stores again after an n_jobs=1 retry following a pooled failure; at n_jobs=1 the rebuild is in the parent, not a worker. [disposition: docs fix now (owner 2026-10-05)]"
+  status: failed
+  severity: cosmetic
+  reason: "G3-IN-02: Three inaccurate failed-batch/ownership docstring sentences: a failing first n_jobs=1 call keeps no generators; the parent owns stores again after an n_jobs=1 retry following a pooled failure; at n_jobs=1 the rebuild is in the parent, not a worker. [disposition: docs fix now (owner 2026-10-05)]"
+  test: review-r4-1daadb31791a
+  root_cause: "Reader relies on the docstring's failed-batch description and mispredicts ownership (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G3-IN-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "INFO"
+
+- truth: "G3-IN-03: The non-owner leg of the linked-write-path test passes on any StorePurgeRefusedError, so it cannot confirm the aliased class its docstring names (byte-identity check still guards writes). [disposition: defer (test-only) (owner 2026-10-05)]"
+  status: deferred
+  deferred_to: "GSEGUtils#83 (GC hook deletes a shared <key>.dat) fix, then pc2img 0.11.1 (owner 2026-10-05: stop downstream fix-on-fix; create-time purge_disk_on_gc=False is the fallback, todo 2026-10-02-tiled-pooled-runs-leave-cache-files)"
+  severity: cosmetic
+  reason: "G3-IN-03: The non-owner leg of the linked-write-path test passes on any StorePurgeRefusedError, so it cannot confirm the aliased class its docstring names (byte-identity check still guards writes). [disposition: defer (test-only) (owner 2026-10-05)]"
+  test: review-r4-b19986674f87
+  root_cause: "A different refusal subclass in the child still exits 3 and passes."
+  artifacts:
+    - path: "tests/test_image_store.py"
+      issue: "G3-IN-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP3.md"
   missing: []
   debug_session: ""
   reviewer_severity: "INFO"
