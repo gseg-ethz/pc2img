@@ -3,7 +3,7 @@ status: diagnosed
 phase: 07-gsegutils-0-6-adoption-0-11-0-release
 source: [07-REVIEW.md]
 started: 2026-10-02T11:45:20Z
-updated: 2026-10-05T09:56:11Z
+updated: 2026-10-05T10:51:40Z
 gaps_source: "/gsd-code-review 7 (deep, gsd-code-reviewer/opus) over 9bb6b51..5ee3c80, 16 shipped files, plus /code-review origin/develop-gsd high over the same range, run as plan 07-07 Task 3. CR-01 (shipped 12/12 vs per-tile dispatch 0/12), CR-02 (fresh store reads stale 1.0 after clear+re-add of 7.0) and WR-01 (n_jobs=2 then submit -> StorePurgeRefusedError; n_jobs=1 OK) independently reproduced by the orchestrator. Owner dispositions 2026-10-02."
 scaffold_note: "No conversational UAT has run yet; ## Tests is empty. This file currently carries only review findings."
 ---
@@ -556,3 +556,99 @@ blocked: 0
   missing: []
   debug_session: ""
   reviewer_severity: "INFO"
+
+<!-- ROUND 5 — imported 2026-10-05T10:51:40Z by /gsd-consolidate-findings from gsd-code-review-standard+code-review-high (file:.planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md+conversation), range cb85baa..f3e2787.
+     NOTE: entries live under the single `## Gaps` heading on purpose —
+     the audit parser matches /^gaps$/i, so a decorated heading such as
+     `## Gaps — Round N` would make every entry below invisible. -->
+
+- truth: "G4-CR-01: Known-limitations retry text understates the hazard: retries inside the except block lose files at any n_jobs, and pooled failures lose files intermittently; 'a pooled failure ... did not lose files' is false. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: blocker
+  reason: "G4-CR-01: Known-limitations retry text understates the hazard: retries inside the except block lose files at any n_jobs, and pooled failures lose files intermittently; 'a pooled failure ... did not lose files' is false. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-3a7e4c77dbb1
+  root_cause: "Failing pooled call, retry inside except at n_jobs=1 -> lost files 2/12 and 4/8; pooled-pooled-pooled inside except lost 2/10 (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G4-CR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-CR-02: Documented mitigation 'run gc.collect() after the failure and before retrying' does nothing inside the except block (the live exception holds the entries); works only after leaving the block. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: blocker
+  reason: "G4-CR-02: Documented mitigation 'run gc.collect() after the failure and before retrying' does nothing inside the except block (the live exception holds the entries); works only after leaving the block. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-0d6739aac7c4
+  root_cause: "gc.collect() inside except, then retry -> LOST 3/3 (orchestrator) and 3/3 at n_jobs=1 and -1 (reviewer); gc.collect() after the block -> ok 3/3."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G4-CR-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-WR-01: Hold-an-entry/regenerate/release limitation omits that it needs a prior pooled call; contradicts BC-P2I-027. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: minor
+  reason: "G4-WR-01: Hold-an-entry/regenerate/release limitation omits that it needs a prior pooled call; contradicts BC-P2I-027. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-746be45f4769
+  root_cause: "All calls at n_jobs=1: file survives 2/2; after a pooled call: deleted 2/2 (reviewer-reproduced)."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G4-WR-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-WR-02: The upstream-root-cause heading (GSEGUtils#83) covers two bullets that are pc2img's own _refuse_linked_write_path behaviour; test docstring calls the armed entries an upstream limitation. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: minor
+  reason: "G4-WR-02: The upstream-root-cause heading (GSEGUtils#83) covers two bullets that are pc2img's own _refuse_linked_write_path behaviour; test docstring calls the armed entries an upstream limitation. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-65c5e3e73089
+  root_cause: "Reader attributes the link-classification and RuntimeError-on-loop behaviour to GSEGUtils#83 and expects 0.11.1 to change them via upstream."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G4-WR-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-WR-03: Sidecar rule 'two pooled calls leave it False' holds per key, not per call; offload(pickle_container=True) also writes the sidecar. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: minor
+  reason: "G4-WR-03: Sidecar rule 'two pooled calls leave it False' holds per key, not per call; offload(pickle_container=True) also writes the sidecar. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-302838217be9
+  root_cause: "A key first computed in a later pooled call is written True (reviewer-reproduced)."
+  artifacts:
+    - path: ".planning/MIGRATION-v0.11.md"
+      issue: "G4-WR-03 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-IN-01: 'A dangling <key>.dat link cannot be cleared through purge' is true only when the key is untracked and has no <key>.npy. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: cosmetic
+  reason: "G4-IN-01: 'A dangling <key>.dat link cannot be cleared through purge' is true only when the key is untracked and has no <key>.npy. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-8c6a56cd8bb7
+  root_cause: "Tracked key or .npy on disk: purge removes the dangling link (reviewer-reproduced)."
+  artifacts:
+    - path: ".planning/MIGRATION-v0.11.md"
+      issue: "G4-IN-01 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
+
+- truth: "G4-IN-02: 'The disarm runs only after a call returns' should say 'returns successfully'. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  status: failed
+  severity: cosmetic
+  reason: "G4-IN-02: 'The disarm runs only after a call returns' should say 'returns successfully'. [disposition: fixed by the conservative docs rewrite (owner 2026-10-05): recommendations and 'may' statements only, measured detail stays in SUMMARY files]"
+  test: review-r5-28e3f3ba5f32
+  root_cause: "Reader assumes a failed call's returned-before-failure entries are disarmed."
+  artifacts:
+    - path: "src/pc2img/tiled_generator.py"
+      issue: "G4-IN-02 — see .planning/phases/07-gsegutils-0-6-adoption-0-11-0-release/07-REVIEW-GAP4.md"
+  missing: []
+  debug_session: ""
+  reviewer_severity: "gsd-code-reviewer round 5 / /code-review cb85baa high"
