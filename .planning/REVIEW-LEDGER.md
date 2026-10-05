@@ -5,7 +5,7 @@
      UAT.md + VERIFICATION.md — the files GSD actually reads. This file records only what
      those cannot: which reviewer ran, over which range, and when.
      A missing or corrupt ledger degrades coverage reporting to UNKNOWN, never to "covered".
-     Last updated: 2026-10-05T12:23:42Z -->
+     Last updated: 2026-10-05T12:51:14Z -->
 
 ```json
 [
@@ -148,6 +148,16 @@
     "findings": 5,
     "consolidated": true,
     "round": 6
+  },
+  {
+    "phase": "07",
+    "reviewer": "gsd-code-review-quick-scoped",
+    "base": "8bb49c5",
+    "head": "f4fd4d4",
+    "ran": "2026-10-05T12:51:14Z",
+    "findings": 2,
+    "consolidated": true,
+    "round": 7
   }
 ]
 ```
