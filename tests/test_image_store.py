@@ -146,7 +146,11 @@ def test_overwrite_does_not_leave_stale_on_disk_raster(tmp_path: Path):
 def test_overwrite_after_a_drop_route_never_leaves_a_stale_raster_for_a_fresh_store(tmp_path: Path, route: str):
     """Every drop route leaves the codec pair on disk and untracks the key; the
     overwrite must still remove that pair, otherwise a fresh store adopts it and
-    serves the pre-overwrite raster as a cache hit."""
+    serves the pre-overwrite raster as a cache hit.
+
+    Every route must reach the overwrite with the codec pair ALONE on disk (no
+    ``.dat``), so the ``<key>.npy`` hard check is what this test senses; a ``.dat``
+    would let the soft leftover leg catch the key and hide a missing hard check."""
     a = _gray((6, 6))
     b = (a + 10.0).astype(np.float32)
 
@@ -160,12 +164,17 @@ def test_overwrite_after_a_drop_route_never_leaves_a_stale_raster_for_a_fresh_st
     elif route == "pop":
         store.pop("range")
     elif route == "popitem":
-        popped_key, _ = store.popitem()
-        assert popped_key == "range"
+        # popitem() reloads the entry; its value is discarded and collected so no
+        # memmap is left behind for the soft .dat leg of the gate to catch.
+        store.popitem()
+        gc.collect()
     else:
         store.clear()
     assert "range" not in store  # tracking dropped, files still on disk
     assert get_npy_path(store.cache_dir, "range").exists()
+    assert not get_memmap_path(store.cache_dir, "range").exists(), (
+        "a .dat before the overwrite would let the soft gate catch the key"
+    )
 
     store.add_image_to_store("range", b)
 
