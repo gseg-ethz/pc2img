@@ -96,6 +96,49 @@ uv.lock
 
 `dist/` holds the wheel and sdist for pc2img-0.10.4.post605 built from this tip.
 
+## Gate re-run (after RTD fix 598ab2b)
+
+HEAD `3d472d4c838bdb69b76540b7c4de5e24f558286d` on `gsd/phase-07-gsegutils-0-6-adoption-0-11-0-release` (123 commits ahead of origin/develop-gsd). Re-taken because `598ab2b fix(rtd): pass the version-assertion strings as argv so RTD's shell quoting cannot split them` changed the shipped file `.readthedocs.yaml` (`1 file changed, 4 insertions(+), 1 deletion(-)` since 2c818e2; it is the only shipped-tree difference from the previous D03_SHA). The fix was reviewed on its own (`07-REVIEW-RTD.md`, UAT round 8). Tracked tree unchanged by every gate (`git status --porcelain --untracked-files=no` shows only the pre-existing `M .planning/config.json`).
+
+| Gate | Result (verbatim tail) |
+|------|------------------------|
+| `uv lock --check` | `Resolved 137 packages in 2ms`, rc 0 |
+| `check_publish_gate.py` | `check_publish_gate: OK — publish steps found only in allowed files + environments` |
+| `uv run --frozen pytest .github/scripts/ -q` | `120 passed in 1.63s` |
+| Full suite + coverage floor | `Required test coverage of 55% reached. Total coverage: 65.01%` / `403 passed, 94 warnings in 35.19s` |
+| temp-leak count | `leak: 0` (only `pytest-of-nixton/`; TMPDIR on the pytest process only) |
+| `uv build` | `Successfully built dist/pc2img-0.10.4.post610.tar.gz` and `...post610-py3-none-any.whl` |
+| `uvx twine check dist/*` | wheel `PASSED`, sdist `PASSED` |
+| Migration verifier | `[ok] verified 30 entries` |
+| `scripts/smoke_pipeline.py` | `OK shape=(260, 200) finite_fraction=0.961 min=8.801 max=11.269 artifacts=['range.dat']` |
+| `pre-commit run --all-files` | ruff check, ruff format, trailing whitespace, end-of-files, check yaml, check toml, large files: all `Passed`, rc 0 |
+| Withdrawn-name `git grep` over `src tests` | exit 1, empty result |
+| Docs `sphinx-build -W --keep-going -b html docs/source docs/_build/html` | `build succeeded.` (`uv sync --frozen --group doc`: `Checked 90 packages`) |
+| pyright | not run: `uv run --frozen pyright` fails to spawn (`No such file or directory`); informational only |
+
+`git diff --stat origin/develop-gsd...HEAD` ends `100 files changed, 18602 insertions(+), 1300 deletions(-)`.
+
+### RTD job commands, run locally
+
+Extracted from `.readthedocs.yaml` (`build.jobs`) and run with `PATH=$PWD/.venv/bin:$PATH` (Python 3.12.13). The real RTD build on PR #25 already passed on 598ab2b; this is the local cross-check.
+
+```
+post_checkout[0]: if [ "$(git rev-parse --is-shallow-repository)" = "true" ]; then git fetch --unshallow; fi
+post_checkout[1]: git fetch --tags --force
+post_install[0]:  python -c "import importlib.metadata as m, sys; v = m.version(sys.argv[1]); print(sys.argv[1], v); sys.exit(sys.argv[3] if v.startswith(sys.argv[2]) else 0)" pc2img 0.0. setuptools_scm-fell-back-to-its-tagless-version
+post_install[1]:  test "$(git rev-parse --is-shallow-repository)" = "false"
+```
+
+| Command | Result |
+|---------|--------|
+| post_install[0], plain (`eval`) | `pc2img 0.10.4.post559`, rc 0 |
+| post_install[0], wrapped `sh -c '<cmd>'` | `pc2img 0.10.4.post559`, rc 0 |
+| post_install[1] (not shallow) | rc 0 |
+| post_checkout[0] and [1] | rc 0 |
+| negative control: same command with prefix `0.10.` instead of `0.0.` (the guard must fire) | prints `msg-fired` and exits rc 1 |
+
+The distribution metadata in `.venv` is an older editable install (`post559`), which is why the version differs from the wheel's `post610`; the check only needs the version to not start with the tagless `0.0.` fallback.
+
 ## D-03 unlocked-wheel check
 
 Original run at `5ee3c80` (no lock, fresh venv, wheel pc2img-0.10.4.post522): resolved GSEGUtils 0.6.0, pchandler 2.1.1, numpy 2.3.5. Unlocked pytest: `275 passed, 1 deselected, 1 xfailed`, equal to the locked total under the same exclusions.
@@ -131,6 +174,35 @@ Totals match (311 passed + 0 xfailed + 0 xpassed on both sides; the earlier xfai
 
 D03_SHA: 2c818e2a453f39792931db4e7e255c5fa9f0551b
 
+### Re-run after RTD fix 598ab2b
+
+Fresh wheel (pc2img-0.10.4.post610, built from 3d472d4 above), fresh unlocked venv `_scrap/unl` (`rm -rf` then `uv venv --python 3.12`; `uv pip install dist/pc2img-*.whl pytest pyyaml`, no lock, no `--frozen`), tests copied to `_scrap/unl_tests` (removed afterwards). Wheel is what imports: `/scratch/31_pc2img/_scrap/unl/lib/python3.12/site-packages/pc2img/__init__.py 0.10.4.post610`.
+
+Resolved versions:
+
+```
+gsegutils         0.6.0
+numpy             2.3.5
+pc2img            0.10.4.post610
+pchandler         2.1.1
+```
+
+Unlocked run (same flags as before):
+
+```
+311 passed, 1 deselected, 94 warnings in 23.61s
+```
+
+Locked run with the same exclusions:
+
+```
+311 passed, 1 deselected, 94 warnings in 22.14s
+```
+
+Totals match (311 passed on both sides, 0 xfailed, 0 xpassed).
+
+D03_SHA: 3d472d4c838bdb69b76540b7c4de5e24f558286d
+
 ## Review outcome
 
 Owner reply at the checkpoint: "reviewed" (2026-10-05). Seven review rounds over the phase diff and six gap rounds:
@@ -152,6 +224,8 @@ Result in `07-UAT.md` `## Gaps`: 36 resolved (each with fix-commit evidence), 16
 Owner decisions recorded: stop downstream fix-on-fix on the GC-ownership mechanism; ship with conservative known-limitations docs; GSEGUtils#83 filed.
 
 Tasks 1-2 were re-run after the gap rounds (the gap rounds changed shipped files), and the latest `D03_SHA:` line above matches the tip: the shipped-tree diff against HEAD is empty.
+
+Round 8 (RTD fix 598ab2b, scoped review `07-REVIEW-RTD.md`, landed in `07-UAT.md` as round 8): reviewed, 1 cosmetic item deferred, 0 open. Because 598ab2b changed `.readthedocs.yaml`, Tasks 1-2 were re-run again on 3d472d4 (sections "Gate re-run (after RTD fix 598ab2b)" and the matching D-03 re-run); the last `D03_SHA:` line is now 3d472d4c838bdb69b76540b7c4de5e24f558286d.
 
 ## Deviations from Plan
 
