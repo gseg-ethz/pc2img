@@ -29,7 +29,10 @@ build:
       # Fail the build rather than publish docs with a wrong version: the
       # installed version must not be setuptools_scm's tagless fallback, and the
       # clone must no longer be shallow.
-      - python -c "import importlib.metadata as m; v = m.version('pc2img'); print('installed pc2img', v); raise SystemExit(0 if not v.startswith('0.0.') else 'setuptools_scm fell back to its tagless version')"
+      # No single quotes anywhere in this command: RTD wraps each job command in
+      # its own shell quoting, and a single quote inside it ends the string
+      # ("Unterminated quoted string"). Strings are passed as argv instead.
+      - python -c "import importlib.metadata as m, sys; v = m.version(sys.argv[1]); print(sys.argv[1], v); sys.exit(sys.argv[3] if v.startswith(sys.argv[2]) else 0)" pc2img 0.0. setuptools_scm-fell-back-to-its-tagless-version
       - test "$(git rev-parse --is-shallow-repository)" = "false"
     install:
       # `doc` is a PEP 735 dependency-group entry (pyproject.toml
