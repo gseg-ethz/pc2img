@@ -18,11 +18,15 @@ The tests build a real ``PointCloudData`` only where needed; the settings-level
 checks are pure-object, keeping them deterministic and CI-safe. The fan-out tests are:
 the regression test that repeats ``generate()`` on one instance at ``n_jobs=1`` and
 ``n_jobs=2``, rebinds the result and reads every raster and store entry (the pooled case
-spawns real loky processes); the flag test that pins purge-on-garbage-collection off for
-pooled results and on for sequential ones; the duplicate-id test; the shape test, which
-replaces the pool with a recorder and runs inline; and the pin test for worker-owned stores,
-which also spawns real loky processes; and the sensor for the refusal trigger and the ``n_jobs=1``
-workaround, which runs a pooled call first and then a sequential one.
+spawns real loky processes); the mixed-sequence sensor, which changes ``n_jobs`` between calls
+(``1`` then ``2``, ``1`` then ``-1``, ``2`` then ``1`` then ``2``), reads every raster after each
+call and every store entry after ``store.offload()``; the flag test that pins
+purge-on-garbage-collection off for returned entries and store entries at both ``n_jobs=1`` and
+``n_jobs=2``; the failing-tile tests, which check that a pooled call that raises drops the tile
+generators so the retry succeeds, and that a sequential failure drops nothing; the duplicate-id
+test; the shape test, which replaces the pool with a recorder and runs inline; and the pin test
+for worker-owned stores, which also spawns real loky processes; and the sensor for the refusal
+trigger and the ``n_jobs=1`` workaround, which runs a pooled call first and then a sequential one.
 """
 
 from __future__ import annotations

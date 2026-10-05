@@ -116,17 +116,20 @@ class TiledPointCloudImageGenerator:
     when one store is unpickled by several processes at once
     (https://github.com/gseg-ethz/GSEGUtils/issues/82); this dispatch no longer does that.
 
-    **Disk persistence after a pooled run.** Entries returned by a pooled ``generate()`` (any
-    ``n_jobs`` other than 1, including the default ``-1``) and the entries of the stores kept in
-    ``image_generators`` have purge-on-garbage-collection disabled, so releasing one call's
-    results never deletes a ``.dat`` memmap that a later call's results read. The price: released
-    results and dropped generators no longer delete their cache files at all. Every
-    ``<tile_id>/<key>.dat`` (and the codec pair the pickling writes) persists until ``purge()`` is
-    called or the cache directory is removed. That includes the default temporary directory a
-    store creates with ``tempfile.mkdtemp`` when no ``cache_path`` is configured, which nothing
-    cleans up afterwards. Routes: configure ``cache_path`` and remove that directory when the run
-    is done; or keep the stores owned by this process by using ``n_jobs=1`` for every call and
-    purge from it. ``n_jobs=1`` keeps the single-object behaviour.
+    **Disk persistence.** Entries returned by any ``generate()`` call (``n_jobs=1`` included) and
+    the entries of the stores kept in ``image_generators`` have purge-on-garbage-collection
+    disabled, so releasing one call's results never deletes a ``.dat`` memmap that a later call's
+    results read. The price: released results and dropped generators no longer delete their cache
+    files at all, whatever ``n_jobs``. With the default ``enable_caching=False`` nothing is written
+    and only each store's empty temporary directory remains (as before this change). When caching
+    is enabled without a ``cache_path``, each tile store writes into its own temporary directory
+    (created with ``tempfile.mkdtemp``): ``<store dir>/<key>.dat``, plus the codec pair
+    (``<key>.npy`` and ``<key>.meta.json``) that pickling in a pooled run writes, and nothing
+    cleans that directory up. With a ``cache_path`` the files are
+    ``<cache_path>/<tile_id>/<key>.dat`` and the codec pair. All of them persist until ``purge()``
+    is called or the directory is removed. Routes: configure ``cache_path`` and remove that
+    directory when the run is done; or ``purge()`` keys from the owning process (the calling
+    process owns the stores only if every call used ``n_jobs=1``).
 
     Whenever the work runs in a worker pool, every tile's ``DiskBackedImageStore`` is constructed
     inside a worker and records that worker's process id as its owner, for good. GSEGUtils refuses
@@ -146,6 +149,11 @@ class TiledPointCloudImageGenerator:
     * build a fresh ``TiledPointCloudImageGenerator`` for each ``generate()`` call;
     * drop the tile's generator and remove its cache sub-directory ``<cache_path>/<tile_id>``
       (for example with ``shutil.rmtree``).
+
+    If any tile fails in a pooled call, the parent drops its tile generators and re-raises: the
+    tiles that finished have already written codec pairs the parent's copies do not track. The
+    next call rebuilds each tile's generator in a worker and adopts those codec pairs, so a retry
+    is not refused. At ``n_jobs=1`` the stores were updated in place and nothing is dropped.
     """
 
     @overload
