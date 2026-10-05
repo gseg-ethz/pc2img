@@ -129,9 +129,11 @@ class TiledPointCloudImageGenerator:
     (``<key>.npy`` and ``<key>.meta.json``) that pickling in a pooled run writes, and nothing
     cleans that directory up. With a ``cache_path`` the files are
     ``<cache_path>/<tile_id>/<key>.dat`` and the codec pair. The files of successful calls persist
-    until ``purge()`` is called or the directory is removed. Routes: configure ``cache_path`` and remove that
-    directory when the run is done; or ``purge()`` keys from the owning process (the calling
-    process owns a tile's store if that store was built by an ``n_jobs=1`` call: a pooled call
+    until ``purge()`` is called or the directory is removed, except that after a failed call the
+    failed call's entries may still delete them, a retry's files included (see Known limitations).
+    Routes: configure ``cache_path`` and remove that directory when the run is done; or ``purge()``
+    keys from the owning process (the calling process owns a tile's store if that store was built by
+    an ``n_jobs=1`` call: a pooled call
     builds it in a worker, and after a pooled failure an ``n_jobs=1`` retry rebuilds it in the
     calling process).
 
@@ -273,9 +275,11 @@ class TiledPointCloudImageGenerator:
         object on the same file, and an entry created at ``n_jobs=1`` is still alive when a later
         pooled call rebuilds that file under another object, so one released call's results would
         otherwise unlink the files a later call's results read. The tile directory keeps the files
-        of successful calls until ``purge`` is called or the directory is removed. The disarm
-        runs only after a call returns successfully: the entries a call that raised added to
-        kept stores stay armed, which may make a retry of that call lose files (see the class
+        of successful calls until ``purge`` is called or the directory is removed, except that after
+        a failed call the failed call's entries may still delete them, a retry's files included (see
+        the class docstring, Known limitations). The disarm runs only after a call returns
+        successfully: the entries a call that raised added to kept stores stay armed, which may make
+        a retry of that call lose files (see the class
         docstring, Known limitations, for the recommended route).
         """
 
